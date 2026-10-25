@@ -169,7 +169,8 @@ data/
 ├── editor/          filmstrips and waveforms for the timeline editor
 ├── exports/         GIF and MP4 exports (kept for a day)
 ├── backups/         database copies made before migrations and deploys
-└── tmp/             uploads in progress
+├── uploads/         uploads arriving in pieces (unfinished ones are deleted after a day)
+└── tmp/             work files and single-request uploads in progress (emptied at every start)
 ```
 
 **Back up the whole folder and you have everything**, including the keys that identify your server to the

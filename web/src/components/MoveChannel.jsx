@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api.js';
+import { api, sendInPieces } from '../api.js';
 import { Icon } from './Icons.jsx';
 import { useToast } from './Toast.jsx';
 import { copyText, formatBytes, formatDate } from '../util.js';
@@ -109,6 +109,7 @@ function ImportPart() {
   const [url, setUrl] = useState('');
   const [profile, setProfile] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(null); // percent of the archive sent
   const fileRef = useRef(null);
   const load = () => api('/me/channel-imports').then((r) => setList(r.imports)).catch(() => setList([]));
   useEffect(() => {
@@ -128,11 +129,19 @@ function ImportPart() {
       setBusy(false);
     }
   };
-  const upload = (file) => {
-    const fd = new FormData();
-    fd.append('apply_profile', profile ? 'true' : 'false');
-    fd.append('archive', file);
-    run(fd);
+  // In pieces, like video uploads, so a big archive gets through proxies that cap a request's size.
+  const upload = async (file) => {
+    setBusy(true);
+    try {
+      const uploadId = await sendInPieces(file, { kind: 'archive', onProgress: (sent, total) => setSending(Math.floor((sent / total) * 100)) }).promise;
+      setSending(null);
+      await run({ upload_id: uploadId, apply_profile: profile });
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setSending(null);
+      setBusy(false);
+    }
   };
   const running = list?.some((x) => RUNNING.includes(x.status));
   return (
@@ -153,7 +162,7 @@ function ImportPart() {
       </form>
       <div className="row-actions top-gap">
         <button className="btn btn-ghost" disabled={busy || running} onClick={() => fileRef.current.click()}>
-          <Icon name="upload" /> Upload archive (.tar)
+          <Icon name="upload" /> {sending === null ? 'Upload archive (.tar)' : `Uploading the archive ${sending}%…`}
         </button>
         <label className="check-row">
           <input type="checkbox" checked={profile} onChange={(e) => setProfile(e.target.checked)} /> Also bring over the name, description, picture and links

@@ -23,6 +23,27 @@ progress bar, and you can fill in its details while it uploads:
 Accepted formats: MP4, MKV, MOV, WebM, AVI, M4V, TS, WMV, FLV, MPG/MPEG, 3GP, MTS and M2TS. The size limit per
 file is set by the admin (8 GB by default), and your account may have a storage quota.
 
+### Big files and shaky connections
+
+Files go up in pieces of 32 MB. That gets them through proxies that cap the size of a request (Cloudflare's
+proxy and Cloudflare Tunnel allow 100 MB on the free plan), and a dropped connection only costs the piece in
+flight: the card says *Connection lost, trying again* and carries on where it stopped. If it gives up, **Try
+again** resumes it. Closed the tab halfway? Drop the same file in again within a day and it continues from where
+it was. Channel archives for a [channel import](Fediverse.md#moving-a-channel) go up the same way.
+
+For scripts and apps, the same works over the API (signed in, with the session cookie or a bearer token):
+
+1. `POST /api/uploads` with `{"name": "clip.mp4", "size": <bytes>}` (and `"kind": "archive"` for a channel
+   archive) answers `{"upload": {"id", "offset": 0, "chunk_size", ...}}`.
+2. `PUT /api/uploads/<id>` with the next bytes as the body (`Content-Type: application/octet-stream`) and an
+   `Upload-Offset: <byte>` header saying where they start. It answers the new `offset`. A piece may overlap what
+   already arrived (those bytes are skipped); one that would leave a gap gets `409` with the right `offset`.
+   `GET /api/uploads/<id>` says where an upload stands, `DELETE` gives it up.
+3. Once `offset` equals the size, `POST /api/videos` with `{"upload_id": "<id>", "title": ...}` (the same fields
+   as a normal upload) makes the video; for an archive, `POST /api/me/channel-imports` with `{"upload_id"}`.
+
+Sending the whole file as `multipart/form-data` to `POST /api/videos` still works too, where no proxy is in the way.
+
 ## Drafts: nothing goes out until you save
 
 An upload from the Upload page is a **draft** until you click **Save details**:

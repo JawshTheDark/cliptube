@@ -2,9 +2,9 @@ import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, touchVideo, getSettings } from '../db.js';
-import { DIRS } from '../config.js';
+import { DIRS, VIDEO_EXTENSIONS } from '../config.js';
 import { requireAuth } from '../auth.js';
-import { videoUpload, imageUpload, discard } from '../uploads.js';
+import { videoUpload, imageUpload, discard, defineUploadKind, finishedUpload } from '../uploads.js';
 import { HttpError, newId, now, parseTags, str, clampInt, sha256 } from '../util.js';
 import { enqueue, enqueueRender, convertImage, grabFrame, editorAssets, editorDir, queueRenditions } from '../media.js';
 import { intakeComment, intakeLike } from '../intake.js';
@@ -352,30 +352,50 @@ export function storageFor(userId) {
   return { used, quota };
 }
 
-videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
-  if (!req.file) throw new HttpError(400, 'No video file was received');
-  const { used, quota } = storageFor(req.user.id);
-  if (quota > 0 && used + req.file.size > quota) {
-    discard(req.file);
-    const mb = (n) => `${Math.round(n / 1048576).toLocaleString()} MB`;
-    throw new HttpError(413, `This upload would go over your storage quota (${mb(used)} of ${mb(quota)} used). Delete some videos or ask an admin for more space.`);
-  }
-  const id = newId();
-  const ext = path.extname(req.file.originalname).toLowerCase();
-  const originalName = `${id}${ext}`;
-  fs.renameSync(req.file.path, path.join(DIRS.originals, originalName));
+const overQuota = (used, quota) => {
+  const mb = (n) => `${Math.round(n / 1048576).toLocaleString()} MB`;
+  return new HttpError(413, `This upload would go over your storage quota (${mb(used)} of ${mb(quota)} used). Delete some videos or ask an admin for more space.`);
+};
 
-  const fallbackTitle = path.basename(req.file.originalname, ext).replace(/_+/g, ' ').trim().slice(0, 120);
-  const title = str(req.body.title, 120).trim() || fallbackTitle || 'Untitled clip';
-  const visibility = VISIBILITIES.includes(req.body.visibility) ? req.body.visibility : 'public';
-  const t = now();
+// Videos can also go up in pieces (/api/uploads); unfinished ones count against the quota already.
+defineUploadKind('video', {
+  label: 'Video',
+  extensions: VIDEO_EXTENSIONS,
+  maxBytes: () => (Number(getSettings().max_upload_mb) || 8192) * 1048576,
+  check(user, size, pending) {
+    const { used, quota } = storageFor(user.id);
+    if (quota > 0 && used + pending + size > quota) throw overQuota(used + pending, quota);
+  },
+});
+
+videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
+  // The file came with this request, or went up in pieces before it (upload_id).
+  const pieces = !req.file && req.body?.upload_id ? finishedUpload(req.body.upload_id, req.user, 'video') : null;
+  const file = req.file || pieces;
+  if (!file) throw new HttpError(400, 'No video file was received');
+  // A refused request throws away a file that came with it; one sent in pieces stays for another try.
+  const refuse = (e) => {
+    discard(req.file);
+    return e;
+  };
+  const { used, quota } = storageFor(req.user.id);
+  if (quota > 0 && used + file.size > quota) throw refuse(overQuota(used, quota));
   let gameId = null;
   try {
     gameId = resolveGame(req.body.game, req.user) ?? null;
   } catch (e) {
-    discard({ path: path.join(DIRS.originals, originalName) });
-    throw e;
+    throw refuse(e);
   }
+  const id = newId();
+  const ext = path.extname(file.originalname).toLowerCase();
+  const originalName = `${id}${ext}`;
+  fs.renameSync(file.path, path.join(DIRS.originals, originalName));
+  pieces?.done();
+
+  const fallbackTitle = path.basename(file.originalname, ext).replace(/_+/g, ' ').trim().slice(0, 120);
+  const title = str(req.body.title, 120).trim() || fallbackTitle || 'Untitled clip';
+  const visibility = VISIBILITIES.includes(req.body.visibility) ? req.body.visibility : 'public';
+  const t = now();
   const allowClips = req.body.allow_clips === 'true' || req.body.allow_clips === true ? 1 : 0;
   // The upload page sends drafts: nothing is published until its details are saved.
   const draft = req.body.draft === 'true' || req.body.draft === true ? 1 : 0;
@@ -383,7 +403,7 @@ videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
   db.prepare(
     "INSERT INTO videos (id, user_id, title, description, visibility, status, original_name, original_path, size_bytes, created_at, updated_at, game_id, allow_clips, draft, draft_visibility) VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   ).run(
-    id, req.user.id, title, str(req.body.description), draft ? 'private' : visibility, req.file.originalname.slice(0, 255), originalName, req.file.size, t, t, gameId, allowClips,
+    id, req.user.id, title, str(req.body.description), draft ? 'private' : visibility, file.originalname.slice(0, 255), originalName, file.size, t, t, gameId, allowClips,
     draft, draft ? visibility : null,
   );
   setTags(id, parseTags(req.body.tags));

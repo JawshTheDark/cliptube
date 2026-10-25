@@ -41,10 +41,11 @@ The reverse proxy limits request size (nginx allows 1 MB by default). Add `clien
 Proxy Manager: the proxy host's *Advanced* tab). See [Installation](Installation.md#nginx-proxy-manager).
 
 **Large uploads stop partway**
-Raise the proxy's timeouts and turn off request buffering:
-`proxy_request_buffering off; proxy_read_timeout 3600s; proxy_send_timeout 3600s;`. Behind Cloudflare's proxy
-or a Cloudflare Tunnel, a single upload is capped at 100 MB on the free plan. Also check the site's own limit in
-Admin → Overview, and the uploader's storage quota.
+The upload page sends files in 32 MB pieces and carries on by itself after a dropped connection; when it gives
+up, **Try again** resumes it (unfinished uploads are kept for a day). If pieces keep failing, raise the proxy's
+timeouts: `proxy_read_timeout 3600s; proxy_send_timeout 3600s;`. Pieces get through Cloudflare's 100 MB limit;
+a single-request upload over the API doesn't. Also check the site's own limit in Admin → Overview, and the
+uploader's storage quota.
 
 **Every upload fails with "ffprobe was not found on this server"**
 Older versions said `spawn /app/node_modules/ffprobe-static/bin/linux/arm64/ffprobe ENOENT`. The server runs on

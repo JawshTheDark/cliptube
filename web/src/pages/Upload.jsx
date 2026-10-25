@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, uploadWithProgress } from '../api.js';
+import { api, sendInPieces } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -50,6 +50,8 @@ export default function Upload() {
         allow_clips: false,
         progress: 0,
         status: 'waiting', // waiting | uploading | processing | ready | failed
+        uploadId: null, // the upload in pieces, to resume after a failure
+        retrying: false,
         video: null,
         error: null,
         dirty: false,
@@ -83,26 +85,30 @@ export default function Upload() {
     (key) => {
       const it = itemsRef.current.find((x) => x.key === key);
       if (!it) return;
-      const fd = new FormData();
-      fd.append('title', it.title);
-      fd.append('description', it.description);
-      fd.append('tags', it.tags);
-      fd.append('visibility', it.visibility);
-      fd.append('game', it.game);
-      fd.append('allow_clips', it.allow_clips ? 'true' : 'false');
-      fd.append('draft', 'true');
-      fd.append('file', it.file);
-      update(key, { status: 'uploading', progress: 0, error: null });
-      const { promise, abort } = uploadWithProgress('/videos', fd, (loaded, total) => update(key, { progress: Math.round((loaded / total) * 100) }));
-      aborters.current[key] = abort;
-      promise
+      update(key, { status: 'uploading', error: null, retrying: false });
+      // In pieces, so proxies that cap a request's size let it through and a dropped connection only costs a piece.
+      const send = sendInPieces(it.file, {
+        resume: it.uploadId,
+        onStart: (uploadId) => update(key, { uploadId }),
+        onProgress: (sent, total) => update(key, { progress: Math.floor((sent / total) * 100) }),
+        onRetry: (n) => update(key, { retrying: n > 0 }),
+      });
+      aborters.current[key] = send.abort;
+      send.promise
+        .then((uploadId) => {
+          const cur = itemsRef.current.find((x) => x.key === key) || it;
+          return api('/videos', {
+            method: 'POST',
+            body: { upload_id: uploadId, title: cur.title, description: cur.description, tags: cur.tags, visibility: cur.visibility, game: cur.game, allow_clips: cur.allow_clips, draft: true },
+          });
+        })
         .then(async ({ video }) => {
-          update(key, { status: video.status === 'ready' ? 'ready' : 'processing', video, progress: 100 });
+          update(key, { status: video.status === 'ready' ? 'ready' : 'processing', video, progress: 100, uploadId: null });
           // Details typed during the upload are kept, but the clip stays a draft until Save details.
           const cur = itemsRef.current.find((x) => x.key === key);
           if (cur?.dirty) await saveDetails(key, { publish: false });
         })
-        .catch((e) => update(key, { status: 'failed', error: e.message }))
+        .catch((e) => update(key, { status: 'failed', error: e.message, retrying: false }))
         .finally(() => delete aborters.current[key]);
     },
     [update, saveDetails],
@@ -149,7 +155,11 @@ export default function Upload() {
     aborters.current[key]?.();
     setItems((list) => list.filter((it) => it.key !== key));
   };
-  const remove = (key) => setItems((list) => list.filter((it) => it.key !== key));
+  const remove = (key) => {
+    const it = itemsRef.current.find((x) => x.key === key);
+    if (it?.uploadId && !it.video) api(`/uploads/${it.uploadId}`, { method: 'DELETE' }).catch(() => {});
+    setItems((list) => list.filter((x) => x.key !== key));
+  };
 
   return (
     <div className="page">
@@ -202,7 +212,15 @@ export default function Upload() {
       )}
 
       {items.map((it) => (
-        <UploadItem key={it.key} it={it} onChange={(patch) => update(it.key, { ...patch, dirty: true })} onSave={() => saveDetails(it.key)} onCancel={() => cancel(it.key)} onRemove={() => remove(it.key)} />
+        <UploadItem
+          key={it.key}
+          it={it}
+          onChange={(patch) => update(it.key, { ...patch, dirty: true })}
+          onSave={() => saveDetails(it.key)}
+          onCancel={() => cancel(it.key)}
+          onRemove={() => remove(it.key)}
+          onRetry={() => update(it.key, { status: 'waiting', error: null })}
+        />
       ))}
 
       {items.length > 0 && items.every((it) => it.status === 'ready' || it.status === 'failed') && (
@@ -220,7 +238,7 @@ export default function Upload() {
   );
 }
 
-function UploadItem({ it, onChange, onSave, onCancel, onRemove }) {
+function UploadItem({ it, onChange, onSave, onCancel, onRemove, onRetry }) {
   const toast = useToast();
   const v = it.video;
   const link = v ? `${window.location.origin}/watch/${v.id}` : null;
@@ -234,7 +252,7 @@ function UploadItem({ it, onChange, onSave, onCancel, onRemove }) {
       pct = 0;
       break;
     case 'uploading':
-      statusText = `Uploading ${it.progress}%`;
+      statusText = it.retrying ? `Connection lost at ${it.progress}%, trying again…` : `Uploading ${it.progress}%`;
       break;
     case 'processing':
       statusText = v?.status === 'queued' ? 'Queued for processing…' : `Processing ${v?.progress ?? 0}%`;
@@ -298,6 +316,11 @@ function UploadItem({ it, onChange, onSave, onCancel, onRemove }) {
           {(it.status === 'uploading' || it.status === 'waiting') && (
             <button className="btn btn-ghost" onClick={onCancel}>
               Cancel
+            </button>
+          )}
+          {it.status === 'failed' && !v && (
+            <button className="btn" onClick={onRetry}>
+              Try again
             </button>
           )}
           {(it.status === 'ready' || it.status === 'failed') && (

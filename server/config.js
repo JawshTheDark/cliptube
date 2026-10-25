@@ -27,6 +27,7 @@ export const DIRS = {
   captions: path.join(DATA_DIR, 'captions'),
   tmp: path.join(DATA_DIR, 'tmp'),
   live: path.join(DATA_DIR, 'live'), // live stream recordings, written by MediaMTX
+  uploads: path.join(DATA_DIR, 'uploads'), // files arriving in pieces (kept across restarts, unlike tmp)
 };
 
 export const VIDEO_EXTENSIONS = new Set([

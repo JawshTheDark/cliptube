@@ -11,6 +11,7 @@ import { usersRouter, meRouter } from './routes/users.js';
 import { adminRouter } from './routes/admin.js';
 import { mediaRouter } from './routes/media.js';
 import { checkFfmpeg, resumePending } from './media.js';
+import { startUploadSweep, uploadsRouter } from './uploads.js';
 import { startJobs } from './jobs.js';
 import { networkProtocolRouter, networkAdminRouter, networkRouter, networkActive, networkPeers, networkInfo, startNetwork } from './network.js';
 import { modRouter, reportsRouter, legalAdminRouter, legalPublicRouter } from './moderation.js';
@@ -105,6 +106,7 @@ app.use('/api/parties', partiesRouter);
 app.use('/api/live', liveHookRouter); // MediaMTX asks here who may publish and read
 app.use('/api/live', liveRouter);
 app.use('/live/hls', liveMediaRouter);
+app.use('/api/uploads', uploadsRouter); // big files in pieces, for proxies that cap request size
 app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);
 app.use('/api/me', moveRouter); // aliases and moves
@@ -218,6 +220,7 @@ for (const f of fs.readdirSync(DIRS.tmp)) {
 }
 startJobs();
 checkFfmpeg();
+startUploadSweep();
 startNotifyCleanup();
 startApCleanup();
 startLinkChecks();

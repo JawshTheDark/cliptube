@@ -154,8 +154,9 @@ sudo certbot --nginx -d clips.example.com
 
 ### Tunnels
 
-Cloudflare Tunnel and Tailscale Funnel work too, as long as they pass large requests. Cloudflare's proxy
-limits a request body to 100 MB on its free plan, which caps the size of a single upload.
+Cloudflare Tunnel and Tailscale Funnel work too. Cloudflare's proxy limits a request body to 100 MB on its free
+plan; the upload page sends files in 32 MB pieces, so that doesn't cap uploads (see
+[big files](Uploading-and-Editing.md#big-files-and-shaky-connections)).
 
 ## Docker on its own
 

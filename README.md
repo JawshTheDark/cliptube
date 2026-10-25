@@ -58,7 +58,8 @@ around what a clip site needs:
 
 ### Upload and edit
 
-- Drag in many files at once, with progress bars
+- Drag in many files at once, with progress bars; big files go up in pieces that resume after a dropped
+  connection and get through Cloudflare's 100 MB limit
 - Uploads stay **drafts** until you click *Save details*
 - Lossless remux for H.264, transcoding for MKV, HEVC, WebM and the rest, with NVENC, Quick Sync or AMF
 - **Timeline editor**: trim, split, cut, volume, fades, frame-picked thumbnails; non-destructive, so the
@@ -296,7 +297,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 ## Status
 
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.9.1**); smaller ideas are tracked in
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.10.0**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/cliptube/releases).
 

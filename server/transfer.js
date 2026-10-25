@@ -24,6 +24,7 @@ import { HttpError, newId, now, parseTags, str } from './util.js';
 import { defineJob, enqueueJob } from './jobs.js';
 import { copyTarEntry, listTar, readTarEntry, writeTar } from './tar.js';
 import { convertImage, enqueue as enqueueProcessing } from './media.js';
+import { defineUploadKind, finishedUpload } from './uploads.js';
 import { setTags, storageFor } from './routes/videos.js';
 import { indexVideo } from './search.js';
 import { findGame } from './games.js';
@@ -554,6 +555,9 @@ transferRouter.get('/channel-exports/:id/download', (req, res) => {
   res.download(full, `cliptube-channel-${req.user.username}.tar`);
 });
 
+// A channel archive can also go up in pieces (/api/uploads), then be imported by its upload_id.
+defineUploadKind('archive', { label: 'Channel archive', extensions: new Set(['.tar']), maxBytes: importMaxBytes });
+
 const archiveStorage = multer.diskStorage({ destination: DIRS.tmp, filename: (req, f, cb) => cb(null, `import-${newId()}.tar`) });
 // Built per request, so the size limit follows the settings.
 const archiveUpload = () =>
@@ -581,6 +585,13 @@ transferRouter.post('/channel-imports', (req, res, next) => {
     res.status(202).json({ import: importRow(db.prepare('SELECT * FROM channel_imports WHERE id = ?').get(id)) });
   };
   if (!req.is('multipart/form-data')) {
+    if (req.body?.upload_id) {
+      const pieces = finishedUpload(req.body.upload_id, req.user, 'archive');
+      const name = `import-${newId()}.tar`;
+      fs.renameSync(pieces.path, path.join(DIRS.tmp, name));
+      pieces.done();
+      return start({ file: name, size: pieces.size, apply_profile: req.body.apply_profile !== false });
+    }
     const url = String(req.body?.url || '').trim();
     if (!/^https?:\/\/\S+$/.test(url)) return next(new HttpError(400, 'Paste the export link from the old site, or upload the .tar file'));
     return start({ source_url: url, apply_profile: req.body?.apply_profile !== false });

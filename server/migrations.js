@@ -889,6 +889,25 @@ CREATE INDEX IF NOT EXISTS idx_live_streams_status ON live_streams(status);
 `);
     },
   },
+  {
+    version: 16,
+    name: 'uploads in pieces',
+    up(db) {
+      db.exec(`
+CREATE TABLE IF NOT EXISTS uploads (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                  -- video | archive
+  name TEXT NOT NULL,                  -- the file's name, for its extension and a title
+  size INTEGER NOT NULL,               -- the whole file; what arrived so far is the size of uploads/<id>.part
+  fingerprint TEXT,                    -- the uploader's, to find this upload again for the same file
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL          -- the last piece
+);
+CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id);
+`);
+    },
+  },
 ];
 
 export function currentVersion(db) {
