@@ -5,8 +5,8 @@ export class ApiError extends Error {
   }
 }
 
-export async function api(path, { method = 'GET', body, signal } = {}) {
-  const opts = { method, headers: {}, credentials: 'same-origin', signal };
+export async function api(path, { method = 'GET', body, signal, headers = {} } = {}) {
+  const opts = { method, headers: { ...headers }, credentials: 'same-origin', signal };
   if (body instanceof FormData) {
     opts.body = body;
   } else if (body !== undefined) {

@@ -12,6 +12,7 @@ import { Description } from './Watch.jsx';
 import { ReportButton } from '../components/ReportDialog.jsx';
 import { compact, formatDate, copyText } from '../util.js';
 import { PlaylistPanel, SaveDialog } from '../components/Playlists.jsx';
+import { useStartParty } from './Party.jsx';
 
 /**
  * Watch page for a video hosted on another instance in the network. The file streams straight
@@ -32,6 +33,7 @@ export default function RemoteWatch() {
   const [params] = useSearchParams();
   const listId = params.get('list');
   const [saveOpen, setSaveOpen] = useState(false);
+  const startParty = useStartParty();
 
   useEffect(() => {
     let dead = false;
@@ -202,6 +204,9 @@ export default function RemoteWatch() {
             </a>
             <button className="btn" onClick={() => (user ? setSaveOpen(true) : nav('/login', { state: { from: `/n/${peerId}/${remoteId}` } }))} title="Save to Watch later or a playlist">
               <Icon name="playlist_add" /> Save
+            </button>
+            <button className="btn" onClick={() => startParty({ ref: `n:${peerId}:${remoteId}` })} title="Watch this with friends, in sync, with chat">
+              <Icon name="group" /> Watch together
             </button>
             <Link className="btn btn-icon" to={`/compare?a=n:${peerId}:${encodeURIComponent(remoteId)}`} title="Compare side by side with another clip">
               <Icon name="compare" />

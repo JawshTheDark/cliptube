@@ -32,6 +32,7 @@ import Editor from './pages/Editor.jsx';
 import Network from './pages/Network.jsx';
 import RemoteWatch from './pages/RemoteWatch.jsx';
 import Playlist, { MyPlaylists, WatchLater } from './pages/Playlist.jsx';
+import Party from './pages/Party.jsx';
 import { Empty } from './components/VideoCard.jsx';
 
 function Layout() {
@@ -237,6 +238,7 @@ export default function App() {
                 }
               />
               <Route path="/playlist/:id" element={<Playlist />} />
+              <Route path="/party/:id" element={<Party />} />
               <Route
                 path="/playlists"
                 element={

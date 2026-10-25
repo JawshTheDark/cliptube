@@ -12,6 +12,7 @@ import { ReportButton } from '../components/ReportDialog.jsx';
 import { ClipDialog, TimeField } from '../components/ClipDialog.jsx';
 import { ContributeMenu, DownloadMenu, SupportLinks } from '../components/WatchExtras.jsx';
 import { PlaylistPanel, SaveDialog } from '../components/Playlists.jsx';
+import { useStartParty } from './Party.jsx';
 import { cameFrom, compact, displayed, formatDate, formatDuration, formatPrecise, parseTimestamp, copyText, isAnonymous, timeAgo, urlSeconds, usePref } from '../util.js';
 
 /**
@@ -301,6 +302,7 @@ export default function Watch() {
   const [showOriginal, setShowOriginal] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const listId = params.get('list');
+  const startParty = useStartParty();
   useEffect(() => {
     setLooping(true);
     setShowOriginal(false);
@@ -535,6 +537,11 @@ export default function Watch() {
             {video.status === 'ready' && video.video_url && (
               <button className="btn" onClick={() => (user ? setSaveOpen(true) : requireLogin())} title="Save to Watch later or a playlist">
                 <Icon name="playlist_add" /> Save
+              </button>
+            )}
+            {video.status === 'ready' && video.video_url && video.visibility !== 'private' && (
+              <button className="btn" onClick={() => startParty({ ref: `v:${video.id}` })} title="Watch this with friends, in sync, with chat">
+                <Icon name="group" /> Watch together
               </button>
             )}
             {user && video.video_url && video.status === 'ready' && (

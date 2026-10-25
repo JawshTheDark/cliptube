@@ -806,6 +806,54 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_playlist_items_remote ON playlist_items(pl
 `);
     },
   },
+  {
+    version: 14,
+    name: 'watch parties, and rooms for things people do together in real time',
+    up(db) {
+      db.exec(`
+CREATE TABLE IF NOT EXISTS parties (
+  id TEXT PRIMARY KEY,                    -- in the party's link
+  host_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  playlist_id TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,  -- the queue
+  control TEXT NOT NULL DEFAULT 'host',   -- host | everyone
+  locked INTEGER NOT NULL DEFAULT 0,      -- nobody new can join
+  state TEXT NOT NULL DEFAULT '{}',       -- { item_id, playing, position, at }
+  created_at INTEGER NOT NULL,
+  last_active_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_parties_host ON parties(host_id);
+CREATE TABLE IF NOT EXISTS room_guests (
+  token_hash TEXT PRIMARY KEY,
+  room TEXT NOT NULL,
+  name TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_room_guests_room ON room_guests(room);
+CREATE TABLE IF NOT EXISTS room_bans (
+  room TEXT NOT NULL,
+  member_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (room, member_id)
+);
+CREATE TABLE IF NOT EXISTS room_seen (
+  room TEXT NOT NULL,
+  member_id TEXT NOT NULL,
+  first_at INTEGER NOT NULL,
+  PRIMARY KEY (room, member_id)
+);
+CREATE TABLE IF NOT EXISTS room_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  room TEXT NOT NULL,
+  member_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_room_messages_room ON room_messages(room, id);
+`);
+    },
+  },
 ];
 
 export function currentVersion(db) {

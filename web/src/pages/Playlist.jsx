@@ -8,6 +8,7 @@ import { PlaylistCard } from '../components/Playlists.jsx';
 import { FeedButton } from '../components/FeedLink.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { formatDuration, plural } from '../util.js';
+import { useStartParty } from './Party.jsx';
 
 const VIS = { public: ['public', 'Public'], unlisted: ['link', 'Unlisted'], private: ['lock', 'Private'] };
 
@@ -23,6 +24,7 @@ export default function Playlist() {
   const [form, setForm] = useState({ title: '', description: '', visibility: 'public' });
   const [drag, setDrag] = useState(null);
   const [busy, setBusy] = useState(false);
+  const startParty = useStartParty();
   const load = () =>
     api(`/playlists/${id}`)
       .then((r) => setP(r.playlist))
@@ -148,6 +150,11 @@ export default function Playlist() {
                 <Link className="btn" to={`${playable[Math.floor(Math.random() * playable.length)].url}?list=${p.id}&shuffle=1`}>
                   <Icon name="shuffle" /> Shuffle
                 </Link>
+              )}
+              {first && (
+                <button className="btn" onClick={() => startParty({ playlist_id: p.id })} title="Watch the playlist with friends, in sync, with chat">
+                  <Icon name="group" /> Watch together
+                </button>
               )}
               {own && (
                 <button
