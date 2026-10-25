@@ -1,7 +1,8 @@
 # ClipTube TODO
 
-Planned work, roughly in priority order. Current state (v0.3.0): one hub (clips.irc.so) that every
-instance joins, with cross-instance likes, comments and subscriptions signed per instance.
+Planned work. Current state (v0.3.0): one hub (clips.irc.so) that every instance joins, with
+cross-instance likes, comments and subscriptions signed per instance. The build order, sizes and
+dependencies are in [PLAN.md](PLAN.md).
 
 ## 1. Hub-optional network (keep working if the hub disappears)
 
