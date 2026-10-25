@@ -1,0 +1,98 @@
+name: Android app
+
+# Push a tag like android-v1.0.0 (matching mobile/app.json's version) to build the signed APK and attach it to
+# that tag's GitHub release (created if it doesn't exist yet). Signing needs the repository secrets
+# ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD; without them a tag build only warns, so a release made
+# by hand with `npm run build:apk` and `gh release create` stays as it is.
+# Run it by hand from the Actions tab to get a test APK as a workflow artifact.
+on:
+  push:
+    tags: ['android-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload key
+        id: key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "CLIPTUBE_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "::warning::No signing secrets (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD), so no APK was built for this release. Build it with npm run build:apk and attach it, or add the secrets and run this again."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.build == 'true'
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        if: steps.key.outputs.build == 'true'
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.key.outputs.build == 'true'
+
+      - run: npm ci
+        if: steps.key.outputs.build == 'true'
+
+      - run: npx tsc --noEmit
+        if: steps.key.outputs.build == 'true'
+
+      - name: Check the tag matches the app version
+        if: steps.key.outputs.build == 'true' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          want="android-v$(node -p "require('./app.json').expo.version")"
+          if [ "$GITHUB_REF_NAME" != "$want" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match mobile/app.json (expected $want)"
+            exit 1
+          fi
+
+      - name: Build APK
+        if: steps.key.outputs.build == 'true'
+        run: npm run build:apk
+        env:
+          CLIPTUBE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          CLIPTUBE_KEY_ALIAS: cliptube
+
+      - uses: actions/upload-artifact@v4
+        if: steps.key.outputs.build == 'true'
+        with:
+          name: cliptube-apk
+          path: mobile/dist/*.apk
+          if-no-files-found: error
+
+      - name: Publish release
+        if: steps.key.outputs.build == 'true' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/*.apk --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/*.apk \
+              --title "ClipTube for Android ${GITHUB_REF_NAME#android-v}" \
+              --notes-file RELEASE_NOTES.md
+          fi

@@ -1,0 +1,120 @@
+{
+  "expo": {
+    "name": "ClipTube",
+    "slug": "cliptube",
+    "version": "1.0.0",
+    "scheme": "cliptube",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0f0f0f",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "so.irc.cliptube"
+    },
+    "android": {
+      "package": "so.irc.cliptube",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#ff0033",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/watch/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/c/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/n/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/watch/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/c/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/n/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/watch/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/c/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/n/"
+            }
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": true
+        }
+      ],
+      "expo-image",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "backgroundColor": "#0f0f0f"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "./plugins/withReleaseSigning",
+      "./plugins/withShortNativePaths"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
