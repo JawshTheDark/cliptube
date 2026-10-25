@@ -375,8 +375,9 @@ async function peerAuth(req, { allowNew = false } = {}) {
     if (!fresh || !verifySig(base, sig, fresh)) throw new HttpError(401, 'Bad signature');
     inst = instByUrl(url);
   }
-  db.prepare('UPDATE instances SET last_seen_at = ? WHERE id = ?').run(now(), inst.id);
-  return inst;
+  // Only v3 instances sign requests, so an instance we recorded as older has been upgraded.
+  db.prepare('UPDATE instances SET last_seen_at = ?, protocol = MAX(protocol, 3) WHERE id = ?').run(now(), inst.id);
+  return instById(inst.id);
 }
 
 // ---- instances --------------------------------------------------------------------
