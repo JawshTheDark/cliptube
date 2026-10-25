@@ -1,0 +1,21 @@
+{
+	# Certificates come from Caddy's own CA; nothing here can reach a real one.
+	local_certs
+	skip_install_trust
+	admin off
+}
+
+clips.sandbox.test {
+	reverse_proxy cliptube:3000
+}
+
+gts.sandbox.test {
+	reverse_proxy gotosocial:8080
+}
+
+tube.sandbox.test {
+	request_body {
+		max_size 200MB
+	}
+	reverse_proxy peertube:9000
+}

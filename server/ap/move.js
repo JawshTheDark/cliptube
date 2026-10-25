@@ -16,7 +16,7 @@ import { HttpError, now } from '../util.js';
 import { defineJob, enqueueJob } from '../jobs.js';
 import { notify } from '../notify.js';
 import { announceAccountMove, clipTubePeer, networkActive, onRemoteAccountMoved, peerWith, subscribeRemote } from '../network.js';
-import { CONTEXT, PUBLIC, apBase, apEnabled, hostOf, originOf, urls } from './common.js';
+import { CONTEXT, PUBLIC, apBase, apEnabled, hostOf, originOf, parseLocal, urls } from './common.js';
 import { getActor, inboxesOf, resolveActor } from './actors.js';
 import { deliver, followersOf, sendFollow, sendUnfollow } from './deliver.js';
 import { groupJson, personJson } from './objects.js';
@@ -62,10 +62,14 @@ export async function moveSubscriber(userId, target, { fromName = null, prefer =
   const user = db.prepare("SELECT * FROM users WHERE id = ? AND remote_instance_id IS NULL AND status = 'active'").get(userId);
   if (!user) return null;
   let how = null;
-  if (isHere(target) && target.username) {
-    const ch = db.prepare('SELECT id FROM users WHERE username = ? AND remote_instance_id IS NULL').get(target.username);
+  if (isHere(target)) {
+    // A channel on this site: its account or channel actor names it.
+    const p = parseLocal(target.person || target.group, apBase());
+    const name = p && (p.kind === 'u' || p.kind === 'c') ? p.name : target.username;
+    const ch = name ? db.prepare('SELECT id, username FROM users WHERE username = ? AND remote_instance_id IS NULL').get(name) : null;
     if (ch && ch.id !== user.id) {
       db.prepare('INSERT OR IGNORE INTO subscriptions (subscriber_id, channel_id, created_at) VALUES (?, ?, ?)').run(user.id, ch.id, now());
+      target = { ...target, username: ch.username };
       how = 'here';
     }
   }

@@ -43,6 +43,7 @@ const PT_CONTEXT = [
     // ClipTube's one extension: the game a clip is from (see docs/federation.md).
     cliptube: 'https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md#',
     game: 'cliptube:game',
+    counts: 'cliptube:counts',
   },
 ];
 
@@ -86,6 +87,7 @@ function actorCommon(base, id, u) {
     outbox: `${id}/outbox`,
     followers: `${id}/followers`,
     following: `${id}/following`,
+    featured: `${id}/featured`, // pinned posts (none yet); Mastodon and GoToSocial look for it
     endpoints: { sharedInbox: urls(base).sharedInbox() },
     publicKey: { id: `${id}#main-key`, owner: id, publicKeyPem: userKeys(u.id).publicKey },
     icon: u.avatar ? { type: 'Image', mediaType: 'image/jpeg', url: `${base}/media/avatars/${u.avatar}` } : undefined,
@@ -165,8 +167,11 @@ export function loadVideoForAp(id) {
   return db.prepare(`${VIDEO_SELECT} WHERE v.id = ?`).get(id);
 }
 
-/** A video in PeerTube's vocabulary. */
-export function videoJson(v, base) {
+/**
+ * A video in PeerTube's vocabulary. PeerTube needs both the account and the channel in attributedTo;
+ * GoToSocial only takes one, so it gets the account (`singleAuthor`).
+ */
+export function videoJson(v, base, { singleAuthor = false } = {}) {
   const u = urls(base);
   const id = u.video(v.id);
   const fileUrl = `${base}/media/videos/${v.id}.mp4${v.edit_version ? `?v=${v.edit_version}` : ''}`;
@@ -234,10 +239,14 @@ export function videoJson(v, base) {
     dislikes: `${id}/dislikes`,
     shares: `${id}/shares`,
     comments: `${id}/comments`,
-    attributedTo: [
-      { type: 'Person', id: u.person(v.username) },
-      { type: 'Group', id: u.group(v.username) },
-    ],
+    // Current counts, so other ClipTube instances can show them without crawling the collections.
+    counts: { likes: v.like_count || 0, dislikes: v.dislike_count || 0, comments: v.comment_count || 0, shares: v.ap_shares || 0 },
+    attributedTo: singleAuthor
+      ? u.person(v.username)
+      : [
+          { type: 'Person', id: u.person(v.username) },
+          { type: 'Group', id: u.group(v.username) },
+        ],
     to: [PUBLIC, `${u.group(v.username)}/followers`],
     cc: [`${u.person(v.username)}/followers`],
   };

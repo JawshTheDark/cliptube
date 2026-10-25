@@ -1,5 +1,16 @@
 /**
- * ClipTube network (protocol v3): instances peer directly; a hub is optional.
+ * ClipTube network (protocol v4): instances talk ActivityPub to each other; a hub is optional.
+ *
+ * Protocol v4 (ClipTube 1.3):
+ * - Peering is a follow between the two instance actors, decided by the same admission switches as
+ *   before (accept new instances, approval, HTTPS only, blocks, the hub's bans). Videos arrive as they
+ *   change (Create, Announce, Update, Delete) and are reconciled from the peer's outbox each round, so
+ *   deletions are never missed. Likes, comments, subscriptions, reports, deletions and moves are plain
+ *   ActivityPub, and the server hosting a video answers each comment with Accept or Reject.
+ * - This module keeps the instance layer: who peers with whom, the hub (its directory, its network-wide
+ *   switches, which members enforce on ActivityPub traffic from each other) and shared block lists.
+ *   The ActivityPub side lives in ap/peering.js and registers itself through useApTransport.
+ * - Feeds, pings and the signed inbox below stay for instances that still speak v3, for one release.
  *
  * Protocol v3 (hub optional):
  * - Every instance checks a peer's key at the peer's own address (/.well-known/cliptube over HTTPS),
@@ -36,8 +47,9 @@ import { intakeComment, intakeLike } from './intake.js';
 import { createReport } from './reports.js';
 import { notifyComment, notifyRemoteUpload } from './notify.js';
 import { indexNetworkVideo } from './search.js';
+import { apBase, apEnabled } from './ap/common.js';
 
-export const PROTOCOL = 3;
+export const PROTOCOL = 4;
 const KEY_TTL = 24 * 3600_000;
 const HELLO_RETRY_MS = 6 * 3600_000;
 const EXCHANGE_MS = 3600_000;
@@ -88,6 +100,72 @@ function peerAllowed(inst) {
 
 /** We can pull this peer's feed ourselves (it speaks v3 and has accepted us). */
 const directPeer = (inst) => peerAllowed(inst) && (inst.protocol || 2) >= 3 && inst.remote_status === 'approved';
+
+// ---- the ActivityPub transport (protocol 4) ----------------------------------------------------------
+
+let ap = null;
+/** ap/peering.js registers the ActivityPub side here, so the two modules don't import each other. */
+export function useApTransport(t) {
+  ap = t;
+}
+
+let applyHubGames = null;
+/** games.js registers how to apply the hub's game catalog (see syncFromHub). */
+export function onHubGames(fn) {
+  applyHubGames = fn;
+}
+const apOn = () => !!ap && apEnabled() && !!apBase();
+/** A peer that speaks protocol 4 (the ClipTube network over ActivityPub). */
+const apPeer = (inst) => !!inst?.ap_actor && (inst.protocol || 0) >= 4;
+
+/** A ClipTube instance in this network (peered, or listed by our hub): the network's switches apply to it. */
+export function isNetworkPeer(inst) {
+  return !!inst && (inst.protocol || 0) >= 2 && peerAllowed(inst);
+}
+
+/**
+ * Another server's instance actor asks to follow ours: a ClipTube peer (protocol 4 peering) or a server
+ * mirroring this one (PeerTube does this). The admission switches decide. Returns accept, reject or pending.
+ */
+export async function peerFollowReceived(actor, followId) {
+  let inst = instById(actor.instance_id);
+  if (!inst || inst.is_self) return 'reject';
+  // Rows made on first contact with a fediverse server start out "approved" so their videos show; that
+  // is not a decision about peering, which the switches below make.
+  const firstContact = inst.source === 'activitypub';
+  if (!apPeer(inst)) {
+    try {
+      inst = recordDescriptor(inst.url, await fetchDescriptor(inst.url), inst.source === 'activitypub' ? 'inbound' : inst.source || 'inbound');
+    } catch {} // not a ClipTube instance: still subject to the switches below
+  }
+  if (inst.blocked || ['banned', 'suspended'].includes(inst.hub_status)) return 'reject';
+  const adm = admission();
+  const known = (inst.peer_status === 'approved' && !firstContact) || inst.hub_status === 'approved';
+  if (!known && !adm.accept) return 'reject';
+  if (!known && adm.https && !inst.url.startsWith('https://') && !ALLOW_PRIVATE_FEDERATION) return 'reject';
+  if (!known && adm.approval) {
+    db.prepare("UPDATE instances SET peer_status = 'pending', ap_follow_id = ?, last_seen_at = ? WHERE id = ?").run(String(followId || ''), now(), inst.id);
+    console.log(`[network] ${inst.url} asked to peer; waiting for an admin`);
+    return 'pending';
+  }
+  db.prepare("UPDATE instances SET peer_status = 'approved', ap_follow_id = NULL, last_seen_at = ?, next_try_at = NULL WHERE id = ?").run(now(), inst.id);
+  // A ClipTube peer gets followed back, so videos flow both ways (what "hello" did in protocol v3).
+  if (apPeer(inst) && inst.ap_actor === actor.id && apOn() && participating()) ap.follow(instById(inst.id)).catch(() => {});
+  return 'accept';
+}
+
+/** Our instance actor's follow of a peer was answered (or later withdrawn with Reject: the peer left). */
+export function peerFollowAnswered(actorId, accepted) {
+  const inst = db.prepare('SELECT * FROM instances WHERE ap_actor = ?').get(actorId);
+  if (!inst) return;
+  if (accepted) {
+    db.prepare("UPDATE instances SET remote_status = 'approved', last_error = NULL, next_try_at = NULL, fail_count = 0 WHERE id = ?").run(inst.id);
+    schedulePull(inst.id, 1000);
+  } else {
+    db.prepare("UPDATE instances SET remote_status = CASE WHEN remote_status = 'approved' THEN 'left' ELSE 'rejected' END WHERE id = ?").run(inst.id);
+    db.prepare('DELETE FROM network_videos WHERE instance_id = ?').run(inst.id);
+  }
+}
 const DIRECT_SQL = "p.protocol >= 3 AND p.remote_status = 'approved' AND p.last_ok_at IS NOT NULL";
 
 export function networkRole() {
@@ -299,14 +377,16 @@ async function fetchDescriptor(url) {
 function recordDescriptor(url, d, source = null) {
   const t = now();
   const protocol = Math.max(2, Math.min(99, Number(d.protocol) || 2));
+  // Its instance actor, for protocol 4 (it must live on the same site).
+  const apActor = protocol >= 4 && typeof d.activitypub?.actor === 'string' && hostOf(d.activitypub.actor) === hostOf(url) ? d.activitypub.actor : null;
   const existing = instByUrl(url);
   if (existing) {
-    db.prepare('UPDATE instances SET name = ?, description = ?, public_key = ?, key_checked_at = ?, protocol = ?, version = ?, source = COALESCE(source, ?) WHERE id = ?').run(
-      str(d.name, 60) || existing.name || hostOf(url), str(d.description, 500), String(d.public_key), t, protocol, str(d.version, 20), source, existing.id,
-    );
+    db.prepare(
+      "UPDATE instances SET name = ?, description = ?, public_key = ?, key_checked_at = ?, protocol = ?, version = ?, ap_actor = ?, source = CASE WHEN source IS NULL OR source = 'activitypub' THEN ? ELSE source END WHERE id = ?",
+    ).run(str(d.name, 60) || existing.name || hostOf(url), str(d.description, 500), String(d.public_key), t, protocol, str(d.version, 20), apActor, source, existing.id);
   } else {
-    db.prepare('INSERT INTO instances (url, name, description, public_key, key_checked_at, protocol, version, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      url, str(d.name, 60) || hostOf(url), str(d.description, 500), String(d.public_key), t, protocol, str(d.version, 20), source, t,
+    db.prepare('INSERT INTO instances (url, name, description, public_key, key_checked_at, protocol, version, source, ap_actor, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      url, str(d.name, 60) || hostOf(url), str(d.description, 500), String(d.public_key), t, protocol, str(d.version, 20), source, apActor, t,
     );
   }
   return instByUrl(url);
@@ -550,14 +630,14 @@ export function cleanItem(it, origin) {
   };
 }
 
-// One video, one row: a ClipTube video seen through both protocols merges, and the ClipTube protocol's
-// richer path (live comment threads, immediate verdicts) wins once it knows the video.
+// One video, one row: a ClipTube video seen through both protocols merges, and once it has come over
+// ActivityPub it stays on that path (protocol 4 peers no longer take interactions the old way).
 const UPSERT_VIDEO = `INSERT INTO network_videos (instance_id, remote_id, title, description, tags, duration, width, height, views, likes,
     created_at, updated_at, thumbnail_url, video_url, watch_url, uploader_username, uploader_display_name, uploader_avatar_url, uploader_url, fetched_at,
     game_slug, game_name, origin_type)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(instance_id, remote_id) DO UPDATE SET title = excluded.title, description = excluded.description, tags = excluded.tags,
-    origin_type = CASE WHEN excluded.origin_type = 'cliptube' THEN 'cliptube' ELSE network_videos.origin_type END,
+    origin_type = CASE WHEN network_videos.origin_type = 'activitypub' THEN 'activitypub' ELSE excluded.origin_type END,
     game_slug = excluded.game_slug, game_name = excluded.game_name,
     duration = excluded.duration, width = excluded.width, height = excluded.height, views = excluded.views, likes = excluded.likes,
     created_at = excluded.created_at, updated_at = excluded.updated_at, thumbnail_url = excluded.thumbnail_url, video_url = excluded.video_url,
@@ -721,11 +801,14 @@ networkProtocolRouter.get('/.well-known/cliptube', (req, res) => {
   const role = networkRole();
   if (!role) throw new HttpError(404, 'Not found');
   const adm = admission();
+  const base = apEnabled() ? apBase() : null;
   res.json({
     software: 'cliptube',
     version: VERSION,
-    protocol: PROTOCOL,
-    features: ['peers', 'signed-requests', 'blocklist'],
+    // Without ActivityPub this instance can only take part the v3 way.
+    protocol: base ? PROTOCOL : 3,
+    features: ['peers', 'signed-requests', 'blocklist', ...(base ? ['activitypub'] : [])],
+    activitypub: base ? { actor: `${base}/ap/actor` } : null,
     name: s.site_name,
     description: s.instance_description,
     url: storedSelf() || selfUrl(req),
@@ -975,6 +1058,20 @@ networkProtocolRouter.post('/api/hub/leave', requireHub, (req, res) => {
   res.json({ ok: true });
 });
 
+// The hub's game catalog, so members don't each have to build one. A game deleted here goes away there too.
+networkProtocolRouter.get('/api/hub/games', requireHub, (req, res) => {
+  approvedMember(req);
+  const self = storedSelf() || selfUrl(req);
+  const games = db.prepare('SELECT * FROM games ORDER BY id').all().map((g) => ({
+    id: g.id,
+    name: g.name,
+    short_name: g.short_name || null,
+    aliases: String(g.aliases || '').split(',').filter(Boolean),
+    artwork_url: g.artwork ? `${self}/media/thumbs/${g.artwork}` : g.artwork_url || null,
+  }));
+  res.json({ games });
+});
+
 networkProtocolRouter.get('/api/hub/directory', requireHub, (req, res) => {
   approvedMember(req);
   const rows = db
@@ -1101,6 +1198,27 @@ const backoffMs = (fails) => Math.min(6 * 3600_000, 60_000 * 2 ** Math.max(0, fa
  */
 async function pullMember(inst, { full = false, force = false } = {}) {
   if (!inst || inst.is_self || pulling.has(inst.id)) return;
+  // Protocol 4: reconcile with the peer's outbox over ActivityPub instead of pulling a feed.
+  if (apPeer(inst) && apOn()) {
+    if (!directPeer(inst)) return;
+    if (!force && !full && inst.next_try_at && inst.next_try_at > now()) return;
+    pulling.add(inst.id);
+    const t = now();
+    try {
+      const r = await ap.reconcile(inst, { full });
+      const count = db.prepare('SELECT COUNT(*) AS n FROM network_videos WHERE instance_id = ?').get(inst.id).n;
+      db.prepare('UPDATE instances SET last_sync_at = ?, last_ok_at = ?, video_count = ?, last_error = NULL, fail_count = 0, next_try_at = NULL WHERE id = ?').run(t, t, count, inst.id);
+      if (r.received) console.log(`[network] ${r.received} video(s) from ${inst.url} over ActivityPub`);
+      await exchangePeers(instById(inst.id)).catch(() => {});
+    } catch (e) {
+      console.warn(`[network] reconciling ${inst.url} failed: ${e.message}`);
+      const fails = (inst.fail_count || 0) + 1;
+      db.prepare('UPDATE instances SET last_sync_at = ?, last_error = ?, fail_count = ?, next_try_at = ? WHERE id = ?').run(t, String(e.message).slice(0, 500), fails, t + backoffMs(fails), inst.id);
+    } finally {
+      pulling.delete(inst.id);
+    }
+    return;
+  }
   const legacy = isHub() && inst.hub_status === 'approved' && inst.feed_token && (inst.protocol || 2) < 3;
   const direct = directPeer(inst);
   if (!legacy && !direct) return;
@@ -1222,8 +1340,10 @@ export async function introduce(target, source = 'admin') {
   let inst = instByUrl(url);
   if (inst?.blocked) throw new HttpError(400, `You have blocked ${instName(inst)}`);
   if (!inst && db.prepare('SELECT COUNT(*) AS n FROM instances WHERE is_self = 0').get().n >= maxPeers()) throw new HttpError(400, 'This instance already knows as many peers as it is allowed to');
+  let desc;
   try {
-    inst = recordDescriptor(url, await fetchDescriptor(url), source);
+    desc = await fetchDescriptor(url);
+    inst = recordDescriptor(url, desc, source);
   } catch (e) {
     if (inst) db.prepare('UPDATE instances SET last_hello_at = ?, last_error = ? WHERE id = ?').run(now(), `Could not reach it: ${e.message}`.slice(0, 500), inst.id);
     throw new HttpError(400, `Could not reach ${url}: ${e.message}`);
@@ -1232,6 +1352,17 @@ export async function introduce(target, source = 'admin') {
   const adm = admission();
   const mine = inst.peer_status === 'approved' || source === 'admin' || inst.hub_status === 'approved' || !adm.approval ? 'approved' : inst.peer_status || 'pending';
   db.prepare('UPDATE instances SET peer_status = ?, last_hello_at = ? WHERE id = ?').run(mine, now(), inst.id);
+  // Protocol 4: peering is our instance actor following theirs. A locked-down instance would refuse, so
+  // say so now instead of leaving the request hanging.
+  if (apPeer(inst) && apOn()) {
+    if (desc.peering?.accepting === false && inst.remote_status !== 'approved') {
+      db.prepare("UPDATE instances SET remote_status = 'rejected' WHERE id = ?").run(inst.id);
+      throw new HttpError(403, `${instName(inst)}: ${desc.name || 'that instance'} is not accepting new instances right now`);
+    }
+    await ap.follow(instById(inst.id));
+    console.log(`[network] asked ${url} to peer over ActivityPub`);
+    return instById(inst.id);
+  }
   if ((inst.protocol || 2) < 3) return instById(inst.id); // an older instance: reachable through its hub only
   let r;
   try {
@@ -1391,6 +1522,8 @@ export async function leaveHub({ keepPeers = false } = {}) {
     } catch {}
   }
   for (const k of ['network_hub_token', 'network_feed_token_hash', 'network_status', 'network_note', 'network_name', 'network_announcement']) setSetting(k, '');
+  // Games from the hub's catalog become this instance's own.
+  db.exec("UPDATE games SET source = NULL WHERE source = 'hub'");
   if (keepPeers) {
     setSetting('network_policy', '');
     clearHubMirror();
@@ -1399,7 +1532,8 @@ export async function leaveHub({ keepPeers = false } = {}) {
     return;
   }
   for (const inst of db.prepare("SELECT * FROM instances WHERE is_self = 0 AND blocked = 0 AND protocol >= 3 AND remote_status = 'approved'").all()) {
-    await signedFetch(inst, '/api/network/goodbye', { method: 'POST', body: {}, timeout: 8000 }).catch(() => {});
+    if (apPeer(inst) && apOn()) await ap.unpeer(inst).catch(() => {});
+    else await signedFetch(inst, '/api/network/goodbye', { method: 'POST', body: {}, timeout: 8000 }).catch(() => {});
   }
   setSetting('network_enabled', 'false');
   clearNetworkMirror();
@@ -1484,6 +1618,15 @@ export async function syncFromHub({ full = false } = {}) {
 
     await refreshDirectory();
     lastDirectoryRefresh = t;
+    // The hub's game catalog (older hubs don't have one).
+    if (applyHubGames) {
+      try {
+        const g = await fetchJson(`${s.network_hub_url}/api/hub/games`, { token: s.network_hub_token, timeout: 20000 });
+        if (Array.isArray(g.games)) applyHubGames(g.games, s.network_hub_url);
+      } catch (e) {
+        if (e.status !== 404) console.warn(`[network] syncing the hub's games failed: ${e.message}`);
+      }
+    }
     // Members from before v0.7 follow the hub's block list once, like new members do when they join.
     if (S().network_hub_list_followed !== s.network_hub_url) {
       if (!db.prepare('SELECT 1 FROM blocklist_subscriptions WHERE url = ?').get(s.network_hub_url)) subscribeBlocklist(s.network_hub_url, 'auto');
@@ -1501,7 +1644,10 @@ export async function syncFromHub({ full = false } = {}) {
     let cursor = since;
     const self = storedSelf();
     // Peers we pull ourselves are kept up to date directly; the index covers everyone else.
-    const byUrl = new Map(db.prepare(`SELECT p.id, p.url, p.is_self, (${DIRECT_SQL}) AS direct FROM instances p`).all().map((i) => [i.url, i]));
+    // Protocol 4 members come over ActivityPub, so the index only fills in for older ones.
+    const byUrl = new Map(
+      db.prepare(`SELECT p.id, p.url, p.is_self, (${DIRECT_SQL}) OR (p.ap_actor IS NOT NULL AND p.protocol >= 4) AS direct FROM instances p`).all().map((i) => [i.url, i]),
+    );
     for (let page = 0; page < 500; page++) {
       const r = await fetchJson(`${s.network_hub_url}/api/hub/index?updated_since=${since}&after=${encodeURIComponent(after)}&limit=500`, {
         token: s.network_hub_token,
@@ -1556,7 +1702,8 @@ export function onLocalVideosChanged() {
     if (cur.hub_enabled !== 'true' && cur.network_status === 'approved' && cur.network_hub_token) {
       fetchJson(`${cur.network_hub_url}/api/hub/ping`, { method: 'POST', body: {}, token: cur.network_hub_token }).catch(() => {});
     }
-    for (const inst of db.prepare("SELECT * FROM instances WHERE is_self = 0 AND blocked = 0 AND protocol >= 3 AND remote_status = 'approved'").all()) {
+    // Protocol 4 peers hear about changes over ActivityPub already.
+    for (const inst of db.prepare("SELECT * FROM instances WHERE is_self = 0 AND blocked = 0 AND protocol >= 3 AND remote_status = 'approved' AND (ap_actor IS NULL OR protocol < 4)").all()) {
       if (peerAllowed(inst)) signedFetch(inst, '/api/network/ping', { method: 'POST', body: {}, timeout: 8000 }).catch(() => {});
     }
   }, 5000);
@@ -1569,6 +1716,7 @@ export async function networkTick({ full = false } = {}) {
   const s = S();
   if (!isHub() && s.network_hub_token) await syncFromHub({ full }).catch(() => {});
   await refreshBlocklists({ force: full }).catch(() => {});
+  if (apOn()) await ap.upgradePeers({ force: full }).catch((e) => console.warn(`[network] moving peers to ActivityPub: ${e.message}`));
   await introduceKnown().catch(() => {});
   await pullAllMembers({ full });
 }
@@ -1703,6 +1851,7 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
 
   const kind = KIND[b.type];
   if (!kind) throw new HttpError(400, 'Unknown request type');
+  if (apPeer(inst)) throw new HttpError(410, 'Instances on ClipTube 1.3 or later send likes, comments and subscriptions over ActivityPub');
   if (!networkPolicy()[kind]) throw new HttpError(403, `The network has turned off ${kind} between instances`);
   if (!acceptsFromNetwork()[kind]) throw new HttpError(403, `${site} does not accept ${kind} from other instances`);
 
@@ -1853,7 +2002,8 @@ export function clipTubePeer(origin) {
     return null;
   }
   const inst = instByUrl(url);
-  return inst && peerAllowed(inst) && inst.allow_interactions && inst.public_key && (inst.protocol || 0) >= 2 ? inst : null;
+  // Protocol 4 peers take subscriptions as ActivityPub follows instead.
+  return inst && !apPeer(inst) && peerAllowed(inst) && inst.allow_interactions && inst.public_key && (inst.protocol || 0) >= 2 ? inst : null;
 }
 
 /** Peers with another ClipTube instance (found through a move), when this one may take new peers. */
@@ -1905,8 +2055,12 @@ function remoteVideo(iid, rid) {
   return { row, inst: instById(row.instance_id) };
 }
 
-networkRouter.get('/videos/:iid/:rid', (req, res) => {
-  const { row, inst } = remoteVideo(req.params.iid, req.params.rid);
+networkRouter.get('/videos/:iid/:rid', async (req, res) => {
+  let { row, inst } = remoteVideo(req.params.iid, req.params.rid);
+  // Fresh counts and details from the origin when the page opens (bounded, so the page stays fast).
+  if (row.origin_type === 'activitypub' && apOn()) {
+    if (await ap.refreshVideo(row).catch(() => false)) ({ row, inst } = remoteVideo(req.params.iid, req.params.rid));
+  }
   const related = db
     .prepare(`${REMOTE_SELECT} WHERE ${NETWORK_VISIBLE} AND r.instance_id = ? AND r.remote_id != ? ORDER BY r.created_at DESC LIMIT 12`)
     .all(row.instance_id, row.remote_id);
@@ -1914,14 +2068,17 @@ networkRouter.get('/videos/:iid/:rid', (req, res) => {
   const policy = networkPolicy();
   const can = !!inst.allow_interactions;
   // Videos from the fediverse aren't covered by the ClipTube network's switches.
-  const ap = row.origin_type === 'activitypub';
+  const isAp = row.origin_type === 'activitypub';
   res.json({
     video: serializeRemote(row),
     related: related.map(serializeRemote),
     my_like: u ? db.prepare('SELECT value FROM network_likes WHERE user_id = ? AND instance_id = ? AND remote_id = ?').get(u.id, inst.id, row.remote_id)?.value || 0 : 0,
     subscribed: u ? !!db.prepare('SELECT 1 FROM network_subscriptions WHERE user_id = ? AND instance_id = ? AND username = ?').get(u.id, inst.id, row.uploader_username) : false,
-    interactions: ap
-      ? { likes: true, comments: !!row.comments_enabled, subscriptions: true }
+    // The network's switches cover ClipTube peers; other fediverse servers only their own settings.
+    interactions: isAp
+      ? isNetworkPeer(inst)
+        ? { likes: policy.likes, comments: policy.comments && !!row.comments_enabled, subscriptions: policy.subscriptions }
+        : { likes: true, comments: !!row.comments_enabled, subscriptions: true }
       : { likes: can && policy.likes, comments: can && policy.comments, subscriptions: can && policy.subscriptions },
     can_moderate: !!u?.is_admin,
     role: networkRole(),
@@ -2076,7 +2233,8 @@ function adminState(req) {
       .filter((i) => !i.is_self && !i.blocked && (i.peer_status || i.remote_status || i.source === 'peer' || i.source === 'admin' || i.source === 'inbound'))
       .map((i) => ({
         id: i.id, url: i.url, name: i.name || hostOf(i.url), source: i.source, peer_status: i.peer_status, remote_status: i.remote_status,
-        protocol: i.protocol, direct: directPeer(i), in_hub: i.hub_status === 'approved', last_ok_at: i.last_ok_at, last_seen_at: i.last_seen_at,
+        protocol: i.protocol, transport: apPeer(i) ? 'activitypub' : 'cliptube', direct: directPeer(i), in_hub: i.hub_status === 'approved',
+        last_ok_at: i.last_ok_at, last_seen_at: i.last_seen_at,
         last_error: i.last_error, fail_count: i.fail_count, next_try_at: i.next_try_at, video_count: count(i),
       })),
     blocklists: db.prepare('SELECT * FROM blocklist_subscriptions ORDER BY created_at').all().map((b) => ({
@@ -2174,6 +2332,8 @@ networkAdminRouter.patch('/peers/:id', async (req, res) => {
   const status = req.body?.status;
   if (!['approved', 'rejected'].includes(status)) throw new HttpError(400, 'Status must be approved or rejected');
   db.prepare('UPDATE instances SET peer_status = ? WHERE id = ?').run(status, inst.id);
+  // A protocol 4 peer waiting on our answer to its follow gets it now.
+  if (apPeer(inst) && inst.ap_follow_id && apOn()) await ap.answerFollow(instById(inst.id), status === 'approved').catch((e) => console.warn(`[network] answering ${inst.url}: ${e.message}`));
   if (status === 'rejected') db.prepare('DELETE FROM network_videos WHERE instance_id = ?').run(inst.id);
   else if (inst.remote_status === 'approved') await pullMember(instById(inst.id), { force: true });
   else await introduce(inst.url, 'admin').catch(() => {});

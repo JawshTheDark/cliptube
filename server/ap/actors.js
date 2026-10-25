@@ -31,7 +31,9 @@ export function instanceFor(actorId) {
   return inst;
 }
 
-export const isBlockedActor = (actorId) => !!db.prepare('SELECT 1 FROM instances WHERE url = ? AND blocked = 1').get(originOf(actorId));
+// Blocked here, or banned or suspended by our hub: shut out of ActivityPub both ways.
+export const isBlockedActor = (actorId) =>
+  !!db.prepare("SELECT 1 FROM instances WHERE url = ? AND (blocked = 1 OR hub_status IN ('banned', 'suspended'))").get(originOf(actorId));
 
 function iconOf(a) {
   const ic = first(a.icon);
@@ -92,11 +94,22 @@ export async function getActor(id, { refresh = false } = {}) {
 export async function keyFor(keyId, { refresh = false } = {}) {
   let row = !refresh && db.prepare('SELECT * FROM ap_actors WHERE key_id = ?').get(keyId);
   if (!row) {
+    // Most servers keep the key in the actor document (actor#main-key).
     const actorId = keyId.split('#')[0];
     try {
       row = await getActor(actorId, { refresh });
     } catch {
-      return null;
+      row = null;
+    }
+    // Others (GoToSocial) serve it at its own URL as a stub: follow its owner to the full actor.
+    if (!row || row.key_id !== keyId) {
+      try {
+        const doc = await apFetch(keyId, { signer: signer() });
+        const owner = idOf(doc?.publicKey?.owner) || idOf(doc?.owner) || (doc?.publicKey ? idOf(doc.id) : null);
+        if (owner && owner !== keyId && hostOf(owner) === hostOf(keyId)) row = await getActor(owner, { refresh: true });
+      } catch {
+        return null;
+      }
     }
   }
   if (!row?.public_key || (row.key_id && row.key_id !== keyId)) return null;

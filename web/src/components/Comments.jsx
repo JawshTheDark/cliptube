@@ -100,10 +100,11 @@ function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel,
   );
 }
 
-function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpdate, reportTarget, isReply = false }) {
+function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpdate, reportTarget, isReply = false, hostName = null }) {
   const [replying, setReplying] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
-  const held = c.status === 'held';
+  // held: waiting for review here; pending: sent to another instance, not shown there yet; rejected: it refused.
+  const held = c.status === 'held' || c.status === 'pending' || c.status === 'rejected';
   return (
     <div className={`comment ${isReply ? 'reply' : ''} ${held ? 'held' : ''}`} id={`c-${c.id}`}>
       <AuthorLink author={c.author}>
@@ -121,15 +122,25 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpda
           </AuthorLink>
           {c.author.remote && <Icon name="public" className="inline-icon muted" title="From another instance" />}
           <span className="ctime">{timeAgo(c.created_at)}</span>
-          {held && (
+          {c.status === 'held' && (
             <span className="badge warn" title={c.held_reason || ''}>
               <Icon name="hourglass" /> Held for review{c.held_reason ? `: ${c.held_reason}` : ''}
+            </span>
+          )}
+          {c.status === 'pending' && (
+            <span className="badge warn" title="It shows up here once the other instance accepts it">
+              <Icon name="hourglass" /> Waiting for {hostName || 'the other instance'}
+            </span>
+          )}
+          {c.status === 'rejected' && (
+            <span className="badge err" title={c.status_reason || ''}>
+              <Icon name="warning" /> Not accepted{c.status_reason ? `: ${c.status_reason}` : ''}
             </span>
           )}
         </div>
         <div className="ctext">{c.body}</div>
         <div className="cfoot">
-          {held && c.can_moderate && (
+          {c.status === 'held' && c.can_moderate && (
             <button className="btn approve" onClick={() => onUpdate(c, { status: 'visible' }, 'Comment approved')}>
               <Icon name="check" size={16} /> Approve
             </button>
@@ -184,7 +195,7 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpda
             {showReplies && (
               <div className="replies">
                 {replies.map((r) => (
-                  <CommentItem key={r.id} c={r} user={user} canPost={canPost} onReply={onReply} onDelete={onDelete} onUpdate={onUpdate} reportTarget={reportTarget} isReply />
+                  <CommentItem key={r.id} c={r} user={user} canPost={canPost} onReply={onReply} onDelete={onDelete} onUpdate={onUpdate} reportTarget={reportTarget} hostName={hostName} isReply />
                 ))}
               </div>
             )}
@@ -205,8 +216,10 @@ export function Comments({ base, initialCount = 0, reportTarget, isOwner = false
   const [comments, setComments] = useState(null);
   const [meta, setMeta] = useState({ can_post: true, host_name: null, error: null, mode: 'open' });
 
+  const [refreshes, setRefreshes] = useState(0);
   useEffect(() => {
     setComments(null);
+    setRefreshes(0);
     let dead = false;
     api(`${base}/comments`)
       .then((r) => {
@@ -224,8 +237,27 @@ export function Comments({ base, initialCount = 0, reportTarget, isOwner = false
     };
   }, [base]);
 
+  // A comment sent to another instance waits for its answer: look again a few times.
+  const waiting = (comments || []).some((c) => c.status === 'pending');
+  useEffect(() => {
+    if (!waiting || refreshes >= 10) return undefined;
+    const t = setTimeout(() => {
+      api(`${base}/comments`)
+        .then((r) => setComments(r.comments))
+        .catch(() => {})
+        .finally(() => setRefreshes((n) => n + 1));
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [waiting, refreshes, base]);
+
   const add = async (body, parentId) => {
     const r = await api(`${base}/comments`, { method: 'POST', body: { body, parent_id: parentId } });
+    if (r.pending) {
+      toast(`Sent. It shows up once ${r.host_name || 'the other instance'} accepts it.`);
+      setRefreshes(0);
+      setComments((cs) => [...(cs || []), r.comment]);
+      return;
+    }
     if (r.held) {
       toast(`Your comment is held for review${r.held_reason ? ` (${r.held_reason})` : ''}. Only you can see it until it's approved.`);
       // Held comments on other instances can't be shown here, so only keep local ones.
@@ -267,7 +299,7 @@ export function Comments({ base, initialCount = 0, reportTarget, isOwner = false
     .filter((c) => !c.parent_id)
     .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.created_at - a.created_at);
   const repliesOf = (id) => list.filter((c) => c.parent_id === id);
-  const count = comments ? comments.filter((c) => c.status !== 'held').length : initialCount;
+  const count = comments ? comments.filter((c) => !['held', 'pending', 'rejected'].includes(c.status)).length : initialCount;
   const heldCount = comments ? comments.filter((c) => c.status === 'held' && c.can_moderate).length : 0;
 
   return (
@@ -302,6 +334,7 @@ export function Comments({ base, initialCount = 0, reportTarget, isOwner = false
             onDelete={remove}
             onUpdate={update}
             reportTarget={reportTarget}
+            hostName={meta.host_name}
             onReply={(body) => add(body, c.id)}
           />
         ))

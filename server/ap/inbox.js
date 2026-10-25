@@ -9,19 +9,31 @@ import { db, getSettings } from '../db.js';
 import { newId, now, str } from '../util.js';
 import { defineJob, enqueueJob } from '../jobs.js';
 import { intakeComment, intakeLike } from '../intake.js';
-import { createReport } from '../reports.js';
+import { REPORT_REASONS, createReport } from '../reports.js';
 import { notifyComment } from '../notify.js';
 import { indexNetworkVideo } from '../search.js';
-import { upsertNetworkVideo } from '../network.js';
+import { acceptsFromNetwork, isNetworkPeer, peerFollowAnswered, peerFollowReceived, upsertNetworkVideo } from '../network.js';
 import { apFetch } from './http.js';
 import { PUBLIC, apBase, first, hostOf, htmlToText, idOf, originOf, parseDuration, parseLocal } from './common.js';
 import { getActor, instanceFor, isBlockedActor, shadowUser, signer, storeActor } from './actors.js';
-import { sendAcceptOrReject } from './deliver.js';
+import { sendAcceptOrReject, sendVerdict } from './deliver.js';
 import { followMove } from './move.js';
 
-const accepts = () => {
+/**
+ * What this instance accepts from the sender's server: its own switches, plus the network's for other
+ * ClipTube instances in the network (the hub's switches cover traffic between members).
+ */
+const accepts = (actorId) => {
+  const inst = actorId ? db.prepare('SELECT * FROM instances WHERE url = ?').get(originOf(actorId)) : null;
+  if (inst && isNetworkPeer(inst)) return acceptsFromNetwork();
   const s = getSettings();
   return { comments: s.network_accept_comments === 'true', likes: s.network_accept_likes === 'true', subscriptions: s.network_accept_subscriptions === 'true' };
+};
+
+/** A ClipTube peer on protocol 4, which expects an answer to each comment (Accept or Reject). */
+const wantsVerdict = (actorId) => {
+  const inst = db.prepare('SELECT ap_actor, protocol FROM instances WHERE url = ?').get(originOf(actorId));
+  return !!inst?.ap_actor && (inst.protocol || 0) >= 4;
 };
 
 /** Queues an activity whose signature was checked. */
@@ -135,7 +147,12 @@ async function onFollow(a, actorId, base) {
   if (!target) return;
   const actor = await getActor(actorId);
   const follow = { id: a.id, type: 'Follow', actor: actorId, object: idOf(a.object) };
-  if (!accepts().subscriptions && target.key !== 'i') return sendAcceptOrReject(target.key, follow, actor, false);
+  // Another server following this one: peering (ClipTube) or mirroring (PeerTube), under the admission switches.
+  if (target.key === 'i') {
+    const decision = await peerFollowReceived(actor, a.id);
+    if (decision === 'pending') return;
+    if (decision === 'reject') return sendAcceptOrReject('i', follow, actor, false);
+  } else if (!accepts(actorId).subscriptions) return sendAcceptOrReject(target.key, follow, actor, false);
   db.prepare(
     'INSERT INTO ap_followers (local_actor, remote_actor, follow_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(local_actor, remote_actor) DO UPDATE SET follow_id = excluded.follow_id',
   ).run(target.key, actorId, a.id || null, now());
@@ -181,9 +198,24 @@ async function onAnswer(a, actorId, base, accepted) {
     const me = localActorOf(o.actor, base);
     if (me) f = db.prepare('SELECT * FROM ap_follows WHERE local_actor = ? AND remote_actor = ?').get(me.key, actorId);
   }
-  if (!f) return;
+  if (!f) return onVerdict(o, actorId, accepted, a);
   db.prepare('UPDATE ap_follows SET status = ? WHERE local_actor = ? AND remote_actor = ?').run(accepted ? 'accepted' : 'rejected', f.local_actor, f.remote_actor);
+  // Our instance following a ClipTube peer: that is the peering, and network.js keeps track of it.
+  if (f.local_actor === 'i' && db.prepare('SELECT 1 FROM instances WHERE ap_actor = ?').get(actorId)) return peerFollowAnswered(actorId, accepted);
   if (accepted) enqueueJob('ap.backfill', { actor: actorId }, { dedupe: `ap-backfill:${actorId}` });
+}
+
+/**
+ * The server hosting a video answers a comment someone here sent: Accept once it shows the comment
+ * (right away, or when its owner approves a held one), Reject when it refuses it.
+ */
+function onVerdict(o, actorId, accepted, a) {
+  const noteId = idOf(o);
+  if (!noteId) return;
+  const c = db.prepare('SELECT n.*, r.ap_id AS video_ap_id FROM network_comments n LEFT JOIN network_videos r ON r.instance_id = n.instance_id AND r.remote_id = n.remote_id WHERE n.ap_id = ?').get(noteId);
+  if (!c || !c.video_ap_id || hostOf(c.video_ap_id) !== hostOf(actorId)) return; // only the video's own server decides
+  const reason = accepted ? null : str(htmlToText(a.summary || a.content || ''), 200).trim() || null;
+  db.prepare('UPDATE network_comments SET status = ?, status_reason = ? WHERE id = ?').run(accepted ? 'visible' : 'rejected', reason, c.id);
 }
 
 /** Is any local actor following this remote actor (or the instance actor following its server)? */
@@ -239,7 +271,12 @@ export async function ingestVideo(obj) {
     width: Math.round(Number(mp4?.width) || 0) || Math.round((Number(mp4?.height) || 0) * (Number(obj.aspectRatio) || 16 / 9)),
     height: Math.round(Number(mp4?.height) || 0),
     views: Math.max(0, Math.round(Number(obj.views) || 0)),
-    likes: typeof obj.likes === 'number' ? obj.likes : 0,
+    // ClipTube sends its counts (the `counts` extension); others may embed a collection with totalItems.
+    likes: Number.isFinite(Number(obj.counts?.likes))
+      ? Math.max(0, Math.round(Number(obj.counts.likes)))
+      : typeof obj.likes === 'number'
+        ? obj.likes
+        : Number(obj.likes?.totalItems) || 0,
     created_at: published,
     updated_at: Date.parse(obj.updated) || published,
     thumbnail_url: thumb ? idOf(thumb.url) : null,
@@ -254,7 +291,7 @@ export async function ingestVideo(obj) {
   };
   upsertNetworkVideo(inst.id, item, now(), inst.url);
   db.prepare(
-    `UPDATE network_videos SET ap_id = ?, origin_type = CASE WHEN origin_type = 'cliptube' THEN 'cliptube' ELSE 'activitypub' END, hls_url = ?, ap_actor = ?, comments_enabled = ?
+    `UPDATE network_videos SET ap_id = ?, origin_type = 'activitypub', hls_url = ?, ap_actor = ?, comments_enabled = ?
      WHERE instance_id = ? AND remote_id = ?`,
   ).run(obj.id, hls?.href || null, channel.id, obj.commentsEnabled === false || obj.commentsPolicy === 2 ? 0 : 1, inst.id, remoteId);
   indexNetworkVideo(inst.id, remoteId);
@@ -330,16 +367,22 @@ async function onNote(note, actorId, base) {
     }
   }
   if (video) {
-    if (!accepts().comments || video.visibility === 'private') return;
+    const verdictTo = wantsVerdict(actor.id) ? actor : null;
+    const refuse = (reason) => verdictTo && sendVerdict(`u:${video.user_id}`, note.id, verdictTo, false, reason);
+    if (!accepts(actor.id).comments || video.visibility === 'private') return refuse('Comments from other instances are turned off here');
     if (db.prepare('SELECT 1 FROM comments WHERE ap_id = ?').get(note.id)) return;
     const inst = instanceFor(actor.id);
     const verdict = intakeComment({ video, author, body, parentId, remote: true, instance: inst });
-    if (verdict.status === 'rejected') return;
+    if (verdict.status === 'rejected') return refuse(verdict.reason || 'Not accepted');
     const id = newId();
     db.prepare('INSERT INTO comments (id, video_id, user_id, parent_id, body, status, held_reason, ap_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
       id, video.id, author.id, parentId, body, verdict.status, verdict.status === 'held' ? verdict.reason : null, note.id, Date.parse(note.published) || now(),
     );
-    if (verdict.status === 'visible') notifyComment(id);
+    if (verdict.status === 'visible') {
+      notifyComment(id);
+      if (verdictTo) sendVerdict(`u:${video.user_id}`, note.id, verdictTo, true);
+    }
+    // A held comment gets its Accept when the owner approves it (or a Reject when it is deleted instead).
     return;
   }
   // On a fediverse video in our index (or a reply in its thread).
@@ -408,7 +451,7 @@ async function onDelete(a, actorId, base) {
 
 async function onLike(a, actorId, base, value) {
   const v = localVideo(a.object, base);
-  if (!v || !accepts().likes) return;
+  if (!v || !accepts(actorId).likes) return;
   const actor = await getActor(actorId);
   const shadow = shadowUser(actor);
   if (shadow.status !== 'active') return;
@@ -423,18 +466,20 @@ async function onFlag(a, actorId, base) {
   const inst = instanceFor(actorId);
   const objects = (Array.isArray(a.object) ? a.object : [a.object]).map(idOf).filter(Boolean);
   const details = str(a.content || a.summary, 2000);
-  const reporter = `${hostOf(actorId)} (fediverse)`;
+  const reporter = `${hostOf(actorId)} (${isNetworkPeer(inst) ? 'network' : 'fediverse'})`;
+  // ClipTube sends the reason as its own field; anyone else's report counts as "other".
+  const reason = typeof a.reason === 'string' && REPORT_REASONS[a.reason] ? a.reason : 'other';
   for (const o of objects) {
     const p = parseLocal(o, base);
     if (p?.kind === 'video') {
       const v = db.prepare('SELECT v.*, u.username FROM videos v JOIN users u ON u.id = v.user_id WHERE v.id = ?').get(p.id);
-      if (v) createReport({ targetType: 'video', targetId: v.id, targetTitle: v.title, targetUrl: `/watch/${v.id}`, targetOwner: v.username, reason: 'other', details, reporterLabel: reporter, sourceInstanceId: inst.id });
+      if (v) createReport({ targetType: 'video', targetId: v.id, targetTitle: v.title, targetUrl: `/watch/${v.id}`, targetOwner: v.username, reason, details, reporterLabel: reporter, sourceInstanceId: inst.id });
     } else if (p?.kind === 'comment') {
       const c = db.prepare('SELECT c.*, u.username FROM comments c JOIN users u ON u.id = c.user_id WHERE c.id = ?').get(p.id);
-      if (c) createReport({ targetType: 'comment', targetId: c.id, targetTitle: c.body.slice(0, 200), targetUrl: `/watch/${c.video_id}`, targetOwner: c.username, reason: 'other', details, reporterLabel: reporter, sourceInstanceId: inst.id });
+      if (c) createReport({ targetType: 'comment', targetId: c.id, targetTitle: c.body.slice(0, 200), targetUrl: `/watch/${c.video_id}`, targetOwner: c.username, reason, details, reporterLabel: reporter, sourceInstanceId: inst.id });
     } else if (p?.kind === 'u' || p?.kind === 'c') {
       const u = db.prepare('SELECT * FROM users WHERE username = ? AND remote_instance_id IS NULL').get(p.name);
-      if (u) createReport({ targetType: 'user', targetId: u.id, targetTitle: u.display_name, targetUrl: `/c/${u.username}`, targetOwner: u.username, reason: 'other', details, reporterLabel: reporter, sourceInstanceId: inst.id });
+      if (u) createReport({ targetType: 'user', targetId: u.id, targetTitle: u.display_name, targetUrl: `/c/${u.username}`, targetOwner: u.username, reason, details, reporterLabel: reporter, sourceInstanceId: inst.id });
     }
   }
 }

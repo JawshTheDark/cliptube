@@ -128,14 +128,19 @@ clips in **Network**, on the home feed and in search. Video files are never copi
 instance that hosts the clip.
 
 A **hub** is the easy way in and can moderate the whole network, but it is optional. Instances also peer with
-each other directly: each one checks the others' keys at their own addresses, pulls their clips itself and
-pings them when its own clips change. You can join through the hub or through any instance already in the
-network, and the rest is found from there. If the hub goes offline, gets a legal notice or shuts down, the
-others keep seeing each other and keep liking and commenting.
+each other directly, over ActivityPub (since ClipTube 1.3): their instance actors follow each other, new clips
+arrive within seconds, and each round they read each other's outboxes so nothing is missed. You can join
+through the hub or through any instance already in the network, and the rest is found from there. If the hub
+goes offline, gets a legal notice or shuts down, the others keep seeing each other and keep liking and
+commenting.
 
-People can like, comment on and subscribe to videos on other instances. The action is sent to the instance
-hosting the video, signed by the sender's instance, so counts and comment threads are the same everywhere.
-People from elsewhere appear as `name@their.host` and link back to their home instance.
+People can like, comment on and subscribe to videos on other instances. The action goes to the instance
+hosting the video as an ActivityPub activity, so counts and comment threads are the same everywhere, and that
+instance answers each comment (shown, held for review, or refused). People from elsewhere appear as
+`name@their.host` and link back to their home instance.
+
+The hub also keeps the network's **game catalog**: members get its games automatically, and a game the hub
+deletes goes from every member's list (their clips stay, without a game). Members can add games of their own.
 
 **Running the hub** (Admin → Network → *This instance is the hub*):
 
@@ -172,19 +177,17 @@ Failing peers are retried with backoff (1 minute doubling up to 6 hours).
 Only public, ready videos with sharing on are ever listed. Networking refuses to contact private-network
 addresses; to test several instances on one machine, start them with `--allow-private-federation`.
 
-Protocol summary (v3, JSON over HTTPS): `GET /.well-known/cliptube` describes an instance, its Ed25519 key and
-its admission switches; a key is trusted only after it was fetched from the instance's own address. Requests
-between peers carry `X-ClipTube-Instance`, `X-ClipTube-Date` and `X-ClipTube-Signature` (a signature over the
-method, path and query, date, sender and a SHA-256 of the body). `POST /api/network/hello` asks to peer and
-returns the decision and the peers the receiver can vouch for; `GET /api/network/known-peers` exchanges peer
-lists; `GET /api/network/feed` and `/feed/ids` serve public videos to accepted peers; `POST /api/network/ping`
-says "something changed"; `POST /api/network/goodbye` leaves; `GET /api/network/blocklist` publishes blocks.
-Interactions go to the target's `/api/network/inbox`, signed over the body.
+Protocol summary (v4): `GET /.well-known/cliptube` describes an instance, its admission switches and its
+instance actor. Peering, videos and interactions are ActivityPub, described in
+[docs/federation.md](docs/federation.md) along with ClipTube's few extensions. The instance layer stays plain
+JSON over HTTPS: `GET /api/network/known-peers` exchanges peer lists (signed with each instance's Ed25519 key,
+checked at its own address), `GET /api/network/blocklist` publishes blocks, and members register with the hub
+(`POST /api/hub/join`, with a nonce callback to `/api/network/verify`) and read its directory, switches and
+game catalog (`/api/hub/directory`, `/api/hub/status`, `/api/hub/games`).
 
-The v2 hub protocol still works alongside, so older instances keep working during an upgrade: members
-register with `POST /api/hub/join` (nonce callback to `/api/network/verify`), the hub pulls their feeds with a
-token and serves `/api/hub/index`, `/api/hub/index/ids` and `/api/hub/directory`. Members use the hub's index
-only for instances they can't pull directly.
+Instances on ClipTube 1.2 and earlier (protocol v3, and the v2 hub protocol) still work for one release: a
+1.3 instance serves its v3 feed to them, pulls theirs and takes their signed messages, and moves each one to
+ActivityPub once it has upgraded.
 
 ## Fediverse (ActivityPub)
 
@@ -217,9 +220,11 @@ ClipTube also speaks ActivityPub, the protocol of Mastodon, PeerTube and the res
   private link or by uploading it, add the old account as an alias there, then move. Fediverse followers get
   an ActivityPub `Move`, subscribers on the old instance and on other ClipTube instances are moved too, and
   the old channel points to the new one. Moves of fediverse accounts people here follow are followed in turn.
-- **Two layers:** ActivityPub carries what people do; ClipTube instances also keep their own protocol for
-  finding each other, the network video index, block lists and the hub's switches. Why, and when that may
-  change, is in [docs/federation.md](docs/federation.md).
+- **One protocol:** ClipTube instances use ActivityPub between themselves too, with the hub as directory,
+  switchboard, block list and game catalog. How it works is in [docs/federation.md](docs/federation.md).
+- **Checked against real servers:** `scripts/fediverse-sandbox.sh <ssh-host>` starts PeerTube, GoToSocial and
+  a ClipTube built from your working tree in a private Docker sandbox on that host (nothing exposed, its own
+  certificates), runs the interop checks and cleans up.
 - **Under the hood:** WebFinger, NodeInfo and host-meta for discovery; RSA HTTP Signatures (draft-cavage,
   rsa-sha256) on every delivery and fetch, checked on every incoming activity; deliveries retried over three
   days through the job queue.

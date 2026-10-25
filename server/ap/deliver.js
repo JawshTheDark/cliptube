@@ -3,7 +3,7 @@
  * likes and reports, delivered through the job queue with retries over several days.
  */
 import { db } from '../db.js';
-import { now } from '../util.js';
+import { now, str } from '../util.js';
 import { defineJob, enqueueJob, PermanentError } from '../jobs.js';
 import { apFetch } from './http.js';
 import { CONTEXT, PUBLIC, apBase, apEnabled, urls } from './common.js';
@@ -35,11 +35,50 @@ defineJob('ap.deliver', {
       await apFetch(inbox, { method: 'POST', body, signer: key || signerFor(signer) });
     } catch (e) {
       // Their server refused it for good (bad request, gone, forbidden): don't keep trying.
-      if (e.status >= 400 && e.status < 500 && ![408, 425, 429].includes(e.status)) throw new PermanentError(`${inbox}: ${e.message}`);
+      if (e.status >= 400 && e.status < 500 && ![408, 425, 429].includes(e.status)) {
+        markRefused(body, inbox, e.status);
+        throw new PermanentError(`${inbox}: ${e.message}`);
+      }
       throw e;
     }
   },
 });
+
+/** A comment someone here sent was refused outright (their server blocks this one, say): say so on it. */
+function markRefused(body, inbox, status) {
+  try {
+    const a = JSON.parse(body);
+    if (a.type !== 'Create' || a.object?.type !== 'Note' || typeof a.object.id !== 'string') return;
+    let host = inbox;
+    try {
+      host = new URL(inbox).host;
+    } catch {}
+    db.prepare("UPDATE network_comments SET status = 'rejected', status_reason = ? WHERE ap_id = ?").run(str(`${host} refused it (HTTP ${status})`, 200), a.object.id);
+  } catch {}
+}
+
+/** Tells the author's server whether a comment on one of our videos is shown (Accept) or refused (Reject). */
+export function sendVerdict(localActor, noteId, remoteActor, accepted, reason = null) {
+  const base = apBase();
+  if (!base || !apEnabled() || !remoteActor?.inbox) return;
+  deliver(
+    localActor,
+    { '@context': CONTEXT, id: urls(base).activity(), type: accepted ? 'Accept' : 'Reject', actor: actorUri(localActor, base), object: noteId, ...(reason ? { summary: str(reason, 200) } : {}) },
+    [remoteActor.inbox],
+  );
+}
+
+/** The owner approved (or deleted) a held comment that came from a ClipTube peer: answer its server. */
+export async function apCommentVerdict(comment, accepted, reason = null) {
+  if (!comment?.ap_id || !apEnabled()) return;
+  const author = db.prepare('SELECT ap_actor FROM users WHERE id = ?').get(comment.user_id);
+  const video = db.prepare('SELECT user_id FROM videos WHERE id = ?').get(comment.video_id);
+  if (!author?.ap_actor || !video) return;
+  const inst = db.prepare('SELECT i.ap_actor, i.protocol FROM instances i JOIN ap_actors a ON a.instance_id = i.id WHERE a.id = ?').get(author.ap_actor);
+  if (!inst?.ap_actor || (inst.protocol || 0) < 4) return; // only ClipTube peers wait for an answer
+  const actor = await getActor(author.ap_actor).catch(() => null);
+  if (actor) sendVerdict(`u:${video.user_id}`, comment.ap_id, actor, accepted, reason);
+}
 
 /**
  * Queues an activity for each inbox (one job per inbox, deduplicated). `key` carries the signing key

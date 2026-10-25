@@ -17,7 +17,8 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | M5 Feeds, notifications, search, analytics | Done | v0.9.0, 2026-10-25 |
 | M6 ActivityPub and PeerTube | Done (live PeerTube check pending) | v1.0.0, 2026-10-25 |
 | M7 Mastodon, moves, export and import | Done (live Mastodon check pending) | v1.1.0, 2026-10-25 |
-| M8 One federation protocol | Done: decided to keep two layers (see docs/federation.md) | v1.2.0, 2026-10-25 |
+| M8 One federation protocol | Done: the network runs over ActivityPub (see docs/federation.md) | v1.2.0 decision, v1.3.0 switch, 2026-10-25 |
+| After M8: game catalog from the hub, verticals toggle moved to Settings | Done | v1.3.0, 2026-10-25 |
 | Servers linked (clips.irc.so hub, laptop member) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you
@@ -29,11 +30,11 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 - Streaming (M4): adaptive streaming is off on both servers, because it costs CPU once per video and 50 to 100%
   more disk. Turn it on under Admin → Overview → Adaptive streaming; existing videos are rebuilt in the
   background. I tested the ladder, quality switching and skipping in a browser, not playback on a throttled link.
-- Fediverse sandbox (M6, M7): checking against a real PeerTube and GoToSocial needs test subdomains of irc.so
-  (DNS records plus Nginx Proxy Manager hosts), which I can't create. ActivityPub is on and tested against a
-  stand-in server; once you have the subdomains, a short real-world check would finish the "Done when".
-  You can also try it straight away: from any Mastodon account, search for @Jawsh_channel@clips.irc.so
-  (your channel's handle) and follow it.
+- Fediverse checks (M6, M7): done without subdomains. `scripts/fediverse-sandbox.sh jawsh@192.168.1.97` runs a
+  real PeerTube (7.3) and GoToSocial (0.22, Mastodon-compatible) next to ClipTube in a private Docker sandbox on
+  the laptop, with no ports opened, and all 17 checks pass. It cleans up after itself; the images stay cached
+  (about 2.3 GB). A check from a real Mastodon account is still worth a try: search for
+  @Jawsh_channel@clips.irc.so and follow it.
 - Email (M5): no SMTP server is set up, so notifications are in-app and web push only, and there are no
   password-reset emails. Add one under Admin → Overview → Email (any provider's SMTP details work).
 - Sign-up (M1): both servers still allow open sign-up. The plan suggested invite-only until moderation tools
@@ -323,10 +324,12 @@ timeline, replies, and the reply appears as a comment.
 - ✅ *Recommended outcome* if ActivityPub covers everything: ClipTube instances talk ActivityPub to each other,
   the hub becomes an optional directory and blocklist service (like the instance index PeerTube runs at
   joinpeertube.org), and the old protocol stays read-only for one release before it's removed.
-  *Outcome:* ActivityPub doesn't cover everything yet. Moving would lose immediate comment verdicts, whole
-  comment threads on other instances' videos, the hub's network-wide switches and a reliable video index.
-  So the decision is two layers with one job each: ActivityPub for people (and the whole fediverse), the
-  ClipTube protocol for instances. The hub is already optional. The doc lists when to revisit.
+  *Outcome:* first decided (v1.2.0) to keep two layers, because moving would lose immediate comment verdicts,
+  whole comment threads, the hub's switches and a reliable video index. You chose the full move, so v1.3.0
+  (protocol 4) won those back over ActivityPub: Accept or Reject answers to comments, the comments collection
+  with notes inline, the switches enforced on ActivityPub traffic between members, and outbox reconciliation
+  each round. Peering is now a follow between instance actors under the same admission switches. The hub is
+  the directory, switchboard, block list and game catalog. v3 stays for one release for older instances.
   *Cleanup shipped:* one placeholder account per person and one row per video across both protocols, the
   game carried over ActivityPub, and account deletions sent to every known fediverse server.
 

@@ -1,0 +1,141 @@
+# A private fediverse sandbox: ClipTube next to real GoToSocial (Mastodon-compatible) and PeerTube servers,
+# for checking interop with real software. Run it with scripts/fediverse-sandbox.sh, which builds
+# cliptube:sandbox from the current commit, starts this, runs check.mjs and tears it all down.
+#
+# Nothing is exposed: the network is internal (no internet, no published ports). Caddy serves the three
+# sites over HTTPS with certificates from its own local CA, which every service is told to trust.
+
+name: ctsandbox
+
+x-trust-ca: &ca
+  - ca:/ca:ro
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - ca:/ca
+    networks:
+      sandbox:
+        aliases: [clips.sandbox.test, gts.sandbox.test, tube.sandbox.test]
+    # Healthy once the local CA exists; its root certificate is shared with the others through /ca.
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /data/caddy/pki/authorities/local/root.crt && cp /data/caddy/pki/authorities/local/root.crt /ca/root.crt && chmod 644 /ca/root.crt"]
+      interval: 2s
+      timeout: 5s
+      retries: 90
+
+  cliptube:
+    image: cliptube:sandbox
+    environment:
+      DATA_DIR: /data
+      TRUST_PROXY: "1"
+      FEDERATION_ALLOW_PRIVATE: "1" # the sandbox network uses private addresses
+      SETUP_CODE: sandbox-setup
+      NODE_EXTRA_CA_CERTS: /ca/root.crt
+    volumes:
+      - cliptube_data:/data
+      - ca:/ca:ro
+    depends_on:
+      caddy: { condition: service_healthy }
+    networks: [sandbox]
+
+  gotosocial:
+    image: superseriousbusiness/gotosocial:latest
+    environment:
+      GTS_HOST: gts.sandbox.test
+      GTS_PROTOCOL: https
+      GTS_DB_TYPE: sqlite
+      GTS_DB_ADDRESS: /gotosocial/storage/sqlite.db
+      GTS_STORAGE_LOCAL_BASE_PATH: /gotosocial/storage
+      GTS_LETSENCRYPT_ENABLED: "false"
+      GTS_TRUSTED_PROXIES: 0.0.0.0/0
+      GTS_HTTP_CLIENT_ALLOW_IPS: 0.0.0.0/0 # private addresses again
+      GTS_ACCOUNTS_REGISTRATION_OPEN: "false"
+      SSL_CERT_FILE: /ca/root.crt
+    volumes:
+      - gts_data:/gotosocial/storage
+      - ca:/ca:ro
+    depends_on:
+      caddy: { condition: service_healthy }
+    restart: on-failure
+    networks: [sandbox]
+
+  peertube-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: peertube
+      POSTGRES_PASSWORD: sandbox-db-pass
+      POSTGRES_DB: peertube
+    volumes:
+      - peertube_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peertube -d peertube"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+    networks: [sandbox]
+
+  peertube-redis:
+    image: redis:7-alpine
+    networks: [sandbox]
+
+  peertube:
+    image: chocobozzz/peertube:production-bookworm
+    environment:
+      PEERTUBE_WEBSERVER_HOSTNAME: tube.sandbox.test
+      PEERTUBE_WEBSERVER_PORT: "443"
+      PEERTUBE_WEBSERVER_HTTPS: "true"
+      PEERTUBE_TRUST_PROXY: '["loopback", "linklocal", "uniquelocal"]'
+      PEERTUBE_DB_HOSTNAME: peertube-db
+      PEERTUBE_DB_USERNAME: peertube
+      PEERTUBE_DB_PASSWORD: sandbox-db-pass
+      PEERTUBE_DB_SSL: "false"
+      PEERTUBE_REDIS_HOSTNAME: peertube-redis
+      PEERTUBE_ADMIN_EMAIL: admin@sandbox.test
+      PEERTUBE_SECRET: 3f0c1d6a2b9e48c7a5d4e3f2b1c0a9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2
+      PT_INITIAL_ROOT_PASSWORD: sandbox-root-pass-1
+      NODE_EXTRA_CA_CERTS: /ca/root.crt
+      # Private addresses again, MP4 files for ClipTube to play, and the database name the image expects.
+      NODE_CONFIG: '{"federation":{"prevent_ssrf":false},"transcoding":{"web_videos":{"enabled":true},"hls":{"enabled":true}},"database":{"name":"peertube","suffix":""}}'
+    volumes:
+      - peertube_data:/data
+      - peertube_config:/config
+      - ca:/ca:ro
+    depends_on:
+      caddy: { condition: service_healthy }
+      peertube-db: { condition: service_healthy }
+      peertube-redis: { condition: service_started }
+    restart: on-failure
+    networks: [sandbox]
+
+  # The checker: started with `docker compose run --rm driver` (see scripts/fediverse-sandbox.sh).
+  driver:
+    image: cliptube:sandbox
+    profiles: [driver]
+    working_dir: /app
+    environment:
+      NODE_EXTRA_CA_CERTS: /ca/root.crt
+      PT_ROOT_PASSWORD: sandbox-root-pass-1
+      GTS_EMAIL: mona@sandbox.test
+      GTS_PASSWORD: Sandbox-Mona-Pass-58217-Tuba
+    volumes:
+      - ./check.mjs:/sandbox/check.mjs:ro
+      - ca:/ca:ro
+    command: ["node", "/sandbox/check.mjs"]
+    networks: [sandbox]
+
+networks:
+  sandbox:
+    internal: true
+
+volumes:
+  caddy_data:
+  ca:
+  cliptube_data:
+  gts_data:
+  peertube_db:
+  peertube_data:
+  peertube_config:

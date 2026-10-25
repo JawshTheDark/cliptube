@@ -409,6 +409,7 @@ function ViewingSettings() {
   const [skip, setSkip] = usePref('skip');
   const [community, setCommunity] = usePref('community');
   const [captions, setCaptions] = usePref('captions');
+  const [hideVertical, setHideVertical] = usePref('hide_vertical');
   return (
     <section className="card-panel">
       <h2>Watching</h2>
@@ -433,6 +434,13 @@ function ViewingSettings() {
           <b>Turn captions on when a video has them</b>
         </span>
         <input type="checkbox" className="switch" checked={captions === 'on'} onChange={(e) => setCaptions(e.target.checked ? 'on' : 'off')} />
+      </label>
+      <label className="toggle-row">
+        <span className="toggle-text">
+          <b>Keep vertical clips in their own tab</b>
+          <span className="hint">Home shows them only under Vertical.</span>
+        </span>
+        <input type="checkbox" className="switch" checked={hideVertical === 'on'} onChange={(e) => setHideVertical(e.target.checked ? 'on' : 'off')} />
       </label>
     </section>
   );

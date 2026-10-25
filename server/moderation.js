@@ -136,7 +136,7 @@ reportsRouter.post('/', async (req, res) => {
         // Fediverse servers get a Flag from this instance, without saying who reported it.
         const comment = targetType === 'remote_comment' ? db.prepare('SELECT ap_id FROM network_comments WHERE id = ?').get(String(cid)) : null;
         const objects = [nv.ap_id, comment?.ap_id].filter(Boolean);
-        sendTo('i', { type: 'Flag', actor: actorUri('i'), object: objects, content: `${REPORT_REASONS[reason] || reason}${details ? `: ${details}` : ''}` }, [nv.ap_actor]);
+        sendTo('i', { type: 'Flag', actor: actorUri('i'), object: objects, reason, content: `${REPORT_REASONS[reason] || reason}${details ? `: ${details}` : ''}` }, [nv.ap_actor]);
       } else {
         await sendNetworkReport(Number(iid), { target_type: targetType === 'remote_video' ? 'video' : 'comment', target_id: targetType === 'remote_video' ? rid : cid, video_id: rid, reason, details }, req.user);
       }

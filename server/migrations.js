@@ -719,6 +719,20 @@ CREATE INDEX idx_channel_imports_user ON channel_imports(user_id, created_at);
       db.exec('CREATE INDEX IF NOT EXISTS idx_comments_import ON comments(import_key) WHERE import_key IS NOT NULL');
     },
   },
+  {
+    version: 10,
+    name: 'ClipTube network over ActivityPub: peer instance actors, pending peer follows, comment verdicts',
+    up(db) {
+      addColumn(db, 'instances', 'ap_actor', 'TEXT'); // the instance actor of a ClipTube peer that speaks protocol 4
+      addColumn(db, 'instances', 'ap_follow_id', 'TEXT'); // its Follow of our instance actor, while it waits for approval
+      addColumn(db, 'network_comments', 'status', "TEXT NOT NULL DEFAULT 'visible'"); // visible | pending | rejected
+      addColumn(db, 'network_comments', 'status_reason', 'TEXT');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_instances_ap_actor ON instances(ap_actor) WHERE ap_actor IS NOT NULL');
+      // The hub's game catalog, synced to members: source 'hub' (managed there), artwork on the hub.
+      addColumn(db, 'games', 'source', 'TEXT');
+      addColumn(db, 'games', 'artwork_url', 'TEXT');
+    },
+  },
 ];
 
 export function currentVersion(db) {

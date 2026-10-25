@@ -125,11 +125,12 @@ function outbox(req, res, user) {
   const rows = db.prepare(`SELECT v.id FROM videos v WHERE ${where} ORDER BY v.created_at DESC LIMIT ? OFFSET ?`).all(...args, PAGE, (page - 1) * PAGE);
   const items = rows.map((r) => {
     const v = loadVideoForAp(r.id);
-    const video = videoJson(v, base);
+    const video = videoJson(v, base, { singleAuthor: singleAuthor(req) });
     delete video['@context'];
+    // `updated` on the instance's Announces lets peers reconciling the outbox fetch only what changed.
     return user
       ? { id: `${video.id}/activity`, type: 'Create', actor: urls(base).person(v.username), to: video.to, cc: video.cc, published: video.published, object: video }
-      : { id: `${video.id}/announce`, type: 'Announce', actor: urls(base).instance(), to: [PUBLIC], published: video.published, object: video.id };
+      : { id: `${video.id}/announce`, type: 'Announce', actor: urls(base).instance(), to: [PUBLIC], published: video.published, updated: video.updated, object: video.id };
   });
   send(res, {
     '@context': CONTEXT,
@@ -161,6 +162,11 @@ for (const [prefix, kind] of [['users', 'u'], ['channels', 'c']]) {
     if (!u) throw new HttpError(404, 'Not found');
     send(res, collection(`${apBase(req)}/ap/${prefix}/${u.username}/followers`, followersCount(`${kind}:${u.id}`)));
   });
+  apRouter.get(`/${prefix}/:name/featured`, (req, res) => {
+    const u = localUser(req.params.name);
+    if (!u) throw new HttpError(404, 'Not found');
+    send(res, collection(`${apBase(req)}/ap/${prefix}/${u.username}/featured`, 0, { orderedItems: [] }));
+  });
   apRouter.get(`/${prefix}/:name/following`, (req, res) => {
     const u = localUser(req.params.name);
     if (!u) throw new HttpError(404, 'Not found');
@@ -179,7 +185,10 @@ function federatedVideo(id) {
   return loadVideoForAp(v.id);
 }
 
-apRouter.get('/videos/:id', (req, res) => send(res, videoJson(federatedVideo(req.params.id), apBase(req))));
+/** GoToSocial refuses objects with more than one attributedTo (PeerTube needs two). */
+const singleAuthor = (req) => /gotosocial/i.test(req.get('user-agent') || '');
+
+apRouter.get('/videos/:id', (req, res) => send(res, videoJson(federatedVideo(req.params.id), apBase(req), { singleAuthor: singleAuthor(req) })));
 
 apRouter.get('/videos/:id/likes', (req, res) => {
   const v = federatedVideo(req.params.id);
@@ -197,8 +206,36 @@ apRouter.get('/videos/:id/comments', (req, res) => {
   const base = apBase(req);
   const v = federatedVideo(req.params.id);
   const rows = db.prepare("SELECT * FROM comments WHERE video_id = ? AND status = 'visible' ORDER BY created_at LIMIT 500").all(v.id);
+  // ?embed=1 (what ClipTube instances ask for): the whole thread at once, with who wrote what.
+  if (req.query.embed === '1') {
+    send(res, collection(`${base}/ap/videos/${v.id}/comments`, rows.length, { orderedItems: rows.map((c) => embeddedNote(c, v, base)) }));
+    return;
+  }
   send(res, collection(`${base}/ap/videos/${v.id}/comments`, rows.length, { orderedItems: rows.map((c) => commentApId(c, base)) }));
 });
+
+/** A comment with its author's name and picture inline (attributedTo may be an embedded actor). */
+function embeddedNote(c, v, base) {
+  const note = noteJson(c, base);
+  delete note['@context'];
+  const a = db.prepare('SELECT * FROM users WHERE id = ?').get(c.user_id) || {};
+  const remote = !!a.remote_instance_id;
+  const [name, host] = remote ? String(a.username || '').split('@') : [a.username, null];
+  note.id = commentApId(c, base);
+  note.attributedTo = {
+    type: 'Person',
+    id: remote ? a.ap_actor || a.remote_profile_url || note.attributedTo : note.attributedTo,
+    preferredUsername: name || 'someone',
+    name: a.display_name || name,
+    url: remote ? a.remote_profile_url || null : `${base}/c/${a.username}`,
+    icon: remote ? (a.remote_avatar_url ? { type: 'Image', url: a.remote_avatar_url } : undefined) : a.avatar ? { type: 'Image', url: `${base}/media/avatars/${a.avatar}` } : undefined,
+    ...(remote && host ? { host } : {}),
+  };
+  note.hearted = !!c.hearted;
+  note.pinned = v.pinned_comment_id === c.id;
+  note.isUploader = c.user_id === v.user_id;
+  return note;
+}
 
 // Comments by people here on videos from the fediverse.
 apRouter.get('/notes/:id', (req, res) => {

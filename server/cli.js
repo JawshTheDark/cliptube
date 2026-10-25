@@ -27,6 +27,10 @@ import { setUserRole, setUserStatus } from './auth.js';
 import {
   enableHub, disableHub, joinNetwork, leaveHub, networkTick, introduce, subscribeBlocklist, networkRole, networkActive, isHub, PROTOCOL,
 } from './network.js';
+// The ActivityPub side of the network (peering, reconciling), and signed fetches as the instance actor.
+// Deliveries it queues are sent by the running server's job queue.
+import './ap/routes.js';
+import './ap/peering.js';
 
 const [, , area, cmd, ...rest] = process.argv;
 

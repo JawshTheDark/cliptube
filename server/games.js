@@ -13,8 +13,9 @@ import { HttpError, now, str } from './util.js';
 import { imageUpload, discard } from './uploads.js';
 import { convertImage } from './media.js';
 import { logAction } from './reports.js';
-import { NETWORK_VISIBLE, onLocalVideosChanged } from './network.js';
+import { NETWORK_VISIBLE, isHub, networkRole, onHubGames, onLocalVideosChanged } from './network.js';
 import { indexVideo } from './search.js';
+import { getSettings } from './db.js';
 
 export function slugify(s) {
   return String(s || '')
@@ -63,9 +64,73 @@ export function serializeGame(g, withCounts = false) {
     name: g.name,
     short_name: g.short_name || null,
     aliases: aliasList(g),
-    artwork_url: g.artwork ? `/media/thumbs/${g.artwork}` : null,
+    artwork_url: g.artwork ? `/media/thumbs/${g.artwork}` : g.artwork_url || null,
+    from_hub: g.source === 'hub', // managed by the network hub's catalog
     ...(withCounts ? counts(g) : {}),
   };
+}
+
+/** Removes a game: its clips stay, without a game. */
+function deleteGame(g) {
+  const affected = touchGameVideos(g.id);
+  db.prepare('UPDATE videos SET game_id = NULL WHERE game_id = ?').run(g.id);
+  for (const vid of affected) indexVideo(vid);
+  db.prepare('DELETE FROM games WHERE id = ?').run(g.id);
+  if (g.artwork) try { fs.unlinkSync(path.join(DIRS.thumbs, g.artwork)); } catch {}
+}
+
+/**
+ * The hub's catalog, applied on a member: its games are added or updated (the hub's version wins), and
+ * games that came from it but are gone there are deleted here as well. Games made here stay.
+ */
+onHubGames((list, hubUrl) => {
+  const hubHost = (() => {
+    try {
+      return new URL(hubUrl).host;
+    } catch {
+      return '';
+    }
+  })();
+  const art = (u) => {
+    try {
+      const x = new URL(String(u || ''));
+      return x.host === hubHost && /^https?:$/.test(x.protocol) ? x.href : null;
+    } catch {
+      return null;
+    }
+  };
+  const seen = new Set();
+  let changed = 0;
+  for (const raw of list.slice(0, 5000)) {
+    const id = slugify(raw?.id);
+    const name = str(raw?.name, 80).trim();
+    if (!id || id !== raw.id || !name) continue;
+    seen.add(id);
+    const short = str(raw.short_name, 30).trim() || null;
+    const aliases = cleanAliases(raw.aliases, id);
+    const artwork = art(raw.artwork_url);
+    const g = db.prepare('SELECT * FROM games WHERE id = ?').get(id);
+    if (!g) {
+      db.prepare("INSERT INTO games (id, name, short_name, aliases, artwork_url, source, created_at) VALUES (?, ?, ?, ?, ?, 'hub', ?)").run(id, name, short, aliases, artwork, now());
+      changed++;
+    } else if (g.source !== 'hub' || g.name !== name || (g.short_name || null) !== short || (g.aliases || '') !== aliases || (g.artwork_url || null) !== artwork) {
+      db.prepare("UPDATE games SET name = ?, short_name = ?, aliases = ?, artwork_url = ?, source = 'hub' WHERE id = ?").run(name, short, aliases, artwork, id);
+      if (g.name !== name || (g.aliases || '') !== aliases) for (const vid of touchGameVideos(id)) indexVideo(vid);
+      changed++;
+    }
+  }
+  for (const g of db.prepare("SELECT * FROM games WHERE source = 'hub'").all()) {
+    if (!seen.has(g.id)) {
+      deleteGame(g);
+      changed++;
+    }
+  }
+  if (changed) console.log(`[games] ${changed} change(s) from the hub's catalog`);
+});
+
+/** Games from the hub's catalog are changed on the hub, not on a member. */
+function ownGame(g) {
+  if (g.source === 'hub' && !isHub()) throw new HttpError(403, "This game comes from the network hub's catalog, so it's changed there");
 }
 
 /** Finds a game by id, name, short name or alias. */
@@ -130,7 +195,9 @@ export const gamesRouter = Router();
 
 gamesRouter.get('/', (req, res) => {
   const games = db.prepare('SELECT * FROM games ORDER BY name COLLATE NOCASE').all().map((g) => serializeGame(g, true));
-  res.json({ games });
+  const s = getSettings();
+  // Where the catalog comes from: this instance (and, on a hub, the whole network) or a hub.
+  res.json({ games, catalog: { is_hub: isHub(), hub_url: networkRole() === 'member' ? s.network_hub_url || null : null } });
 });
 
 gamesRouter.get('/:id', (req, res) => {
@@ -152,6 +219,7 @@ gamesRouter.post('/', requireModerator, (req, res) => {
 gamesRouter.patch('/:id', requireModerator, (req, res) => {
   const g = db.prepare('SELECT * FROM games WHERE id = ?').get(String(req.params.id));
   if (!g) throw new HttpError(404, 'Game not found');
+  ownGame(g);
   const b = req.body || {};
   const name = b.name !== undefined ? str(b.name, 80).trim() : g.name;
   if (!name) throw new HttpError(400, 'Name the game');
@@ -167,6 +235,7 @@ gamesRouter.post('/:id/artwork', requireModerator, imageUpload('artwork'), async
   const g = db.prepare('SELECT * FROM games WHERE id = ?').get(String(req.params.id));
   try {
     if (!g) throw new HttpError(404, 'Game not found');
+    ownGame(g);
     if (!req.file) throw new HttpError(400, 'No image was received');
     const name = `game-${g.id}-${Date.now()}.jpg`;
     try {
@@ -185,6 +254,7 @@ gamesRouter.post('/:id/artwork', requireModerator, imageUpload('artwork'), async
 gamesRouter.delete('/:id/artwork', requireModerator, (req, res) => {
   const g = db.prepare('SELECT * FROM games WHERE id = ?').get(String(req.params.id));
   if (!g) throw new HttpError(404, 'Game not found');
+  ownGame(g);
   if (g.artwork) try { fs.unlinkSync(path.join(DIRS.thumbs, g.artwork)); } catch {}
   db.prepare('UPDATE games SET artwork = NULL WHERE id = ?').run(g.id);
   res.json({ game: serializeGame(db.prepare('SELECT * FROM games WHERE id = ?').get(g.id), true) });
@@ -193,11 +263,9 @@ gamesRouter.delete('/:id/artwork', requireModerator, (req, res) => {
 gamesRouter.delete('/:id', requireModerator, (req, res) => {
   const g = db.prepare('SELECT * FROM games WHERE id = ?').get(String(req.params.id));
   if (!g) throw new HttpError(404, 'Game not found');
-  const affected = touchGameVideos(g.id);
-  db.prepare('UPDATE videos SET game_id = NULL WHERE game_id = ?').run(g.id);
-  for (const vid of affected) indexVideo(vid);
-  db.prepare('DELETE FROM games WHERE id = ?').run(g.id);
-  if (g.artwork) try { fs.unlinkSync(path.join(DIRS.thumbs, g.artwork)); } catch {}
+  ownGame(g);
+  // On the hub, this takes the game out of every member's catalog at their next sync.
+  deleteGame(g);
   logAction(req.user, 'game.delete', { targetType: 'game', targetId: g.id, targetLabel: g.name });
   res.json({ ok: true });
 });

@@ -1,4 +1,6 @@
 // Hub network between real instances: joining, syncing, cross-instance interactions and moderation.
+// Since protocol 4 the instances talk ActivityPub to each other, so answers arrive within moments
+// rather than in the same request: the tests wait for them.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startInstance, Client, setupAdmin, uploadReady, waitFor } from './helpers.js';
@@ -15,6 +17,7 @@ const net = (c) => c.get('/api/videos?scope=network').then((r) => r.data.videos)
 before(async () => {
   [hub, member] = await Promise.all([startInstance('hub'), startInstance('member')]);
   [A, B] = await Promise.all([setupAdmin(hub, 'alice', 'Hub A'), setupAdmin(member, 'bob', 'Member B')]);
+  for (const [c, inst] of [[A, hub], [B, member]]) await c.patch('/api/admin/settings', { public_url: inst.url });
   [aVideo, bVideo] = await Promise.all([uploadReady(A, { title: 'Alice on the hub', tags: 'valorant' }), uploadReady(B, { title: 'Bob on the member', tags: 'rust' })]);
 });
 after(async () => {
@@ -27,10 +30,16 @@ test('hub mode, open joining and two-way sync', async () => {
   assert.equal(h.hub.settings.require_approval, false);
   const j = (await B.post('/api/admin/network/join', { hub_url: hub.url })).data;
   assert.equal(j.member.status, 'approved', JSON.stringify(j));
-  await A.post('/api/admin/network/sync');
-  await B.post('/api/admin/network/sync');
+  await waitFor(async () => {
+    await A.post('/api/admin/network/sync');
+    await B.post('/api/admin/network/sync');
+    return (await net(A)).length === 1 && (await net(B)).length === 1;
+  }, { what: 'both instances to see each other' });
   assert.deepEqual((await net(A)).map((v) => v.title), ['Bob on the member']);
   assert.deepEqual((await net(B)).map((v) => v.title), ['Alice on the hub']);
+  // They peer over ActivityPub.
+  const peers = (await B.get('/api/admin/network')).data.peers;
+  assert.equal(peers.find((p) => p.url === hub.url)?.transport, 'activitypub', JSON.stringify(peers));
 });
 
 test('likes, comments and subscriptions across instances', async () => {
@@ -38,29 +47,35 @@ test('likes, comments and subscriptions across instances', async () => {
   const iidOnB = remoteA.remote.peer_id;
   const like = (await B.post(`/api/network/videos/${iidOnB}/${aVideo.id}/like`, { value: 1 })).data;
   assert.equal(like.likes, 1);
-  assert.equal((await A.get(`/api/videos/${aVideo.id}`)).data.video.likes, 1);
+  await waitFor(async () => (await A.get(`/api/videos/${aVideo.id}`)).data.video.likes === 1, { what: 'the like on the hub' });
 
   const sent = (await B.post(`/api/network/videos/${iidOnB}/${aVideo.id}/comments`, { body: 'from the member' })).data;
-  const posted = sent.comment;
-  assert.ok(posted.id);
-  // A first comment from someone new is held on the hosting instance until its owner approves it.
-  assert.equal(sent.held, true);
+  // It waits for the hosting instance's answer; a first comment from someone new is held there.
+  assert.equal(sent.pending, true);
+  const held = await waitFor(async () => (await A.get(`/api/videos/${aVideo.id}/comments`)).data.comments.find((c) => c.body === 'from the member'), { what: 'the held comment on the hub' });
+  assert.equal(held.status, 'held');
   assert.equal((await new Client(hub.url).get(`/api/videos/${aVideo.id}/comments`)).data.comments.length, 0);
-  assert.equal((await A.patch(`/api/videos/${aVideo.id}/comments/${posted.id}`, { status: 'visible' })).status, 200);
+  assert.equal((await B.get(`/api/network/videos/${iidOnB}/${aVideo.id}/comments`)).data.comments[0].status, 'pending');
+  assert.equal((await A.patch(`/api/videos/${aVideo.id}/comments/${held.id}`, { status: 'visible' })).status, 200);
   const onHub = (await A.get(`/api/videos/${aVideo.id}/comments`)).data.comments;
   assert.equal(onHub[0].author.remote, true);
   assert.match(onHub[0].author.username, /^bob@127\.0\.0\.1:/);
-  const onB = (await B.get(`/api/network/videos/${iidOnB}/${aVideo.id}/comments`)).data.comments;
-  assert.equal(onB[0].can_delete, true);
+  // The approval goes back to the member, and its page shows the hub's whole thread.
+  const onB = await waitFor(async () => {
+    const c = (await B.get(`/api/network/videos/${iidOnB}/${aVideo.id}/comments`)).data.comments[0];
+    return c?.status === 'visible' ? c : null;
+  }, { what: 'the comment to be accepted' });
+  assert.equal(onB.can_delete, true);
+  assert.equal(onB.author.username, 'bob', 'people from here show up as themselves in the thread');
 
-  const iidOnA = (await net(A))[0].remote.peer_id;
-  const sub = (await A.post(`/api/network/channels/${iidOnA}/bob/subscribe`)).data;
+  const remoteB = (await net(A))[0];
+  const sub = (await A.post(`/api/network/channels/${remoteB.remote.peer_id}/${remoteB.uploader.username}/subscribe`)).data;
   assert.equal(sub.subscribed, true);
-  assert.equal((await B.get('/api/users/bob')).data.channel.subscriber_count, 1);
+  await waitFor(async () => (await B.get('/api/users/bob')).data.channel.subscriber_count === 1, { what: 'the subscription on the member' });
   assert.deepEqual((await A.get('/api/me/feed')).data.videos.map((v) => v.title), ['Bob on the member']);
 
-  assert.equal((await B.del(`/api/network/videos/${iidOnB}/${aVideo.id}/comments/${posted.id}`)).status, 200);
-  assert.equal((await A.get(`/api/videos/${aVideo.id}/comments`)).data.comments.length, 0);
+  assert.equal((await B.del(`/api/network/videos/${iidOnB}/${aVideo.id}/comments/${onB.id}`)).status, 200);
+  await waitFor(async () => (await A.get(`/api/videos/${aVideo.id}/comments`)).data.comments.length === 0, { what: 'the deletion on the hub' });
 });
 
 test('a new upload notifies subscribers on another instance', async () => {
@@ -74,13 +89,20 @@ test('a new upload notifies subscribers on another instance', async () => {
   assert.ok(n.url.endsWith(`/${fresh.id}`), n.url);
 });
 
-test('forged inbox requests are refused', async () => {
+test('forged requests are refused', async () => {
+  // The old signed inbox, and an ActivityPub delivery without a valid signature.
   const r = await fetch(`${hub.url}/api/network/inbox`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-ClipTube-Signature': 'AAAA' },
     body: JSON.stringify({ type: 'like', instance: member.url, ts: Date.now(), nonce: 'n1', actor: { username: 'bob' }, video_id: aVideo.id, value: 1 }),
   });
   assert.equal(r.status, 401);
+  const ap = await fetch(`${hub.url}/ap/inbox`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/activity+json', Signature: `keyId="${member.url}/ap/users/bob#main-key",algorithm="rsa-sha256",headers="(request-target) host date digest",signature="AAAA"`, Date: new Date().toUTCString() },
+    body: JSON.stringify({ type: 'Like', actor: `${member.url}/ap/users/bob`, object: `${hub.url}/ap/videos/${aVideo.id}` }),
+  });
+  assert.equal(ap.status, 401);
 });
 
 test('reports about remote videos reach the instance that hosts them', async () => {
@@ -89,46 +111,73 @@ test('reports about remote videos reach the instance that hosts them', async () 
   assert.equal(r.status, 201, JSON.stringify(r.data));
   const onA = await waitFor(async () => (await A.get('/api/mod/reports')).data.reports.find((x) => x.target_id === aVideo.id), { what: 'forwarded report' });
   assert.equal(onA.reason, 'copyright');
-  assert.match(onA.reporter, /^bob@/);
+  // Reports travel as ActivityPub Flags from the instance, without the reporter's name.
+  assert.match(onA.reporter, /\(network\)$/);
   assert.ok(onA.from_instance);
   assert.equal((await B.get('/api/mod/reports')).data.reports[0].target_type, 'remote_video');
 
   // Acting on it there takes the video off the whole network, and restoring brings it back.
   assert.equal((await A.post(`/api/mod/reports/${onA.id}/action`, { action: 'remove_video', reason: 'copyright' })).status, 200);
-  await B.post('/api/admin/network/sync');
-  assert.equal((await net(B)).length, 0);
+  await waitFor(async () => {
+    await B.post('/api/admin/network/sync');
+    return (await net(B)).length === 0;
+  }, { what: 'the removal on the member' });
   await A.post(`/api/mod/videos/${aVideo.id}`, { action: 'restore' });
-  await B.post('/api/admin/network/sync');
-  assert.equal((await net(B)).length, 1);
+  await waitFor(async () => {
+    await B.post('/api/admin/network/sync');
+    return (await net(B)).length === 1;
+  }, { what: 'the video back on the member' });
 });
 
-test('games travel with videos across the network', async () => {
+test("games travel with videos, and the hub's game catalog syncs to members", async () => {
   assert.equal((await A.post('/api/games', { name: 'Counter-Strike 2', short_name: 'CS2' })).status, 201);
   await A.patch(`/api/videos/${aVideo.id}`, { game: 'cs2' });
-  await B.post('/api/admin/network/sync');
-  const item = (await net(B))[0];
+  const item = await waitFor(async () => {
+    await B.post('/api/admin/network/sync');
+    const it = (await net(B))[0];
+    return it?.game ? it : null;
+  }, { what: 'the game on the member' });
   assert.deepEqual(item.game, { id: 'cs2', name: 'Counter-Strike 2' });
   assert.ok(item.tags.includes('cs2'), item.tags.join());
-  // B doesn't list the game itself but can still browse it...
-  const page = (await B.get('/api/games/cs2')).data.game;
-  assert.equal(page.remote_only, true);
-  assert.equal(page.network_count, 1);
-  // ...and once B adds it under another id, an alias ties the two together.
-  await B.post('/api/games', { name: 'CS2 (Valve)', short_name: 'counter-strike', aliases: 'cs2' });
-  const byGame = (await B.get('/api/videos?scope=all&game=counter-strike')).data.videos;
-  assert.deepEqual(byGame.map((v) => v.title), ['Alice on the hub']);
+
+  // B never added the game: it comes with the hub's catalog, which B can use but not change.
+  const onB = (await B.get('/api/games')).data;
+  const g = onB.games.find((x) => x.id === 'cs2');
+  assert.equal(g?.from_hub, true, JSON.stringify(onB.games));
+  assert.equal(onB.catalog.hub_url, hub.url);
+  assert.equal(g.network_count, 1);
+  assert.equal((await B.patch('/api/games/cs2', { name: 'Renamed' })).status, 403);
+  await B.patch(`/api/videos/${bVideo.id}`, { game: 'cs2' });
+  assert.equal((await B.get(`/api/videos/${bVideo.id}`)).data.video.game?.id, 'cs2');
+
+  // The hub deletes the game: it leaves B's catalog too, and the clips keep going without it.
+  assert.equal((await A.del('/api/games/cs2')).status, 200);
+  await B.post('/api/admin/network/sync');
+  assert.ok(!(await B.get('/api/games')).data.games.some((x) => x.id === 'cs2'));
+  assert.equal((await B.get(`/api/videos/${bVideo.id}`)).data.video.game, null);
+  // Games B adds itself stay B's own.
+  assert.equal((await B.post('/api/games', { name: 'Rust' })).status, 201);
+  await B.post('/api/admin/network/sync');
+  assert.ok((await B.get('/api/games')).data.games.some((x) => x.id === 'rust' && !x.from_hub));
 });
 
 test('blocking, network switches and hub moderation', async () => {
   const iidOnB = (await net(B))[0].remote.peer_id;
   const iidOnA = (await net(A))[0].remote.peer_id;
 
+  // B blocks A: A's comments are refused there (A hears so from the refused delivery), and A's videos vanish on B.
   await B.patch(`/api/admin/network/instances/${iidOnB}`, { blocked: true, reason: 'test' });
-  const refused = await A.post(`/api/network/videos/${iidOnA}/${bVideo.id}/comments`, { body: 'nope' });
-  assert.equal(refused.status, 403);
+  const tried = await A.post(`/api/network/videos/${iidOnA}/${bVideo.id}/comments`, { body: 'nope' });
+  assert.equal(tried.status, 201);
+  const refused = await waitFor(async () => (await A.get(`/api/network/videos/${iidOnA}/${bVideo.id}/comments`)).data.comments.find((c) => c.body === 'nope' && c.status === 'rejected'), {
+    what: 'the refusal to come back',
+  });
+  assert.match(refused.status_reason, /refused/);
+  assert.ok(!(await B.get(`/api/videos/${bVideo.id}/comments`)).data.comments.some((c) => c.body === 'nope'));
   assert.equal((await net(B)).length, 0);
   await B.patch(`/api/admin/network/instances/${iidOnB}`, { blocked: false });
 
+  // The hub turns comments off between instances: members refuse to send them.
   await A.patch('/api/admin/network/hub', { allow_comments: false });
   await B.post('/api/admin/network/sync');
   const off = await B.post(`/api/network/videos/${iidOnB}/${aVideo.id}/comments`, { body: 'nope' });
@@ -156,6 +205,7 @@ test('lockdown, approval and bans apply to new instances', async () => {
   const third = await startInstance('third');
   try {
     const C = await setupAdmin(third, 'carol', 'Third C');
+    await C.patch('/api/admin/settings', { public_url: third.url });
     await A.patch('/api/admin/network/hub', { accept_new: false });
     const locked = await C.post('/api/admin/network/join', { hub_url: hub.url });
     assert.equal(locked.status, 400);

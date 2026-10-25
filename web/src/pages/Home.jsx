@@ -62,7 +62,8 @@ export default function Home({ trending = false }) {
   // In a network, Home mixes in clips from other instances unless "This site" is picked.
   const scope = networked ? params.get('scope') || 'all' : 'local';
   const [tags, setTags] = useState([]);
-  const [hideVertical, setHideVertical] = usePref('hide_vertical');
+  // Set under Settings, Watching (kept off the home page so it doesn't break up the feed).
+  const [hideVertical] = usePref('hide_vertical');
   const [hideWatched, setHideWatched] = usePref('hide_watched');
   const [hidden, setHidden] = useState(() => new Set());
   useFeedLink('/feeds/videos.atom', site.site_name);
@@ -115,13 +116,6 @@ export default function Home({ trending = false }) {
           </span>
           <label className="checkbox">
             <input type="checkbox" checked={hideWatched === 'on'} onChange={(e) => setHideWatched(e.target.checked ? 'on' : 'off')} /> Hide watched
-          </label>
-        </div>
-      )}
-      {feed === 'latest' && !trending && !tag && (
-        <div className="feed-note subtle">
-          <label className="checkbox">
-            <input type="checkbox" checked={hideVertical === 'on'} onChange={(e) => setHideVertical(e.target.checked ? 'on' : 'off')} /> Keep vertical clips in their own tab
           </label>
         </div>
       )}

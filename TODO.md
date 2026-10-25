@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v1.2.0): a hub (clips.irc.so) plus direct peering between instances, with
+Planned work. Current state (v1.3.0): a hub (clips.irc.so) plus direct peering between instances over ActivityPub, with
 cross-instance likes, comments and subscriptions signed per instance, and ActivityPub so Mastodon and PeerTube can follow channels. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 
@@ -80,7 +80,8 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
       for people who want the full fediverse feature set. Write up the trade-offs.
       Decided: stay ClipTube and speak ActivityPub; point people who need live streaming, P2P or plugins to
       PeerTube. ClipTube instances keep their own protocol for the instance layer. See docs/federation.md.
-- [ ] Test against a real PeerTube instance (docker image) in CI or a local script.
+- [x] Test against a real PeerTube instance (docker image) in CI or a local script.
+      `scripts/fediverse-sandbox.sh <ssh-host>`: PeerTube 7.3 in a private Docker sandbox, all checks passing.
 
 ### Mastodon
 
@@ -90,7 +91,12 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
       pages have "Follow from your server" (remote follow), and `/authorize_interaction` works the other way.
 - [x] Mastodon replies show the author's handle and avatar in the comment thread, linking to their profile.
       The leading @mention Mastodon adds to replies is dropped, since the thread shows it already.
-- [ ] Test against a real Mastodon instance (or GoToSocial for something lighter).
+- [x] Test against a real Mastodon instance (or GoToSocial for something lighter).
+      GoToSocial 0.22 in the same sandbox: follows, timeline with video, replies, favourites, boosts, both ways.
+- [x] ClipTube instances talk ActivityPub to each other too (protocol 4, ClipTube 1.3): peering is a follow
+      between instance actors, comments get Accept or Reject answers, and outboxes are reconciled each round.
+- [x] The hub's game catalog syncs to members, so not everyone builds one; a game deleted on the hub goes
+      from every member's catalog.
 
 ## 4. Better than YouTube (ideas from common complaints)
 

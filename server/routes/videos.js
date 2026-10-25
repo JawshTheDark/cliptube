@@ -17,7 +17,7 @@ import { canDownloadOriginal, communityFor, originalFile, publishedCaptions, pub
 import { maybeNotifyUpload, notifyComment } from '../notify.js';
 import { indexVideo } from '../search.js';
 import { recordView, recordWatch, viewSource } from '../stats.js';
-import { apCommentCreated, apVideoChanged, sendCommentDelete, sendVideoDelete } from '../ap/deliver.js';
+import { apCommentCreated, apCommentVerdict, apVideoChanged, sendCommentDelete, sendVideoDelete } from '../ap/deliver.js';
 
 export const videosRouter = Router();
 
@@ -209,12 +209,12 @@ export const LOCAL_LIST_COLS = `'local' AS src, v.id AS vid, NULL AS peer_id, v.
   v.created_at, v.thumb_path AS thumb, v.edit_version AS ver, v.user_id, u.username AS u_username, u.display_name AS u_display,
   u.avatar AS u_avatar, NULL AS u_avatar_url, NULL AS thumb_url, NULL AS video_url, NULL AS watch_url, NULL AS uploader_url,
   NULL AS peer_name, NULL AS peer_url, '' AS tags, (SELECT COALESCE(SUM(value), 0) FROM likes l WHERE l.video_id = v.id) AS score,
-  v.game_id AS game_id, (SELECT name FROM games WHERE id = v.game_id) AS game_name, ${COMMUNITY_COLS}`;
+  v.game_id AS game_id, (SELECT name FROM games WHERE id = v.game_id) AS game_name, ${COMMUNITY_COLS}, NULL AS origin`;
 export const REMOTE_LIST_COLS = `'remote' AS src, r.remote_id AS vid, r.instance_id AS peer_id, r.title, r.description, r.duration, r.width,
   r.height, r.views, r.created_at, NULL AS thumb, 0 AS ver, NULL AS user_id, r.uploader_username AS u_username,
   r.uploader_display_name AS u_display, NULL AS u_avatar, r.uploader_avatar_url AS u_avatar_url, r.thumbnail_url AS thumb_url,
   r.video_url, r.watch_url, r.uploader_url, p.name AS peer_name, p.url AS peer_url, r.tags, r.likes AS score,
-  r.game_slug AS game_id, r.game_name AS game_name, NULL AS c_title, NULL AS c_thumb`;
+  r.game_slug AS game_id, r.game_name AS game_name, NULL AS c_title, NULL AS c_thumb, r.origin_type AS origin`;
 
 export function mapListRow(r) {
   if (r.src === 'local') {
@@ -241,7 +241,7 @@ export function mapListRow(r) {
     instance_id: r.peer_id, remote_id: r.vid, title: r.title, description: r.description, duration: r.duration, width: r.width,
     height: r.height, views: r.views, likes: r.score, created_at: r.created_at, tags: r.tags, thumbnail_url: r.thumb_url,
     video_url: r.video_url, watch_url: r.watch_url, uploader_username: r.u_username, uploader_display_name: r.u_display,
-    uploader_avatar_url: r.u_avatar_url, uploader_url: r.uploader_url, peer_name: r.peer_name, peer_url: r.peer_url,
+    uploader_avatar_url: r.u_avatar_url, uploader_url: r.uploader_url, peer_name: r.peer_name, peer_url: r.peer_url, origin_type: r.origin,
   });
 }
 
@@ -716,6 +716,7 @@ videosRouter.patch('/:id/comments/:cid', requireAuth, (req, res) => {
     db.prepare("UPDATE comments SET status = 'visible', held_reason = NULL WHERE id = ?").run(c.id);
     notifyComment(c.id);
     apCommentCreated(c.id);
+    if (c.status === 'held') apCommentVerdict(c, true).catch(() => {}); // a ClipTube peer is waiting to hear
     if (req.user.id !== v.user_id) logAction(req.user, 'comment.approve', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });
   }
   if (b.pinned !== undefined || b.hearted !== undefined) {
@@ -759,6 +760,8 @@ videosRouter.delete('/:id/comments/:cid', requireAuth, (req, res) => {
   db.prepare('DELETE FROM comments WHERE id = ?').run(c.id);
   const author = db.prepare('SELECT username, remote_instance_id FROM users WHERE id = ?').get(c.user_id);
   if (author && !author.remote_instance_id) sendCommentDelete(c, author.username, v.user_id);
+  // Deleting a held comment from a ClipTube peer is the answer to it.
+  if (c.status === 'held' && c.ap_id) apCommentVerdict(c, false, 'Not approved').catch(() => {});
   if (req.user.is_moderator && req.user.id !== c.user_id && req.user.id !== v.user_id) {
     logAction(req.user, 'comment.delete', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });
   }
