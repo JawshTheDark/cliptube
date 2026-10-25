@@ -4222,3 +4222,110 @@ th.num {
 .party-message .link-btn {
   margin-left: 6px;
 }
+
+/* ---- live streaming ---- */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+.live-now {
+  margin: 4px 0 20px;
+}
+.live-now h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+.live-now h2 .icon {
+  color: var(--accent);
+}
+.live-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.live-card {
+  flex: none;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: linear-gradient(140deg, rgba(255, 0, 51, 0.18), var(--surface) 60%);
+  border: 1px solid rgba(255, 0, 51, 0.35);
+  color: var(--text);
+  text-decoration: none;
+}
+.live-card:hover {
+  border-color: var(--accent);
+}
+.live-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.live-card-title {
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.live-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.live-banner {
+  margin-top: 8px;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid rgba(255, 0, 51, 0.45);
+}
+.live-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.copy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.copy-row code {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  word-break: break-all;
+}
+.live-form {
+  margin-top: 12px;
+}

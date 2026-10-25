@@ -30,6 +30,12 @@ export default function Channel() {
   const [sort, setSort] = useState('new');
   const [withLinked, setWithLinked] = useState(false);
   const [playlists, setPlaylists] = useState(null);
+  const [live, setLive] = useState(null);
+  useEffect(() => {
+    api(`/live/${encodeURIComponent(username)}`)
+      .then((r) => setLive(r.live ? r.stream : null))
+      .catch(() => setLive(null));
+  }, [username]);
   useEffect(() => {
     if (tab !== 'playlists') return;
     api(`/users/${encodeURIComponent(username)}/playlists`)
@@ -98,6 +104,14 @@ export default function Channel() {
             <span>{plural(channel.total_views, 'view')}</span>
           </div>
           {channel.bio && <p className="bio">{channel.bio}</p>}
+          {live && (
+            <Link to={`/live/${channel.username}`} className="notice live-notice live-banner">
+              <span className="live-badge">
+                <span className="live-dot" /> LIVE
+              </span>{' '}
+              {live.title}
+            </Link>
+          )}
           {linked.length > 0 && (
             <div className="also-on">
               <span className="muted">Also on</span>

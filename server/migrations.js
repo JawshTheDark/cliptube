@@ -854,6 +854,41 @@ CREATE INDEX IF NOT EXISTS idx_room_messages_room ON room_messages(room, id);
 `);
     },
   },
+  {
+    version: 15,
+    name: 'live streaming: stream keys and broadcasts',
+    up(db) {
+      db.exec(`
+CREATE TABLE IF NOT EXISTS live_channels (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  stream_key TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL DEFAULT '',             -- for the next stream (and the current one)
+  description TEXT NOT NULL DEFAULT '',
+  game_id TEXT,
+  visibility TEXT NOT NULL DEFAULT 'public',  -- public | unlisted
+  save_recording INTEGER NOT NULL DEFAULT 1,  -- keep the stream as a draft video when it ends
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS live_streams (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  game_id TEXT,
+  visibility TEXT NOT NULL DEFAULT 'public',
+  status TEXT NOT NULL DEFAULT 'live',        -- live | ended
+  started_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL,              -- last time MediaMTX had it coming in
+  ended_at INTEGER,
+  peak_viewers INTEGER NOT NULL DEFAULT 0,
+  save_recording INTEGER NOT NULL DEFAULT 1,
+  video_id TEXT                               -- the saved recording
+);
+CREATE INDEX IF NOT EXISTS idx_live_streams_user ON live_streams(user_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_live_streams_status ON live_streams(status);
+`);
+    },
+  },
 ];
 
 export function currentVersion(db) {

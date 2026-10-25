@@ -26,6 +26,7 @@ its hub, and Mastodon and PeerTube can follow along.
 - [Clip Tools and Games](Clip-Tools-and-Games.md): clipping, GIF and MP4 exports, looping links, compare, the
   game catalog and SteamGridDB artwork
 - [Watch Parties](Watch-Parties.md): watching with friends in sync, the queue, chat and reactions
+- [Live Streaming](Live-Streaming.md): going live from OBS, the live chat, recordings, and turning it on
 - [Android App](Android-App.md): installing the app, servers and sign-in, uploading from your phone
 
 ## Running a server

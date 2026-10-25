@@ -16,8 +16,37 @@ services:
     environment:
       - TRUST_PROXY=1
       - DATA_DIR=/data
+      # Live streaming, with the "live" profile (see below): MediaMTX's name here, the secret it shares with
+      # ClipTube, and the addresses shown to streamers (rtmp://your.site/live by default; SRT only when set).
+      - LIVE_SERVER=${LIVE_SERVER:-}
+      - LIVE_SECRET=${LIVE_SECRET:-}
+      - LIVE_RTMP_URL=${LIVE_RTMP_URL:-}
+      - LIVE_SRT_URL=${LIVE_SRT_URL:-}
     volumes:
       - ./data:/data
+    networks:
+      - proxy
+
+  # Live streaming (optional). Turn it on with these lines in .env, then `docker compose up -d`:
+  #   COMPOSE_PROFILES=live
+  #   LIVE_SERVER=cliptube-live
+  #   LIVE_SECRET=<a long random string>
+  # and make sure ./data/live exists and belongs to PUID:PGID. Streamers need port 1935 (RTMP) reachable;
+  # 8890/udp (SRT) is optional.
+  live:
+    profiles: [live]
+    image: bluenviron/mediamtx:1.21.2
+    container_name: cliptube-live
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      - MTX_AUTHHTTPADDRESS=http://cliptube:3000/api/live/auth?secret=${LIVE_SECRET:-}
+    volumes:
+      - ./live/mediamtx.yml:/mediamtx.yml:ro
+      - ./data/live:/recordings
+    ports:
+      - "1935:1935"
+      - "8890:8890/udp"
     networks:
       - proxy
 

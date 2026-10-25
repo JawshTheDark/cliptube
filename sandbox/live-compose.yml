@@ -1,0 +1,45 @@
+# Live streaming sandbox (scripts/live-sandbox.sh): ClipTube built from the working tree and MediaMTX, on a
+# network of their own with nothing published. The check streams to MediaMTX from inside ClipTube's container.
+name: cliptube-live-sandbox
+
+services:
+  cliptube:
+    image: cliptube:sandbox-live
+    user: "1000:1000"
+    environment:
+      - DATA_DIR=/data
+      - SETUP_CODE=sandbox
+      - LIVE_SERVER=cliptube-live
+      - LIVE_SECRET=sandbox-live-secret-4711
+      - LIVE_END_GRACE_MS=5000
+      - LIVE_POLL_MS=1000
+      - LOG_REQUESTS=1
+    volumes:
+      - ./data:/data
+    networks: [livenet]
+
+  cliptube-live:
+    image: bluenviron/mediamtx:1.21.2
+    user: "1000:1000"
+    environment:
+      - MTX_AUTHHTTPADDRESS=http://cliptube:3000/api/live/auth?secret=sandbox-live-secret-4711
+    volumes:
+      - ./src/live/mediamtx.yml:/mediamtx.yml:ro
+      - ./data/live:/recordings
+    networks: [livenet]
+
+  # Only with --keep: ClipTube on the host's 127.0.0.1:3320 for a browser, through this relay, so ClipTube itself
+  # still has no way out.
+  peek:
+    image: cliptube:sandbox-live
+    profiles: [peek]
+    user: "1000:1000"
+    command: ["node", "-e", "const net = require('node:net'); net.createServer((c) => { const u = net.connect(3000, 'cliptube'); c.pipe(u).pipe(c); c.on('error', () => u.destroy()); u.on('error', () => c.destroy()); }).listen(3320);"]
+    healthcheck: { disable: true }
+    ports: ["127.0.0.1:3320:3320"]
+    networks: [livenet, peek]
+
+networks:
+  livenet:
+    internal: true
+  peek: {}

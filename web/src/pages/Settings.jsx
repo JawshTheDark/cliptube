@@ -7,6 +7,7 @@ import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { MoveSettings } from '../components/MoveChannel.jsx';
 import { LinkedAccounts } from '../components/LinkedAccounts.jsx';
+import { LiveSettings } from './Live.jsx';
 import { formatBytes, formatDate, isAnonymous, setAnonymous, usePref } from '../util.js';
 
 export default function Settings() {
@@ -181,6 +182,7 @@ function MoreSettings() {
       <PrivacySettings s={s} patch={patch} />
       <StorageCard storage={s.storage} />
       <DataSettings />
+      <LiveSettings />
       <LinkedAccounts />
       <MoveSettings />
       <DeleteAccount initial={s.delete_requested_at} />

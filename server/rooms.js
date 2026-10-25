@@ -60,8 +60,10 @@ export function addGuest(roomId, name) {
 
 const publicMember = (m) => ({ id: m.id, name: m.name, username: m.username, avatar_url: m.avatar_url, guest: m.guest });
 
-/** The members with an event stream open right now. */
-export const membersOf = (roomId) => [...(rooms.get(roomId)?.members.values() || [])].map(publicMember);
+/** The members with an event stream open right now (not counting anonymous viewers). */
+export const membersOf = (roomId) => [...(rooms.get(roomId)?.members.values() || [])].filter((m) => !m.anonymous).map(publicMember);
+/** Everyone with an event stream open, anonymous viewers included. */
+export const viewerCount = (roomId) => rooms.get(roomId)?.members.size || 0;
 export const isOnline = (roomId, memberId) => !!rooms.get(roomId)?.members.get(memberId)?.streams.size;
 
 function write(res, event, data) {
@@ -96,7 +98,7 @@ export function openStream(req, res, roomId, member, hello) {
   m.streams.add(res);
   db.prepare('INSERT OR IGNORE INTO room_seen (room, member_id, first_at) VALUES (?, ?, ?)').run(roomId, member.id, now());
   write(res, 'hello', { ...hello, you: { ...publicMember(m), ...(hello.you || {}) }, now: now() });
-  if (joined) broadcast(roomId, 'members', { members: membersOf(roomId) });
+  if (joined && !member.anonymous) broadcast(roomId, 'members', { members: membersOf(roomId) });
   else write(res, 'members', { members: membersOf(roomId) });
   const timer = setInterval(() => write(res, 'time', { now: now() }), KEEPALIVE_MS);
   req.on('close', () => {
@@ -104,7 +106,7 @@ export function openStream(req, res, roomId, member, hello) {
     m.streams.delete(res);
     if (!m.streams.size) {
       r.members.delete(m.id);
-      broadcast(roomId, 'members', { members: membersOf(roomId) });
+      if (!m.anonymous) broadcast(roomId, 'members', { members: membersOf(roomId) });
       if (!r.members.size) rooms.delete(roomId);
     }
   });

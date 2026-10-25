@@ -1,0 +1,44 @@
+# MediaMTX, the live streaming server next to ClipTube (see docs/wiki/Live-Streaming.md). It takes streams in
+# over RTMP or SRT and serves them as low-latency HLS, without re-encoding. ClipTube decides who may publish
+# and read: docker-compose.yml points authHTTPAddress at ClipTube, with the LIVE_SECRET from .env.
+
+logLevel: info
+
+authMethod: http
+authHTTPAddress: http://cliptube:3000/api/live/auth
+authHTTPExclude: []
+
+# The control API, for ClipTube to see which streams are coming in. Only reachable on the Docker network.
+api: yes
+apiAddress: :9997
+
+rtsp: no
+rtmp: yes
+rtmpAddress: :1935
+srt: yes
+srtAddress: :8890
+webrtc: no
+moq: no
+playback: no
+metrics: no
+
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsSegmentCount: 7
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+hlsAllowOrigins: ['*']
+
+# Every stream is recorded; ClipTube turns the recording into a draft video when the stream ends (or deletes it).
+pathDefaults:
+  record: yes
+  recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+  recordFormat: fmp4
+  recordPartDuration: 1s
+  recordSegmentDuration: 1h
+  recordDeleteAfter: 0s
+
+# Streams go to live/<channel name>; nothing else is accepted.
+paths:
+  "~^live/[A-Za-z0-9_]{3,20}$": {}

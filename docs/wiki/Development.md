@@ -101,6 +101,14 @@ deliveries:
   interop checks against PeerTube and GoToSocial in a private Docker sandbox on that host (see
   [Fediverse](Fediverse.md#checked-against-real-servers)).
 
+## Live streaming work
+
+Tests replace MediaMTX with a small stand-in (`test/live.test.js`). To check against the real one,
+`scripts/live-sandbox.sh <ssh-host>` builds ClipTube from your working tree, runs it with MediaMTX in a private
+Docker sandbox, streams a test picture with ffmpeg, and checks the stream, the HLS through ClipTube and the saved
+recording (see [Live Streaming](Live-Streaming.md#how-it-works)). With `--keep` the sandbox stays up, and
+`ssh -N -L 3320:127.0.0.1:3320 <ssh-host>` shows it in your browser at http://localhost:3320.
+
 ## Releasing
 
 1. Set the new version: `npm version 1.5.0 --no-git-tag-version` (updates `package.json` and

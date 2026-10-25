@@ -7,6 +7,7 @@ import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useFeedLink } from '../components/FeedLink.jsx';
 import { usePaged, usePref } from '../util.js';
+import { LiveNow } from './Live.jsx';
 
 /** "Not interested", "more of this game", "less of this channel" on For-you cards. */
 function FeedControls({ video, onHide }) {
@@ -108,6 +109,8 @@ export default function Home({ trending = false }) {
           ))}
         </div>
       )}
+
+      {!trending && !tag && <LiveNow />}
 
       {forYou && (
         <div className="feed-note">

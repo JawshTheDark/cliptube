@@ -39,6 +39,7 @@ import { channelExportPublicRouter, transferRouter } from './transfer.js';
 import { linksRouter, relMeLinks, startLinkChecks } from './links.js';
 import { channelPlaylistsRouter, playlistsRouter } from './playlists.js';
 import { partiesRouter, startPartyCleanup } from './parties.js';
+import { liveHookRouter, liveMediaRouter, liveRouter, startLiveWatch } from './live.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -101,6 +102,9 @@ app.use('/api/users', usersRouter);
 app.use('/api/users', channelPlaylistsRouter); // /api/users/:username/playlists
 app.use('/api/playlists', playlistsRouter);
 app.use('/api/parties', partiesRouter);
+app.use('/api/live', liveHookRouter); // MediaMTX asks here who may publish and read
+app.use('/api/live', liveRouter);
+app.use('/live/hls', liveMediaRouter);
 app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);
 app.use('/api/me', moveRouter); // aliases and moves
@@ -217,6 +221,7 @@ startNotifyCleanup();
 startApCleanup();
 startLinkChecks();
 startPartyCleanup();
+startLiveWatch();
 startSearchSync();
 resumePending();
 startNetwork();

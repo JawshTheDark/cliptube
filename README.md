@@ -77,6 +77,7 @@ around what a clip site needs:
 - Original downloads when the uploader allows them
 - **Playlists** and Watch later, mixing clips from any server, with shuffle, loop and autoplay
 - **Watch together**: parties that play in sync for everyone, with a queue, chat and reactions
+- **Live streaming** from OBS with a live chat, kept as a video afterwards
 
 </td>
 </tr>
@@ -282,6 +283,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 | [Watching and Discovery](docs/wiki/Watching-and-Discovery.md) | The player, streaming, feeds, notifications, search, analytics |
 | [Clip Tools and Games](docs/wiki/Clip-Tools-and-Games.md) | Clipping, exports, compare, the game catalog, SteamGridDB |
 | [Watch Parties](docs/wiki/Watch-Parties.md) | Watching with friends in sync, the queue, chat and reactions |
+| [Live Streaming](docs/wiki/Live-Streaming.md) | Going live from OBS, the live chat, recordings, turning it on |
 | [Network](docs/wiki/Network.md) | Hubs, members, peering, blocking, running a hub |
 | [Fediverse](docs/wiki/Fediverse.md) | Mastodon, PeerTube, moving a channel |
 | [Moderation and Legal](docs/wiki/Moderation-and-Legal.md) | Roles, reports, spam, sign-up, copyright, privacy |
@@ -294,7 +296,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 ## Status
 
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.8.0**); smaller ideas are tracked in
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.9.0**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/cliptube/releases).
 
