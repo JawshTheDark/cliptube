@@ -285,7 +285,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 | [Admin CLI](docs/wiki/Admin-CLI.md) | Every command-line command |
 | [Troubleshooting](docs/wiki/Troubleshooting.md) | Common problems and their fixes |
 | [Development](docs/wiki/Development.md) | Code layout, tests, migrations, releases |
-| [Android app](mobile/README.md) | Installing the APK, what the app does, building and releasing it |
+| [Android App](docs/wiki/Android-App.md) | Installing the APK, servers and sign-in, uploading from your phone |
 
 ## Status
 

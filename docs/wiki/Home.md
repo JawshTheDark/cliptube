@@ -14,6 +14,7 @@ its hub, and Mastodon and PeerTube can follow along.
 | Change how my server works | [Configuration](Configuration.md) |
 | Update, back up or move a server | [Upgrading and Backups](Upgrading-and-Backups.md) |
 | Link my server with my friends' | [Network](Network.md) |
+| Use ClipTube on my phone | [Android App](Android-App.md) |
 | Fix something | [Troubleshooting](Troubleshooting.md) |
 
 ## Using ClipTube
@@ -24,6 +25,7 @@ its hub, and Mastodon and PeerTube can follow along.
   notifications, analytics and privacy
 - [Clip Tools and Games](Clip-Tools-and-Games.md): clipping, GIF and MP4 exports, looping links, compare, the
   game catalog and SteamGridDB artwork
+- [Android App](Android-App.md): installing the app, servers and sign-in, uploading from your phone
 
 ## Running a server
 

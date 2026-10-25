@@ -14,6 +14,7 @@
 - [Uploading and Editing](Uploading-and-Editing.md)
 - [Watching and Discovery](Watching-and-Discovery.md)
 - [Clip Tools and Games](Clip-Tools-and-Games.md)
+- [Android App](Android-App.md)
 
 **Linking up**
 
