@@ -398,6 +398,46 @@ CREATE INDEX idx_media_exports_user ON media_exports(user_id, created_at);
       db.exec('CREATE INDEX IF NOT EXISTS idx_videos_source ON videos(source_video_id)');
     },
   },
+  {
+    version: 5,
+    name: 'hub-optional network: direct peers, verified keys, shared blocklists',
+    up(db) {
+      // How we learned about an instance, whether we accept it as a peer (peer_status), whether it
+      // accepts us (remote_status), and health for backoff.
+      addColumn(db, 'instances', 'source', 'TEXT'); // self | hub | peer | admin | inbound | blocklist
+      addColumn(db, 'instances', 'peer_status', 'TEXT'); // approved | pending | rejected
+      addColumn(db, 'instances', 'remote_status', 'TEXT'); // approved | pending | rejected
+      addColumn(db, 'instances', 'protocol', 'INTEGER NOT NULL DEFAULT 2');
+      addColumn(db, 'instances', 'key_checked_at', 'INTEGER');
+      addColumn(db, 'instances', 'last_ok_at', 'INTEGER');
+      addColumn(db, 'instances', 'next_try_at', 'INTEGER');
+      addColumn(db, 'instances', 'last_hello_at', 'INTEGER');
+      addColumn(db, 'instances', 'block_source', 'TEXT'); // NULL = blocked by this instance's admins
+      addColumn(db, 'network_videos', 'hidden_by', 'TEXT'); // NULL = hidden here; else the blocklist it came from
+      db.exec(`
+CREATE TABLE blocklist_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  url TEXT NOT NULL UNIQUE,
+  mode TEXT NOT NULL DEFAULT 'review', -- auto | review
+  last_fetched_at INTEGER,
+  last_error TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE blocklist_entries (
+  subscription_id INTEGER NOT NULL REFERENCES blocklist_subscriptions(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                  -- instance | video
+  target TEXT NOT NULL,                -- instance URL, or "URL|video id"
+  reason TEXT,
+  status TEXT NOT NULL,                -- applied | pending | ignored
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (subscription_id, kind, target)
+);
+CREATE INDEX idx_blocklist_entries_target ON blocklist_entries(kind, target);
+`);
+      db.prepare("UPDATE instances SET source = 'self' WHERE is_self = 1").run();
+      db.prepare("UPDATE instances SET source = 'hub' WHERE source IS NULL AND hub_status IS NOT NULL").run();
+    },
+  },
 ];
 
 export function currentVersion(db) {

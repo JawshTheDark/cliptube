@@ -70,6 +70,12 @@ export const DEFAULT_SETTINGS = {
   network_accept_comments: 'true',
   network_accept_likes: 'true',
   network_accept_subscriptions: 'true',
+  // Peering directly with other instances (every instance, hub or not). On a hub the hub switches apply.
+  network_accept_new: 'true', // lockdown switch: false = no new peers
+  network_require_approval: 'false', // new peers wait for an admin
+  network_require_https: 'true',
+  network_publish_blocklist: 'true',
+  network_max_peers: '200',
 
   // Hub mode (this instance runs the network).
   hub_enabled: 'false',

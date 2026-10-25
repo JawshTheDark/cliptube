@@ -3106,3 +3106,34 @@ th.num {
     flex-direction: column;
   }
 }
+
+/* ---- direct peers (M2) ---- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.stack > .card-panel {
+  margin: 0;
+}
+.fed-item.column {
+  flex-direction: column;
+  align-items: stretch;
+}
+.fed-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bl-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0 0 12px;
+  border-left: 2px solid var(--border);
+  margin-left: 4px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}

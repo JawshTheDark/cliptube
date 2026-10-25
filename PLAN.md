@@ -12,8 +12,8 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | M0 Foundations | Done | v0.4.0, 2026-10-25 |
 | M1 Trust and safety | Done | v0.5.0, 2026-10-25 |
 | M3 Gaming clip tools | Done | v0.6.0, 2026-10-25 |
-| M2 Hub-optional network | In progress | |
-| M4 Watching upgrades | Not started | |
+| M2 Hub-optional network | Done | v0.7.0, 2026-10-25 |
+| M4 Watching upgrades | In progress | |
 | M5 Feeds, notifications, search, analytics | Not started | |
 | M6 ActivityPub and PeerTube | Not started | |
 | M7 Mastodon, moves, export and import | Not started | |
@@ -163,21 +163,24 @@ the action taken there removes the video everywhere.
 
 ## M2: Hub-optional network (v0.6), size L
 
-- **Direct key checks**: fetch a peer's key from its own `/.well-known/cliptube` over HTTPS and cache it.
+- ✅ **Direct key checks**: fetch a peer's key from its own `/.well-known/cliptube` over HTTPS and cache it.
   The hub directory becomes a hint only. (S)
-- **Signed requests between peers**: replace the single hub feed token with per-request signatures, so any
+- ✅ **Signed requests between peers**: replace the single hub feed token with per-request signatures, so any
   approved peer can pull any other peer's feed. (M)
-- **Peer list and peer exchange**: record where each peer was learned (hub, another peer, typed in by an
+- ✅ **Peer list and peer exchange**: record where each peer was learned (hub, another peer, typed in by an
   admin) and when it last answered. A new endpoint returns an instance's known healthy peers, merged on
   every sync. (M)
-- **Direct feed pulls** from every peer, reusing the hub's pull code. Instances send each other a "something
+- ✅ **Direct feed pulls** from every peer, reusing the hub's pull code. Instances send each other a "something
   changed" ping instead of everyone polling everyone. (M)
-- **Join through any instance**: list several hubs, and fall back to peers when no hub answers. (S)
-- **Admission switches on every instance**: accept new peers, require approval, HTTPS only. (S)
-- **Shared blocklists**: publish your block list; subscribe to other instances' lists with auto-apply or
+- ✅ **Join through any instance**: list several hubs, and fall back to peers when no hub answers. (S)
+- ✅ **Admission switches on every instance**: accept new peers, require approval, HTTPS only. (S)
+- ✅ **Shared blocklists**: publish your block list; subscribe to other instances' lists with auto-apply or
   review. The hub's bans become a list members can follow. (M)
-- **Limits**: back off from failing peers, cap the number of peers, limit requests per host. (S)
-- **Upgrade path**: a protocol version bump that stays compatible with v0.3 instances during rollout. (S)
+- ✅ **Limits**: back off from failing peers, cap the number of peers, limit requests per host. (S)
+- ✅ **Upgrade path**: a protocol version bump that stays compatible with v0.3 instances during rollout. (S)
+
+As built: an instance is a member of one hub at a time; other hubs and any other instances can be added as
+direct peers, which gives the same fallback when a hub stops answering.
 
 **Schema:** `instances.source`, `instances.last_ok_at`, `instances.key_checked_at`;
 `blocklist_subscriptions`, `blocklist_entries`.

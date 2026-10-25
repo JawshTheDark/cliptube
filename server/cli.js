@@ -9,9 +9,13 @@
  *   network status                          Show this instance's network role and state
  *   network hub-enable <public-url>         Turn on hub mode (this instance runs the network)
  *   network hub-disable                     Turn off hub mode
- *   network join <hub-url> [--self <url>]   Join a hub (uses the Public URL setting unless --self is given)
- *   network leave                           Leave the network
- *   network sync                            Sync now (pull members when hub, pull from hub when member)
+ *   network join <url> [--self <url>]       Join a network through a hub or any instance in it
+ *                                           (uses the Public URL setting unless --self is given)
+ *   network peer <url>                      Peer with an instance directly
+ *   network follow-blocklist <url> [--mode auto|review]
+ *                                           Follow another instance's published block list
+ *   network leave [--keep-peers]            Leave the network (or only the hub, keeping direct peers)
+ *   network sync                            Sync now: hub, block lists, peers
  *   user list                               List local accounts with role and status
  *   user role <username> <user|moderator|admin>
  *   user status <username> <active|suspended|banned> [reason]
@@ -21,7 +25,7 @@
 import { db, getSettings, setSetting, SECRET_SETTINGS } from './db.js';
 import { setUserRole, setUserStatus } from './auth.js';
 import {
-  enableHub, disableHub, joinHub, leaveHub, syncFromHub, pullAllMembers, networkRole, networkActive, isHub,
+  enableHub, disableHub, joinNetwork, leaveHub, networkTick, introduce, subscribeBlocklist, networkRole, networkActive, isHub, PROTOCOL,
 } from './network.js';
 
 const [, , area, cmd, ...rest] = process.argv;
@@ -48,7 +52,17 @@ function networkStatus() {
   const out = {
     role: networkRole(),
     active: networkActive(),
+    protocol: PROTOCOL,
     self_url: s.network_self_url || s.public_url || null,
+    peers: db
+      .prepare(
+        `SELECT url, name, source, peer_status, remote_status, protocol, video_count, last_ok_at, last_error FROM instances
+         WHERE is_self = 0 AND blocked = 0 AND (peer_status IS NOT NULL OR remote_status IS NOT NULL) ORDER BY url`,
+      )
+      .all()
+      .map((p) => ({ ...p, last_ok_at: p.last_ok_at ? new Date(p.last_ok_at).toISOString() : null })),
+    blocked: db.prepare('SELECT url, block_reason, block_source FROM instances WHERE blocked = 1 ORDER BY url').all(),
+    blocklists: db.prepare('SELECT url, mode, last_error FROM blocklist_subscriptions').all(),
   };
   if (isHub()) {
     out.hub = {
@@ -86,18 +100,26 @@ async function main() {
         disableHub();
         return console.log('Hub mode is off');
       case 'network join': {
-        if (!rest[0]) usage('Give the hub URL, e.g. https://clips.irc.so');
+        if (!rest[0]) usage('Give the address of a hub or any instance in the network, e.g. https://clips.irc.so');
         const self = flag('--self') || getSettings().public_url;
         if (!self) usage('Set the public_url setting first, or pass --self https://your.address');
-        await joinHub(self, rest[0]);
+        await joinNetwork(self, rest[0]);
         return networkStatus();
       }
+      case 'network peer':
+        if (!rest[0]) usage('Give the address of the instance to peer with');
+        await introduce(rest[0], 'admin');
+        return networkStatus();
+      case 'network follow-blocklist':
+        if (!rest[0]) usage('Give the address of the instance whose block list to follow, and optionally --mode auto');
+        subscribeBlocklist(rest[0], flag('--mode') || 'review');
+        await networkTick({ full: true });
+        return networkStatus();
       case 'network leave':
-        await leaveHub();
-        return console.log('Left the network');
+        await leaveHub({ keepPeers: rest.includes('--keep-peers') });
+        return console.log(rest.includes('--keep-peers') ? 'Left the hub; direct peers are kept' : 'Left the network');
       case 'network sync':
-        if (isHub()) await pullAllMembers();
-        else await syncFromHub({ full: true });
+        await networkTick({ full: true });
         return networkStatus();
       case 'user list':
         for (const u of db.prepare('SELECT username, role, status, status_reason FROM users WHERE remote_instance_id IS NULL ORDER BY created_at').all()) {

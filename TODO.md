@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v0.6.0): one hub (clips.irc.so) that every instance joins, with
+Planned work. Current state (v0.7.0): a hub (clips.irc.so) plus direct peering between instances, with
 cross-instance likes, comments and subscriptions signed per instance. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 
@@ -9,26 +9,26 @@ dependencies are in [PLAN.md](PLAN.md).
 Goal: the hub becomes an optional starting point and moderation layer. If clips.irc.so goes offline, gets a
 legal notice, or is shut down, every other instance keeps seeing and interacting with the rest.
 
-- [ ] **Direct key verification.** Verify another instance's signing key by fetching its own
+- [x] **Direct key verification.** Verify another instance's signing key by fetching its own
       `/.well-known/cliptube` over HTTPS (the domain's TLS certificate vouches for it), cached with a TTL.
       Stop depending on the hub directory for keys; keep the hub directory only as a hint.
-- [ ] **Peer list per instance.** Each instance stores the instances it knows (`instances` table already
+- [x] **Peer list per instance.** Each instance stores the instances it knows (`instances` table already
       exists), with where it learned about each one and when it last answered.
-- [ ] **Peer exchange.** New endpoint that returns an instance's known, unblocked, reachable peers. Instances
+- [x] **Peer exchange.** New endpoint that returns an instance's known, unblocked, reachable peers. Instances
       merge each other's lists on every sync, so joining via any single instance reaches the whole network.
-- [ ] **Direct feed pulls.** Each instance pulls `/api/network/feed` from every peer itself (reuse the hub's
+- [x] **Direct feed pulls.** Each instance pulls `/api/network/feed` from every peer itself (reuse the hub's
       `pullMember` code). Peers authorise each other with per-peer feed tokens or signed requests.
-- [ ] **Join via any instance.** "Join network" accepts any instance address, not only a hub. Allow listing
+- [x] **Join via any instance.** "Join network" accepts any instance address, not only a hub. Allow listing
       several hubs; fall back to peer-to-peer when none answer.
-- [ ] **Per-instance admission switches.** Every instance (not just the hub) gets: accept new peers
+- [x] **Per-instance admission switches.** Every instance (not just the hub) gets: accept new peers
       (lockdown), require approval, HTTPS only. Open by default.
-- [ ] **Shared blocklists.** Subscribe to another instance's published block list (with a reason per entry);
+- [x] **Shared blocklists.** Subscribe to another instance's published block list (with a reason per entry);
       choose auto-apply or review. Export your own block list.
-- [ ] **Traffic limits.** Back off from peers that keep failing; cap peers per instance; consider pushing
+- [x] **Traffic limits.** Back off from peers that keep failing; cap peers per instance; consider pushing
       change notifications to peers instead of everyone polling everyone once the network grows past dozens.
-- [ ] **Migration path.** Existing hub members keep working; the hub keeps its moderation tools (network-wide
+- [x] **Migration path.** Existing hub members keep working; the hub keeps its moderation tools (network-wide
       hide and ban), which become a shared blocklist other instances can follow.
-- [ ] Tests: three instances, hub turned off mid-test, everything still syncs and interacts.
+- [x] Tests: three instances, hub turned off mid-test, everything still syncs and interacts.
 
 ## 2. Legal and abuse handling
 

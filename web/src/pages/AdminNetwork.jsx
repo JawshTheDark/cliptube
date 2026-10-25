@@ -4,6 +4,7 @@ import { useAuth, useTitle } from '../auth.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { AdminTabs } from './Admin.jsx';
+import { AdmissionPanel, BlocklistsPanel, PeersPanel } from '../components/NetworkPeers.jsx';
 import { timeAgo } from '../util.js';
 
 const MEMBER_STATUS = {
@@ -87,6 +88,7 @@ export default function AdminNetwork() {
   const hub = state.hub;
   const isHub = hub.enabled;
   const joined = m.enabled && !isHub;
+  const hasHub = joined && !!m.status;
   const hubDirty = JSON.stringify(hubForm) !== JSON.stringify(hub.settings);
   const setHub = (patch) => setHubForm((f) => ({ ...f, ...patch }));
   const httpWarning = !state.self_url.startsWith('https://') && !state.allow_private;
@@ -102,8 +104,9 @@ export default function AdminNetwork() {
         {joined && <Badge map={MEMBER_STATUS} status={m.status} />}
       </h1>
       <p className="page-sub flush">
-        ClipTube instances join one hub. Everyone keeps hosting their own videos; the hub shares an index so every instance can browse and search the whole
-        network, and people can like, comment and subscribe across instances.
+        Everyone hosts their own videos, and instances in a network browse and search each other's clips, with likes, comments and subscriptions across
+        instances. A hub is the easy way in and can moderate the network, but instances also peer with each other directly, so the network keeps working if
+        the hub goes away.
       </p>
 
       <div className="code-line">
@@ -121,12 +124,21 @@ export default function AdminNetwork() {
               <>
                 <div className="net-status">
                   <div>
-                    <div className="net-name">{m.network_name || 'Network'}</div>
+                    <div className="net-name">{m.network_name || (hasHub ? 'Network' : 'Peer-to-peer network')}</div>
                     <div className="fed-sub">
-                      Hub: <a href={m.hub_url} target="_blank" rel="noopener noreferrer">{m.hub_url}</a>
+                      {hasHub ? (
+                        <>
+                          Hub:{' '}
+                          <a href={m.hub_url} target="_blank" rel="noopener noreferrer">
+                            {m.hub_url}
+                          </a>
+                        </>
+                      ) : (
+                        'No hub: connected through direct peers'
+                      )}
                     </div>
                   </div>
-                  <Badge map={MEMBER_STATUS} status={m.status} />
+                  {hasHub ? <Badge map={MEMBER_STATUS} status={m.status} /> : <span className={`badge ${state.active ? 'ok' : 'warn'}`}>{state.active ? 'Connected' : 'Waiting for peers'}</span>}
                 </div>
                 {m.note && <div className="fed-err">Hub says: {m.note}</div>}
                 {m.announcement && <div className="announce">{m.announcement}</div>}
@@ -149,6 +161,19 @@ export default function AdminNetwork() {
                   <button className="btn" disabled={!!busy} onClick={() => run('sync', () => api('/admin/network/sync', { method: 'POST' }), 'Synced with the hub')}>
                     <Icon name="refresh" /> Sync now
                   </button>
+                  {hasHub && (
+                    <button
+                      className="btn btn-ghost"
+                      disabled={!!busy}
+                      title="Stop being a member of the hub, but keep exchanging clips with your direct peers"
+                      onClick={() =>
+                        window.confirm('Leave the hub but stay connected to your direct peers?') &&
+                        run('leavehub', () => api('/admin/network/leave', { method: 'POST', body: { keep_peers: true } }), 'Left the hub; direct peers kept')
+                      }
+                    >
+                      Leave hub only
+                    </button>
+                  )}
                   <button
                     className="btn btn-ghost"
                     disabled={!!busy}
@@ -165,15 +190,22 @@ export default function AdminNetwork() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  run('join', () => api('/admin/network/join', { method: 'POST', body: { hub_url: hubUrl } }), (s) =>
-                    s.member.status === 'approved' ? `Joined ${s.member.network_name || 'the network'}` : 'Join request sent; the hub admin needs to approve it',
+                  run('join', () => api('/admin/network/join', { method: 'POST', body: { url: hubUrl } }), (s) =>
+                    s.member.status === 'approved'
+                      ? `Joined ${s.member.network_name || 'the network'}`
+                      : s.active
+                        ? 'Connected to the network'
+                        : s.member.status === 'pending'
+                          ? 'Join request sent; the hub admin needs to approve it'
+                          : 'Request sent; the instance admin needs to accept it',
                   );
                 }}
               >
                 <p className="muted">Off by default. While you're not in a network, nothing is shared and no other instance is contacted.</p>
                 <div className="field">
-                  <label>Hub address</label>
+                  <label>Hub or instance address</label>
                   <input className="input" value={hubUrl} onChange={(e) => setHubUrl(e.target.value)} placeholder="https://clips.irc.so" />
+                  <span className="hint">A hub, or any instance that is already in the network. The rest of the network is found from there.</span>
                 </div>
                 <button className="btn btn-primary" disabled={busy === 'join' || !hubUrl.trim()}>
                   {busy === 'join' ? 'Joining…' : 'Join network'}
@@ -380,6 +412,16 @@ export default function AdminNetwork() {
         </section>
       )}
 
+      {state.participating && (
+        <div className="admin-grid">
+          <PeersPanel state={state} run={run} busy={busy} />
+          <div className="stack">
+            <AdmissionPanel key={state.max_peers} state={state} run={run} />
+            <BlocklistsPanel state={state} run={run} busy={busy} />
+          </div>
+        </div>
+      )}
+
       {/* ---- blocking ---- */}
       <section className="card-panel">
         <h2>Blocked instances</h2>
@@ -411,6 +453,7 @@ export default function AdminNetwork() {
                   {i.url}
                   {!i.blocked ? ` · ${i.video_count} clip${i.video_count === 1 ? '' : 's'}` : ''}
                   {i.block_reason ? ` · ${i.block_reason}` : ''}
+                  {i.block_source ? ' · from a list you follow' : ''}
                 </div>
               </div>
               <button

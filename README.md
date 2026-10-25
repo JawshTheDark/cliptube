@@ -16,7 +16,7 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 - Discord/Slack link previews (Open Graph tags with inline player)
 - Studio page to manage your videos, admin page for site settings and users
 - **Timeline editor**: trim, split, cut out sections, volume boost or mute, fade in/out, pick a thumbnail from any frame
-- **Network**: instances join one hub to browse and search each other's clips, with likes, comments and subscriptions across instances
+- **Network**: instances browse and search each other's clips, with likes, comments and subscriptions across instances; join through a hub or any instance, and keep working without the hub
 - **Moderation**: reports (also across instances), a moderation queue with an audit log, comment spam holds, copyright takedowns with counter-notices and strikes, invite or approval sign-up, storage quotas
 - **Privacy**: pause history, anonymous mode, download all your data, delete your account
 - **Clip tools**: clip a moment into a new video, GIF and MP4 export, looping share links, games with their own pages, side-by-side compare
@@ -75,11 +75,17 @@ Open it from Studio (scissors icon), the video details page, or the Editor butto
   other, line up the same moment with each side's start buttons (down to one frame), then play both on one
   transport bar at up to 1/10 speed. "Copy link" shares the lined-up comparison.
 
-## Network (one hub, many instances)
+## Network (a hub if you want one, peers either way)
 
-Each person runs their own instance and hosts their own clips. Every instance joins one **hub**, and the hub
-shares an index of the whole network, so everyone's public clips show up in **Network**, on the home feed and
-in search everywhere. Video files are never copied: viewers stream from the instance that hosts the clip.
+Each person runs their own instance and hosts their own clips. Instances in a network see each other's public
+clips in **Network**, on the home feed and in search. Video files are never copied: viewers stream from the
+instance that hosts the clip.
+
+A **hub** is the easy way in and can moderate the whole network, but it is optional. Instances also peer with
+each other directly: each one checks the others' keys at their own addresses, pulls their clips itself and
+pings them when its own clips change. You can join through the hub or through any instance already in the
+network, and the rest is found from there. If the hub goes offline, gets a legal notice or shuts down, the
+others keep seeing each other and keep liking and commenting.
 
 People can like, comment on and subscribe to videos on other instances. The action is sent to the instance
 hosting the video, signed by the sender's instance, so counts and comment threads are the same everywhere.
@@ -91,7 +97,7 @@ People from elsewhere appear as `name@their.host` and link back to their home in
 | --- | --- | --- |
 | Accept new instances | on | Turn off to lock the network to its current members |
 | Require my approval | off | New instances wait until the hub admin approves them |
-| HTTPS only | on | Refuse instances not served over HTTPS |
+| HTTPS only | on | Refuse instances not served over HTTPS (the same three switches decide who may peer with the hub) |
 | Comments / likes / subscriptions between instances | on | Network-wide switches for each kind of interaction |
 | Include this instance's videos | on | Share the hub's own public clips with the network |
 | Max videos per instance | 5000 | Cap on how many clips one instance can put in the index |
@@ -101,21 +107,38 @@ People from elsewhere appear as `name@their.host` and link back to their home in
 Per instance, the hub admin can approve, suspend (temporarily drop from the network), ban (can't rejoin),
 stop its likes and comments, hide its videos, or remove it. Any single network video can be hidden too.
 
-**Joining** (Admin → Network → *Join network*): enter the hub's address (`https://clips.irc.so` by default).
-The site needs a public HTTPS address set as its Public URL. Each instance can also:
+**Joining** (Admin → Network → *Join network*): enter the hub's address (`https://clips.irc.so` by default) or
+the address of any instance in the network. The site needs a public HTTPS address set as its Public URL. Each
+instance can also:
 
+- peer with any instance directly (Direct peers → *Peer with it*), and see each peer's state both ways;
+- decide who can peer with it: accept new instances (lockdown when off), ask first, HTTPS only, a peer limit;
 - block any other instance, which hides its videos and refuses likes, comments and subscriptions from it;
+- publish its block list and follow other instances' lists, applied automatically or after review. Members
+  follow their hub's list automatically, so the hub's bans and network-wide hides reach them even though they
+  pull from peers directly. Blocks from a list are lifted when the source lifts them;
 - turn off accepting comments, likes or subscriptions from other instances;
-- untick **Share with the network** on a public video to keep it local, or leave the network at any time.
+- untick **Share with the network** on a public video to keep it local;
+- **Leave hub only** (keep the direct peers) or leave the network entirely.
+
+Failing peers are retried with backoff (1 minute doubling up to 6 hours).
 
 Only public, ready videos with sharing on are ever listed. Networking refuses to contact private-network
 addresses; to test several instances on one machine, start them with `--allow-private-federation`.
 
-Protocol summary (v2, JSON over HTTPS): `GET /.well-known/cliptube` describes an instance and its Ed25519 key.
-Members register with `POST /api/hub/join` and prove they own their address through a nonce callback to
-`/api/network/verify`. The hub pulls each member's `/api/network/feed` and serves `/api/hub/index`,
-`/api/hub/index/ids` and `/api/hub/directory` (members and their public keys). Interactions go to the target
-instance's `/api/network/inbox`, signed with an `X-ClipTube-Signature` header.
+Protocol summary (v3, JSON over HTTPS): `GET /.well-known/cliptube` describes an instance, its Ed25519 key and
+its admission switches; a key is trusted only after it was fetched from the instance's own address. Requests
+between peers carry `X-ClipTube-Instance`, `X-ClipTube-Date` and `X-ClipTube-Signature` (a signature over the
+method, path and query, date, sender and a SHA-256 of the body). `POST /api/network/hello` asks to peer and
+returns the decision and the peers the receiver can vouch for; `GET /api/network/known-peers` exchanges peer
+lists; `GET /api/network/feed` and `/feed/ids` serve public videos to accepted peers; `POST /api/network/ping`
+says "something changed"; `POST /api/network/goodbye` leaves; `GET /api/network/blocklist` publishes blocks.
+Interactions go to the target's `/api/network/inbox`, signed over the body.
+
+The v2 hub protocol still works alongside, so older instances keep working during an upgrade: members
+register with `POST /api/hub/join` (nonce callback to `/api/network/verify`), the hub pulls their feeds with a
+token and serves `/api/hub/index`, `/api/hub/index/ids` and `/api/hub/directory`. Members use the hub's index
+only for instances they can't pull directly.
 
 ## Moderation and legal
 
@@ -248,6 +271,9 @@ For server operators, without needing a web login (inside Docker prefix with `do
 node server/cli.js network status
 node server/cli.js network hub-enable https://clips.example.com
 node server/cli.js network join https://clips.irc.so
+node server/cli.js network peer https://clips.friend.example
+node server/cli.js network follow-blocklist https://clips.irc.so --mode auto
+node server/cli.js network leave --keep-peers
 node server/cli.js user list
 node server/cli.js user role alice moderator
 node server/cli.js user status spammer banned "posting spam"
@@ -259,7 +285,7 @@ Run `node server/cli.js` with no arguments for the full list.
 
 ```bash
 npm run dev     # API on :3000, frontend with hot reload on :5173
-npm test        # unit tests plus real multi-instance integration tests (about 10 seconds)
+npm test        # unit tests plus real multi-instance integration tests (under a minute)
 ```
 
 Database changes go in `server/migrations.js` as a new numbered migration; the server applies pending
