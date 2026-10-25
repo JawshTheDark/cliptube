@@ -31,6 +31,8 @@ import {
 // Deliveries it queues are sent by the running server's job queue.
 import './ap/routes.js';
 import './ap/peering.js';
+// Applies the hub's game catalog during a sync.
+import './games.js';
 
 const [, , area, cmd, ...rest] = process.argv;
 
