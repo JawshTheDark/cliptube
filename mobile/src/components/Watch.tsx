@@ -10,6 +10,7 @@ import { useSession } from '@/lib/session';
 import { ago, compact, hostOf, plural } from '@/lib/format';
 import { colors } from '@/lib/theme';
 import type { RemoteWatch, Video } from '@/lib/types';
+import { knownServers, openChannelLink } from '@/lib/profiles';
 import { refFromRoute } from '@/lib/refs';
 import { PlaylistBar, type PlaylistNav } from './PlaylistBar';
 import { VideoRow } from './VideoCard';
@@ -57,8 +58,9 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
           commentsPath: `/network/videos/${peer}/${encodeURIComponent(remote!)}`,
           shareUrl: v.remote.watch_url || `${base}/n/${peer}/${encodeURIComponent(remote!)}`,
         });
-        // The view counts on the server that hosts the clip, anonymously, like the website does.
-        if (v.origin_type === 'cliptube' && v.remote.peer_url) {
+        // The view counts on the server that hosts the clip, anonymously, like the website does. (Network clips all
+        // say origin_type "activitypub" since the network moved to ActivityPub, so this doesn't check it.)
+        if (v.remote.peer_url) {
           fetch(`${v.remote.peer_url}/api/videos/${encodeURIComponent(v.remote.remote_id)}/view`, { method: 'POST', credentials: 'omit' }).catch(() => {});
         }
         api
@@ -224,6 +226,12 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
   const u = v.uploader;
   const title = v.community?.title || v.title;
   const channelHref = !isRemote && u.username ? withServer(`/c/${encodeURIComponent(u.username)}`, foreign) : null;
+  // A network clip's uploader: their channel on the server the clip comes from (in the app when it's ClipTube).
+  const remoteChannel = isRemote ? u.url || v.remote?.peer_url || null : null;
+  const openUploader = () => {
+    if (channelHref) router.push(channelHref as any);
+    else if (remoteChannel) openChannelLink(remoteChannel, knownServers(session.servers, session.site));
+  };
 
   const info = (
     <View>
@@ -248,7 +256,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
       </Pressable>
 
       <View style={s.channelRow}>
-        <Pressable style={s.channel} onPress={() => channelHref && router.push(channelHref as any)} disabled={!channelHref}>
+        <Pressable style={s.channel} onPress={openUploader} disabled={!channelHref && !remoteChannel} accessibilityRole="link" accessibilityLabel={`${u.display_name}'s channel`}>
           <Avatar uri={api.abs(u.avatar_url)} name={u.display_name} size={40} />
           <View style={{ flexShrink: 1 }}>
             <Text style={s.channelName} numberOfLines={1}>

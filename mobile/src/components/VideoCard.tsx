@@ -2,7 +2,9 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { knownServers, openChannelLink } from '@/lib/profiles';
 import { useScope, withServer } from '@/lib/scope';
+import { useSession } from '@/lib/session';
 import { videoHref } from '@/lib/api';
 import { ago, duration, hostOf, plural } from '@/lib/format';
 import { colors } from '@/lib/theme';
@@ -51,8 +53,15 @@ function Thumb({ v, style }: { v: Video; style: any }) {
 /** Full-width card for feeds: thumbnail on top, avatar and title below. */
 export const VideoCard = memo(function VideoCard({ v, showChannel = true }: { v: Video; showChannel?: boolean }) {
   const { api, foreign } = useScope();
+  const { servers, site } = useSession();
   const openChannel = () => {
-    if (v.remote || !v.uploader.username) return;
+    if (v.remote) {
+      // A network clip: the uploader's channel on the server it comes from.
+      const url = v.uploader.url || v.remote.peer_url;
+      if (url) openChannelLink(url, knownServers(servers, site));
+      return;
+    }
+    if (!v.uploader.username) return;
     router.push(withServer(`/c/${encodeURIComponent(v.uploader.username)}`, foreign) as any);
   };
   return (

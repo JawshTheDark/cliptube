@@ -9,7 +9,7 @@ import { knownServers, openProfile } from '@/lib/profiles';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
 import { usePaged } from '@/lib/usePaged';
-import { compact, hostOf, plural } from '@/lib/format';
+import { hostOf, plural } from '@/lib/format';
 import { colors } from '@/lib/theme';
 import type { Channel, LivePage, PlaylistSummary, Video } from '@/lib/types';
 
@@ -105,7 +105,7 @@ export default function ChannelScreen() {
           </Text>
           <Text style={s.meta}>@{channel.username}</Text>
           <Text style={s.meta}>
-            {`${plural(channel.subscriber_count, 'subscriber')} · ${plural(channel.video_count, 'clip')} · ${compact(channel.total_views)} views`}
+            {`${plural(channel.subscriber_count, 'subscriber')} · ${plural(channel.video_count, 'clip')} · ${plural(channel.total_views, 'view')}`}
           </Text>
         </View>
       </View>
