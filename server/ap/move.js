@@ -181,7 +181,7 @@ function sendMoveActivities(u) {
 }
 
 /** Profile changes (aliases, undoing a move) for servers that follow the account or channel. */
-function sendActorUpdates(u) {
+export function sendActorUpdates(u) {
   const base = apBase();
   if (!base) return;
   const x = urls(base);

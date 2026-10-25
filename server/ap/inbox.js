@@ -18,6 +18,7 @@ import { PUBLIC, apBase, first, hostOf, htmlToText, idOf, originOf, parseDuratio
 import { getActor, instanceFor, isBlockedActor, shadowUser, signer, storeActor } from './actors.js';
 import { sendAcceptOrReject, sendVerdict } from './deliver.js';
 import { followMove } from './move.js';
+import { remoteActorChanged } from '../links.js';
 
 /**
  * What this instance accepts from the sender's server: its own switches, plus the network's for other
@@ -415,7 +416,10 @@ async function onUpdate(a, actorId, base) {
   const o = a.object;
   if (!o || typeof o !== 'object') return;
   if (['Person', 'Group', 'Application', 'Service', 'Organization'].includes(o.type)) {
-    if (o.id === actorId) storeActor(o, actorId);
+    if (o.id === actorId) {
+      storeActor(o, actorId);
+      remoteActorChanged(actorId); // its alsoKnownAs may have changed: links to it are checked again
+    }
     return;
   }
   if (o.type === 'Video' && hostOf(o.id) === hostOf(actorId) && db.prepare('SELECT 1 FROM network_videos WHERE ap_id = ?').get(o.id)) {

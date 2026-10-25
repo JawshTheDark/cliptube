@@ -47,13 +47,20 @@ const PT_CONTEXT = [
   },
 ];
 
+/** Old accounts (from "Moving here") and linked accounts (see links.js), each with its channel. */
 const aliasList = (u) => {
+  let list = [];
   try {
     const v = JSON.parse(u.also_known_as || '[]');
-    return Array.isArray(v) && v.length ? v : undefined;
-  } catch {
-    return undefined;
+    if (Array.isArray(v)) list = v.filter((x) => typeof x === 'string');
+  } catch {}
+  if (u.id) {
+    for (const l of db.prepare('SELECT actor_id, group_id FROM account_links WHERE user_id = ? ORDER BY created_at').all(u.id)) {
+      list.push(l.actor_id, ...(l.group_id ? [l.group_id] : []));
+    }
   }
+  list = [...new Set(list)];
+  return list.length ? list : undefined;
 };
 
 /** Support links as profile fields, which Mastodon shows on the profile. */

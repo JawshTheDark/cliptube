@@ -10,6 +10,7 @@ default (Admin → Network → *Fediverse*) and needs the Public URL set to the 
 - [Mastodon](#mastodon)
 - [PeerTube](#peertube)
 - [Moderation](#moderation)
+- [Linked accounts](#linked-accounts)
 - [Moving a channel](#moving-a-channel)
 - [Checked against real servers](#checked-against-real-servers)
 - [Under the hood](#under-the-hood)
@@ -67,6 +68,35 @@ PeerTube comments and likes work in both directions.
 - **Blocked servers are blocked for ActivityPub too.**
 - **Reports** about fediverse videos go to their server as a `Flag` from this server, not from the person who
   reported, and incoming reports join the moderation queue.
+
+## Linked accounts
+
+If you have accounts on several ClipTube servers (or a ClipTube account and a Mastodon one), link them, and
+every server shows them as one person. Unlike a move, nothing goes away: each account keeps its own videos,
+subscribers and login.
+
+**Linking.** In Settings → *Linked accounts*, enter your other account (`@you@other-site.example`), then do the
+same on the other site for this account. A link counts once **both accounts list each other**, so nobody can
+claim an account that isn't theirs. When you link on one site first, the other one shows the new account under
+*These accounts say they're you*, with a **Link back** button. Up to five accounts can be linked.
+
+**Mastodon** accounts take part through an account alias: on Mastodon, open Preferences → Account → *Moving
+from a different account* and add your ClipTube account there (it moves nothing). Then click *Check again* on
+ClipTube.
+
+**What people see** once a link counts:
+
+- **Also on** on your channel page, with a check mark, linking to each of your other accounts;
+- **Subscribe to all**, which subscribes to your channel here and follows your channels elsewhere in one click
+  (a Mastodon account has no videos to follow, so it is left out);
+- an **All accounts** filter on your channel's videos, which brings in your videos from the other servers;
+- your comments from any of your accounts with the **uploader's mark** on your own videos. They also skip the
+  spam check that holds names imitating the uploader.
+
+**Under the hood.** Linked accounts are published in your account's `alsoKnownAs`, next to old accounts from
+*Moving here*, and your channel page carries `rel="me"` links to them, so Mastodon can verify a profile link to
+your channel. Each server checks the other side whenever an account changes and twice a day, and drops the link
+as soon as either side removes it.
 
 ## Moving a channel
 

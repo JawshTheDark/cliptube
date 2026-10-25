@@ -21,6 +21,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | After M8: game catalog from the hub, verticals toggle moved to Settings | Done | v1.3.0, 2026-10-25 |
 | After M8: SteamGridDB artwork, uploads as drafts until saved | Done | v1.4.0, 2026-10-25 |
 | Android app (mobile/, Expo); bearer-token sign-in for it | Done | v1.5.0 and android-v1.0.0, 2026-10-25 |
+| After M8: linked accounts (one person on several servers, verified both ways) | Done | v1.6.0, 2026-10-25 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

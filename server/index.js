@@ -36,6 +36,7 @@ import { startApCleanup } from './ap/inbox.js';
 import { apEnabled, apBase } from './ap/common.js';
 import { moveRouter } from './ap/move.js';
 import { channelExportPublicRouter, transferRouter } from './transfer.js';
+import { linksRouter, relMeLinks, startLinkChecks } from './links.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -98,6 +99,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);
 app.use('/api/me', moveRouter); // aliases and moves
+app.use('/api/me', linksRouter); // linked accounts
 app.use('/api/me', transferRouter); // channel export and import
 app.use('/api/reports', reportsRouter);
 app.use('/api/mod', modRouter);
@@ -170,8 +172,11 @@ if (fs.existsSync(indexFile)) {
       }
     }
     const c = /^\/c\/([A-Za-z0-9_]{3,20})$/.exec(req.path);
-    if (c && apEnabled() && db.prepare('SELECT 1 FROM users WHERE username = ? AND remote_instance_id IS NULL').get(c[1])) {
-      html = html.replace('</head>', `    <link rel="alternate" type="application/activity+json" href="${escapeHtml(`${apBase(req)}/ap/users/${c[1]}`)}">\n  </head>`);
+    const owner = c && apEnabled() ? db.prepare('SELECT id FROM users WHERE username = ? AND remote_instance_id IS NULL').get(c[1]) : null;
+    if (owner) {
+      // rel="me" names the linked accounts, so Mastodon can verify a profile link back to this page.
+      const me = relMeLinks(owner.id).map((u) => `    <link rel="me" href="${escapeHtml(u)}">\n`).join('');
+      html = html.replace('</head>', `    <link rel="alternate" type="application/activity+json" href="${escapeHtml(`${apBase(req)}/ap/users/${c[1]}`)}">\n${me}  </head>`);
     }
     html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`);
     res.setHeader('Cache-Control', 'no-cache');
@@ -205,6 +210,7 @@ for (const f of fs.readdirSync(DIRS.tmp)) {
 startJobs();
 startNotifyCleanup();
 startApCleanup();
+startLinkChecks();
 startSearchSync();
 resumePending();
 startNetwork();

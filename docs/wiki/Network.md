@@ -38,6 +38,9 @@ flowchart TB
   it can moderate the whole network. If the hub goes offline, gets a legal notice or shuts down, the other
   servers keep seeing each other and keep liking and commenting.
 - **Only public, ready clips with *Share with the network* ticked are ever listed.**
+- **One person with accounts on several servers** can link them, so every server shows them as one person
+  (*Also on*, one *Subscribe to all*, the uploader's mark on their comments). See
+  [Linked accounts](Fediverse.md#linked-accounts).
 
 ## Joining
 

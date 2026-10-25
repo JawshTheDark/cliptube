@@ -7,6 +7,7 @@
  */
 import { db, getSettings } from './db.js';
 import { addCommentCheck } from './intake.js';
+import { isLinkedCommenter } from './links.js';
 
 const LINK_RE = /(https?:\/\/|www\.)\S+|\b[a-z0-9-]{2,}\.(com|net|org|io|gg|ru|xyz|me|tv|co|ly|link|site|online|top|info|biz|app|live|shop|club)\b/i;
 
@@ -57,7 +58,8 @@ addCommentCheck(({ video, author, body }) => {
   const s = getSettings();
   const owner = db.prepare('SELECT * FROM users WHERE id = ?').get(video.user_id);
   const mode = effectiveCommentMode(video, owner);
-  const isOwner = author.id === video.user_id;
+  // Verified linked accounts of the uploader on other sites count as the uploader (see links.js).
+  const isOwner = author.id === video.user_id || isLinkedCommenter(video.user_id, author);
   const isMod = author.role === 'admin' || author.role === 'moderator' || !!author.is_admin;
   if (mode === 'off' && !isOwner) return { status: 'rejected', reason: 'Comments are turned off for this video' };
   if (isOwner || isMod) return undefined;

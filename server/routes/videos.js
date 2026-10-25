@@ -18,6 +18,7 @@ import { maybeNotifyUpload, notifyComment } from '../notify.js';
 import { indexVideo } from '../search.js';
 import { recordView, recordWatch, viewSource } from '../stats.js';
 import { apCommentCreated, apCommentVerdict, apVideoChanged, sendCommentDelete, sendVideoDelete } from '../ap/deliver.js';
+import { isLinkedCommenter } from '../links.js';
 
 export const videosRouter = Router();
 
@@ -685,15 +686,20 @@ videosRouter.post('/:id/like', requireAuth, (req, res) => {
 // ---- comments ---------------------------------------------------------------
 
 const COMMENT_SELECT =
-  'SELECT c.*, u.username, u.display_name, u.avatar, u.remote_instance_id, u.remote_avatar_url, u.remote_profile_url FROM comments c JOIN users u ON u.id = c.user_id';
+  'SELECT c.*, u.username, u.display_name, u.avatar, u.remote_instance_id, u.remote_avatar_url, u.remote_profile_url, u.ap_actor AS author_ap_actor FROM comments c JOIN users u ON u.id = c.user_id';
 
 const canModerateComments = (v, viewer) => !!viewer && (viewer.id === v.user_id || viewer.is_moderator);
 
 function serializeComment(c, viewer, v) {
   const mine = !!viewer && viewer.id === c.user_id;
   const mod = canModerateComments(v, viewer);
+  const pub = publicComment(c, v.user_id, v.pinned_comment_id);
+  // Verified linked accounts of the uploader (see links.js) count as the uploader.
+  const linked = !pub.is_uploader && !!c.remote_instance_id && isLinkedCommenter(v.user_id, { ap_actor: c.author_ap_actor, remote_profile_url: c.remote_profile_url });
   return {
-    ...publicComment(c, v.user_id, v.pinned_comment_id),
+    ...pub,
+    is_uploader: pub.is_uploader || linked,
+    linked_uploader: linked,
     held_reason: c.status === 'held' && (mine || mod) ? c.held_reason || null : null,
     can_delete: mine || mod,
     can_moderate: mod,

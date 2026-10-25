@@ -37,7 +37,7 @@ its hub, and Mastodon and PeerTube can follow along.
 ## Linking up
 
 - [Network](Network.md): how servers link, joining, what each server controls, running a hub
-- [Fediverse](Fediverse.md): Mastodon, PeerTube, following out, moving a channel
+- [Fediverse](Fediverse.md): Mastodon, PeerTube, following out, linked accounts, moving a channel
 
 ## Contributing
 
@@ -46,4 +46,4 @@ its hub, and Mastodon and PeerTube can follow along.
 
 ---
 
-<sub>Written for ClipTube 1.4. The pages live in the repository under `docs/wiki/` and change with the code.</sub>
+<sub>Written for ClipTube 1.6. The pages live in the repository under `docs/wiki/` and change with the code.</sub>

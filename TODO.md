@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v1.5.0): a hub (clips.irc.so) plus direct peering between instances over ActivityPub, with
+Planned work. Current state (v1.6.0): a hub (clips.irc.so) plus direct peering between instances over ActivityPub, with
 cross-instance likes, comments and subscriptions signed per instance, ActivityPub so Mastodon and PeerTube can follow channels,
 and an Android app (mobile/). The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
@@ -101,6 +101,8 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
 - [x] Game covers, title logos and banners from SteamGridDB, filled in for new games or picked per game,
       with the artists credited; members get them through the hub's catalog.
 - [x] Uploads stay drafts (seen only by the uploader) until Save details publishes them.
+- [x] Linked accounts: one person's accounts on several servers (or Mastodon) show as one person, once both
+      accounts list each other: "Also on", subscribe to all, all their videos together, the uploader's mark.
 
 ## 4. Better than YouTube (ideas from common complaints)
 

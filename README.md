@@ -119,6 +119,7 @@ around what a clip site needs:
 - Servers peer directly over **ActivityPub**; the hub is optional
 - Likes, comments and subscriptions across servers
 - Follow and be followed from Mastodon and PeerTube
+- **Link your accounts** on several servers, verified both ways, so they show as one person
 - Move a channel to another server, subscribers included
 
 </td>
@@ -289,7 +290,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 ## Status
 
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.5.0**); smaller ideas are tracked in
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.6.0**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/cliptube/releases).
 

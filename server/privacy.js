@@ -70,6 +70,7 @@ function exportData(userId) {
     network_likes: db.prepare('SELECT i.url AS instance, l.remote_id, l.value, l.created_at FROM network_likes l JOIN instances i ON i.id = l.instance_id WHERE l.user_id = ?').all(userId),
     subscriptions: db.prepare('SELECT u.username, s.created_at FROM subscriptions s JOIN users u ON u.id = s.channel_id WHERE s.subscriber_id = ?').all(userId),
     network_subscriptions: db.prepare('SELECT i.url AS instance, s.username, s.created_at FROM network_subscriptions s JOIN instances i ON i.id = s.instance_id WHERE s.user_id = ?').all(userId),
+    linked_accounts: db.prepare('SELECT handle, profile_url, created_at, verified_at FROM account_links WHERE user_id = ? ORDER BY created_at').all(userId),
     subscribers: db.prepare('SELECT COUNT(*) AS n FROM subscriptions WHERE channel_id = ?').get(userId).n,
     watch_history: db.prepare('SELECT video_id, watched_at, position FROM history WHERE user_id = ? ORDER BY watched_at DESC').all(userId),
   };

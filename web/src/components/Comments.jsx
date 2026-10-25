@@ -120,7 +120,11 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpda
           <AuthorLink author={c.author} className={`cauthor ${c.is_uploader ? 'uploader' : ''}`}>
             @{c.author.username}
           </AuthorLink>
-          {c.author.remote && <Icon name="public" className="inline-icon muted" title="From another instance" />}
+          {c.linked_uploader ? (
+            <Icon name="link" className="inline-icon muted" title="The uploader, from a linked account on another site" />
+          ) : (
+            c.author.remote && <Icon name="public" className="inline-icon muted" title="From another instance" />
+          )}
           <span className="ctime">{timeAgo(c.created_at)}</span>
           {c.status === 'held' && (
             <span className="badge warn" title={c.held_reason || ''}>

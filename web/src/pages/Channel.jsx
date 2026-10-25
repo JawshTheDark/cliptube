@@ -27,6 +27,7 @@ export default function Channel() {
   const [error, setError] = useState(null);
   const [tab, setTab] = useState('videos');
   const [sort, setSort] = useState('new');
+  const [withLinked, setWithLinked] = useState(false);
 
   useEffect(() => {
     let dead = false;
@@ -40,12 +41,26 @@ export default function Channel() {
     };
   }, [username, user?.id]);
 
-  const url = useMemo(() => `/users/${encodeURIComponent(username)}/videos?sort=${sort}`, [username, sort]);
+  const url = useMemo(() => `/users/${encodeURIComponent(username)}/videos?sort=${sort}${withLinked ? '&linked=1' : ''}`, [username, sort, withLinked]);
   const { items, hasMore, loading, loadMore } = usePaged(url);
   useTitle(channel?.display_name);
 
   if (error) return <Empty icon="person" title="This channel doesn't exist" />;
   if (!channel) return <div className="spinner" />;
+
+  const linked = channel.linked_accounts || [];
+  // Linked accounts with a channel can be followed from here; an account without one (Mastodon) has no videos.
+  const linkedChannels = linked.filter((l) => l.channel);
+  const subscribeAll = async () => {
+    if (!user) return nav('/login', { state: { from: `/c/${username}` } });
+    try {
+      const r = await api(`/users/${encodeURIComponent(username)}/subscribe-all`, { method: 'POST' });
+      setChannel(r.channel);
+      toast(r.followed.length ? `Subscribed here and followed ${r.followed.join(', ')}` : `Subscribed to ${r.channel.display_name}`);
+    } catch (e) {
+      toast(e.message);
+    }
+  };
 
   const toggleSub = async () => {
     if (!user) return nav('/login', { state: { from: `/c/${username}` } });
@@ -75,6 +90,23 @@ export default function Channel() {
             <span>{plural(channel.total_views, 'view')}</span>
           </div>
           {channel.bio && <p className="bio">{channel.bio}</p>}
+          {linked.length > 0 && (
+            <div className="also-on">
+              <span className="muted">Also on</span>
+              {linked.map((l) => (
+                <a
+                  key={l.handle}
+                  className="chip also-chip"
+                  href={l.url}
+                  target="_blank"
+                  rel="me noopener noreferrer"
+                  title={`${l.handle}: linked both ways, so it is the same person`}
+                >
+                  <Icon name="check" size={14} /> {l.host}
+                </a>
+              ))}
+            </div>
+          )}
           {channel.moved && (
             <div className="notice moved-banner">
               <Icon name="public" /> This channel moved to{' '}
@@ -105,6 +137,11 @@ export default function Channel() {
                     {channel.subscribed ? 'Subscribed' : 'Subscribe'}
                   </button>
                 )}
+                {!channel.moved && linkedChannels.length > 0 && (!channel.subscribed || linkedChannels.some((l) => !l.following)) && (
+                  <button className="btn" onClick={subscribeAll} title={`Also follow ${linkedChannels.map((l) => l.handle).join(', ')}`}>
+                    <Icon name="link" /> Subscribe to all {linkedChannels.length + 1}
+                  </button>
+                )}
                 <ReportButton target={{ type: 'user', id: channel.id, label: `@${channel.username}` }} className="btn btn-icon" iconOnly />
               </>
             )}
@@ -131,6 +168,15 @@ export default function Channel() {
                 {label}
               </button>
             ))}
+            {linkedChannels.length > 0 && (
+              <button
+                className={`chip with-icon ${withLinked ? 'active' : ''}`}
+                onClick={() => setWithLinked((x) => !x)}
+                title={`Videos from ${linkedChannels.map((l) => l.handle).join(', ')} too`}
+              >
+                <Icon name="link" size={14} /> All accounts
+              </button>
+            )}
           </div>
           {!loading && items.length === 0 ? (
             <Empty title="No videos yet">

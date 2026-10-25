@@ -748,6 +748,29 @@ CREATE INDEX idx_channel_imports_user ON channel_imports(user_id, created_at);
       addColumn(db, 'videos', 'draft_visibility', 'TEXT'); // what it becomes when published
     },
   },
+  {
+    version: 12,
+    name: 'linked accounts: one person on several sites, verified both ways',
+    up(db) {
+      db.exec(`
+CREATE TABLE IF NOT EXISTS account_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  actor_id TEXT NOT NULL,      -- the other account (its Person, or a Group when that is all there is)
+  group_id TEXT,               -- its channel, when it has one (ClipTube, PeerTube)
+  handle TEXT NOT NULL,        -- @name@host, as shown
+  profile_url TEXT,            -- its page, for links and rel=me
+  created_at INTEGER NOT NULL,
+  verified_at INTEGER,         -- set while the other account lists this one back
+  checked_at INTEGER,
+  last_error TEXT,
+  UNIQUE (user_id, actor_id)
+);
+CREATE INDEX IF NOT EXISTS idx_account_links_actor ON account_links(actor_id);
+CREATE INDEX IF NOT EXISTS idx_account_links_group ON account_links(group_id) WHERE group_id IS NOT NULL;
+`);
+    },
+  },
 ];
 
 export function currentVersion(db) {

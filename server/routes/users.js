@@ -11,6 +11,7 @@ import { convertImage } from '../media.js';
 import { videoSelect, serializeVideo, LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapListRow, storageFor, parseSupportLinks } from './videos.js';
 import { NETWORK_VISIBLE, serializeRemote, networkActive } from '../network.js';
 import { indexVideosOf } from '../search.js';
+import { linkedVideoFilter, publicLinks, subscribeAll } from '../links.js';
 
 /** Local channels only; people from other instances have placeholder accounts with no channel page here. */
 function channelByUsername(username) {
@@ -28,6 +29,8 @@ export function channelInfo(u, viewer) {
     subscribed: viewer ? !!db.prepare('SELECT 1 FROM subscriptions WHERE subscriber_id = ? AND channel_id = ?').get(viewer.id, u.id) : false,
     is_self: !!viewer && viewer.id === u.id,
     support_links: parseSupportLinks(u.support_links),
+    // The same person elsewhere, verified both ways (see links.js).
+    linked_accounts: publicLinks(u.id, viewer),
   };
 }
 
@@ -67,6 +70,23 @@ usersRouter.get('/:username/videos', (req, res) => {
   const own = !!req.user && (req.user.id === u.id || req.user.is_admin);
   const limit = clampInt(req.query.limit, 1, 100, 24);
   const offset = clampInt(req.query.offset, 0, 1_000_000, 0);
+  // With ?linked=1 the public videos come together with those of the verified linked accounts elsewhere
+  // (as far as this site knows them: from the network and the channels it follows).
+  const linked = req.query.linked === '1' ? linkedVideoFilter(u.id) : null;
+  if (linked) {
+    const by = { views: 'views DESC, created_at DESC', old: 'created_at ASC' }[req.query.sort] || 'created_at DESC';
+    const rows = db
+      .prepare(
+        `SELECT * FROM (
+           SELECT ${LOCAL_LIST_COLS} FROM videos v JOIN users u ON u.id = v.user_id
+             WHERE v.user_id = ? AND v.status = 'ready' AND v.visibility = 'public' AND v.moderation_status IS NULL
+           UNION ALL
+           SELECT ${REMOTE_LIST_COLS} FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE ${NETWORK_VISIBLE} AND ${linked.sql}
+         ) ORDER BY ${by} LIMIT ? OFFSET ?`,
+      )
+      .all(u.id, ...linked.params, limit, offset);
+    return res.json({ videos: rows.map(mapListRow), has_more: rows.length === limit });
+  }
   const order = { views: 'v.views DESC, v.created_at DESC', old: 'v.created_at ASC' }[req.query.sort] || 'v.created_at DESC';
   const rows = db
     .prepare(`${videoSelect()} WHERE v.user_id = ? AND v.status = 'ready' ${own ? '' : "AND v.visibility = 'public' AND v.moderation_status IS NULL"} ORDER BY ${order} LIMIT ? OFFSET ?`)
@@ -88,6 +108,16 @@ usersRouter.delete('/:username/subscribe', requireAuth, (req, res) => {
   if (!u) throw new HttpError(404, 'Channel not found');
   db.prepare('DELETE FROM subscriptions WHERE subscriber_id = ? AND channel_id = ?').run(req.user.id, u.id);
   res.json({ channel: channelInfo(u, req.user) });
+});
+
+// Subscribes here and follows the verified linked accounts elsewhere, all at once.
+usersRouter.post('/:username/subscribe-all', requireAuth, async (req, res) => {
+  const u = channelByUsername(req.params.username);
+  if (!u) throw new HttpError(404, 'Channel not found');
+  if (u.id === req.user.id) throw new HttpError(400, 'You cannot subscribe to yourself');
+  if (u.moved_to) throw new HttpError(400, `This channel moved to ${u.moved_to_handle || u.moved_to_url}. Subscribe to it there.`);
+  const followed = await subscribeAll(req.user, u);
+  res.json({ channel: channelInfo(u, req.user), followed });
 });
 
 // ---- /api/me ----------------------------------------------------------------

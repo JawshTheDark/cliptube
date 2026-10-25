@@ -13,6 +13,7 @@ import { isBlockedActor, keyFor, setInstanceSigner } from './actors.js';
 import { VIDEO_FEDERATED, collection, commentApId, groupJson, instanceJson, loadVideoForAp, noteJson, personJson, videoJson } from './objects.js';
 import { receive } from './inbox.js';
 import { signerFor } from './deliver.js';
+import { isLinkedCommenter } from '../links.js';
 
 // Fetches are signed by the instance actor (some servers only answer signed requests).
 setInstanceSigner(() => (apBase() ? signerFor('i') : null));
@@ -233,7 +234,8 @@ function embeddedNote(c, v, base) {
   };
   note.hearted = !!c.hearted;
   note.pinned = v.pinned_comment_id === c.id;
-  note.isUploader = c.user_id === v.user_id;
+  // Verified linked accounts of the uploader count as the uploader.
+  note.isUploader = c.user_id === v.user_id || (remote && isLinkedCommenter(v.user_id, a));
   return note;
 }
 
