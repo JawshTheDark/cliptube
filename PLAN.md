@@ -28,6 +28,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Live streaming (MediaMTX next to ClipTube) | Done | v1.9.0, 2026-10-25 |
 | ARM64 servers: the image adds Debian's ffprobe where the bundled one has no build | Done | v1.9.1, 2026-10-25 |
 | Uploads in pieces that resume, for proxies with a request cap such as Cloudflare's | Done | v1.10.0, 2026-10-25 |
+| The hub shows each member's current version, not the one it joined with | Done | v1.10.1, 2026-10-25 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

@@ -460,8 +460,17 @@ async function peerAuth(req, { allowNew = false } = {}) {
     inst = instByUrl(url);
   }
   // Only v3 instances sign requests, so an instance we recorded as older has been upgraded.
-  db.prepare('UPDATE instances SET last_seen_at = ?, protocol = MAX(protocol, 3) WHERE id = ?').run(now(), inst.id);
+  db.prepare('UPDATE instances SET last_seen_at = ?, protocol = MAX(protocol, 3), version = COALESCE(?, version) WHERE id = ?').run(now(), uaVersion(req), inst.id);
   return instById(inst.id);
+}
+
+/**
+ * The version another ClipTube gives in its User-Agent ("ClipTube/1.10.0 (network v4)"). Every request it makes
+ * says so, which keeps the version shown for it current; its own address is only checked about once a day.
+ */
+function uaVersion(req) {
+  const m = /^ClipTube\/(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)/.exec(req.get('user-agent') || '');
+  return m ? m[1].slice(0, 20) : null;
 }
 
 // ---- instances --------------------------------------------------------------------
@@ -979,7 +988,7 @@ function memberAuth(req) {
   if (!m) throw new HttpError(401, 'Missing network token');
   const inst = db.prepare('SELECT * FROM instances WHERE hub_token_hash = ?').get(sha256(m[1]));
   if (!inst) throw new HttpError(401, 'Unknown network token; join again');
-  db.prepare('UPDATE instances SET last_seen_at = ? WHERE id = ?').run(now(), inst.id);
+  db.prepare('UPDATE instances SET last_seen_at = ?, version = COALESCE(?, version) WHERE id = ?').run(now(), uaVersion(req), inst.id);
   return inst;
 }
 

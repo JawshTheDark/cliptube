@@ -3,6 +3,9 @@
 // rather than in the same request: the tests wait for them.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { startInstance, Client, setupAdmin, uploadReady, waitFor } from './helpers.js';
 
 let hub;
@@ -40,6 +43,19 @@ test('hub mode, open joining and two-way sync', async () => {
   // They peer over ActivityPub.
   const peers = (await B.get('/api/admin/network')).data.peers;
   assert.equal(peers.find((p) => p.url === hub.url)?.transport, 'activitypub', JSON.stringify(peers));
+});
+
+test("the hub shows each member's current version, not the one it joined with", async () => {
+  const version = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf8')).version;
+  const shown = async () => (await A.get('/api/admin/network')).data.hub.members.find((m) => m.url === member.url)?.version;
+  assert.equal(await shown(), version);
+  // As if the member had joined on an old version and been updated since.
+  const hubDb = new DatabaseSync(path.join(hub.dataDir, 'cliptube.db'));
+  hubDb.prepare("UPDATE instances SET version = '1.3.0' WHERE url = ?").run(member.url);
+  hubDb.close();
+  assert.equal(await shown(), '1.3.0');
+  await B.post('/api/admin/network/sync');
+  assert.equal(await shown(), version);
 });
 
 test('likes, comments and subscriptions across instances', async () => {
