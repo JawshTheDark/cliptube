@@ -126,8 +126,18 @@ Needs ClipTube 1.9 or newer, with live streaming turned on by the server's admin
 file is read straight from where it is, so even large recordings aren't copied first. Clips publish when the
 upload finishes, with the visibility you picked; the screen then follows processing until the clip is ready.
 
-Keep the app open until the upload finishes; the screen stays on meanwhile. The size limit is set by the
-server's admin, and the upload screen shows it.
+On ClipTube 1.10 and newer the app sends the video in pieces of 8 MB (see
+[Big files and shaky connections](Uploading-and-Editing.md#big-files-and-shaky-connections)):
+
+- **A dropped connection doesn't start over.** The app waits, asks the server how much arrived, and carries on
+  from there, retrying for about two minutes before it gives up.
+- **Closing the app doesn't lose the upload either.** Choose the same file again and the screen says it picked up
+  where the last try stopped. The server keeps an unfinished upload for a day.
+- **Big files work behind Cloudflare,** whose free plan refuses requests over 100 MB.
+- **Cancel** gives the upload up and deletes what arrived.
+
+Older servers get the video in one request, as before. The screen stays on during an upload. The size limit is set
+by the server's admin, and the upload screen shows it.
 
 ## Links that open in the app
 
@@ -156,7 +166,8 @@ address that loops back to your own network may not work from inside it (see
 [Troubleshooting: Reaching the site](Troubleshooting.md#reaching-the-site)).
 
 **An upload stops partway**
-The app was closed or the connection dropped. Choose the file and upload it again.
+The connection was down for more than about two minutes, or the app was closed. Choose the same file and upload it
+again: on ClipTube 1.10 and newer it continues where it stopped.
 
 ## Building and releasing
 

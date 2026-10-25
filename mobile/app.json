@@ -2,7 +2,7 @@
   "expo": {
     "name": "ClipTube",
     "slug": "cliptube",
-    "version": "1.2.1",
+    "version": "1.3.0",
     "scheme": "cliptube",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "so.irc.cliptube",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#ff0033",
         "foregroundImage": "./assets/android-icon-foreground.png",

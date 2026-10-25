@@ -1,11 +1,12 @@
-ClipTube for Android 1.2.1: fixes for clips from other servers.
+ClipTube for Android 1.3.0: uploads that survive a bad connection.
 
 **Install:** download the `.apk` below on your phone and open it. It installs over earlier versions and keeps your servers and sign-ins.
 
-Fixed:
+New, on servers running ClipTube 1.10 or newer:
 
-- **Tapping the uploader of a clip from another server** (on its watch page, or its avatar in a feed) now opens their channel. A channel on a ClipTube server opens in the app, read from that server; a Mastodon or PeerTube account opens in the browser. Before, nothing happened.
-- **Views of clips from other servers** count on the server that hosts them again, as they do from the website.
-- Channel pages say "1 view" instead of "1 views".
+- **Uploads go up in pieces.** If the connection drops, the app waits, checks how much arrived and carries on from there instead of starting over.
+- **Closing the app doesn't lose an upload.** Choose the same file again and it picks up where it stopped (the server keeps an unfinished upload for a day).
+- **Big videos work behind Cloudflare,** which refuses single requests over 100 MB on its free plan.
+- **Uploads are much faster.** Sending raw pieces skips the slow path the old single-request upload went through.
 
-1.2.0 brought your main server, playlists, watch parties and live streams; see its release for those.
+Servers older than 1.10 still get the video in one request, as before.

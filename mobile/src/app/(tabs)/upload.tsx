@@ -12,8 +12,12 @@ import { bytes } from '@/lib/format';
 import { colors } from '@/lib/theme';
 import type { Video } from '@/lib/types';
 
-type Picked = { uri: string; name: string; size: number | null; type: string };
-type Stage = { kind: 'form' } | { kind: 'uploading'; sent: number; total: number } | { kind: 'processing'; video: Video } | { kind: 'done'; video: Video };
+type Picked = { uri: string; name: string; size: number | null; type: string; lastModified: number | null };
+type Stage =
+  | { kind: 'form' }
+  | { kind: 'uploading'; sent: number; total: number; resumedFrom?: number }
+  | { kind: 'processing'; video: Video }
+  | { kind: 'done'; video: Video };
 
 function KeepAwake() {
   useKeepAwake();
@@ -74,7 +78,7 @@ export default function Upload() {
       setError(`That file is ${bytes(a.size)}. This server takes up to ${bytes(max)}.`);
       return;
     }
-    setFile({ uri: a.uri, name: a.name || 'clip.mp4', size: a.size ?? null, type: a.mimeType || 'video/mp4' });
+    setFile({ uri: a.uri, name: a.name || 'clip.mp4', size: a.size ?? null, type: a.mimeType || 'video/mp4', lastModified: a.lastModified ?? null });
     if (!fields.title) setFields((f) => ({ ...f, title: (a.name || '').replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim().slice(0, 120) }));
   };
 
@@ -82,8 +86,8 @@ export default function Upload() {
     if (!file) return;
     setError(null);
     setStage({ kind: 'uploading', sent: 0, total: file.size || 0 });
-    const job = api.upload<{ video: Video }>(
-      '/videos',
+    // In pieces that survive a dropped connection (ClipTube 1.10+), or in one request on older servers.
+    const job = api.uploadVideo<{ video: Video }>(
       {
         title: fields.title.trim(),
         description: fields.description,
@@ -93,7 +97,8 @@ export default function Upload() {
         allow_clips: String(fields.allow_clips),
       },
       file,
-      (sent, total) => setStage({ kind: 'uploading', sent, total }),
+      (sent, total, resumedFrom) =>
+        setStage((s) => ({ kind: 'uploading', sent, total, resumedFrom: resumedFrom ?? (s.kind === 'uploading' ? s.resumedFrom : undefined) })),
     );
     abort.current = job.abort;
     try {
@@ -122,7 +127,11 @@ export default function Upload() {
             <View style={[s.fill, { width: `${pct}%` }]} />
           </View>
           <Text style={s.hint}>{stage.total ? `${bytes(stage.sent)} of ${bytes(stage.total)}` : 'Starting…'}</Text>
-          <Text style={s.hint}>Keep the app open until the upload finishes.</Text>
+          {!!stage.resumedFrom && <Text style={[s.hint, { color: colors.ok }]}>{`Picked up where the last try stopped, at ${bytes(stage.resumedFrom)}.`}</Text>}
+          <Text style={s.hint}>
+            If the connection drops, the upload carries on where it stopped. If you close the app, choose the same file again
+            to continue.
+          </Text>
           <Button title="Cancel" kind="ghost" onPress={() => abort.current?.()} />
         </View>
       </View>

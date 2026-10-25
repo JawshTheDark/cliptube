@@ -20,7 +20,7 @@ Watching and browsing work on any version.
 | Network | Clips from other servers stream from their own server; likes, comments and subscriptions go through yours |
 | Comments | Threads with replies, held and pending states, approve and delete for uploaders and moderators |
 | Explore | Search with sorting, and the game catalog with SteamGridDB artwork; game and channel pages |
-| Upload | Pick a video, set title, description, game, tags, visibility and clipping, watch progress and processing |
+| Upload | Pick a video, set title, description, game, tags, visibility and clipping, watch progress and processing. On ClipTube 1.10+ it goes up in 8 MB pieces that survive dropped connections and resume after the app is closed |
 | You | Your clips (edit, publish drafts, delete), history, liked clips, subscriptions, sign out |
 | Linked accounts | Link your accounts on other servers or Mastodon (ClipTube 1.6+); channels show Also on, Subscribe to all and an All accounts filter |
 | Playlists | Save to Watch later or a playlist, play a list with shuffle, loop and autoplay, edit and reorder your own (ClipTube 1.7+) |
