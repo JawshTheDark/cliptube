@@ -31,9 +31,23 @@ export function userToPublic(u) {
 export const ROLES = ['user', 'moderator', 'admin'];
 export const STATUSES = ['active', 'pending', 'suspended', 'banned'];
 
+/**
+ * The session token: the cookie for browsers, or an `Authorization: Bearer` header for the Android app
+ * (a native video player can send a header but not share the browser's cookie).
+ */
+export function sessionToken(req) {
+  const cookie = req.cookies?.[COOKIE];
+  if (cookie) return cookie;
+  const m = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(String(req.get('authorization') || '').trim());
+  return m ? m[1] : null;
+}
+
+/** Login and register return the session token in the body, instead of a cookie, when the app asks for it. */
+const wantsToken = (req) => req.body?.return_token === true;
+
 export function attachUser(req, res, next) {
   req.user = null;
-  const token = req.cookies?.[COOKIE];
+  const token = sessionToken(req);
   if (token) {
     // Suspended and banned accounts lose their sessions immediately.
     const row = db
@@ -75,12 +89,15 @@ export function setUserStatus(userId, status, reason = null) {
   if (status !== 'active') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
 }
 
+/** Starts a session. Returns its token when the client asked for one (the app), else sets the cookie. */
 function startSession(req, res, userId) {
   const token = newToken();
   const t = now();
   db.prepare('INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)').run(token, userId, t, t + SESSION_MS);
+  if (wantsToken(req)) return { token, token_expires_at: t + SESSION_MS };
   // `secure` follows the request, so the cookie is HTTPS-only behind a TLS proxy but still works on plain-http LAN setups.
   res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: req.secure, maxAge: SESSION_MS, path: '/' });
+  return {};
 }
 
 /**
@@ -149,8 +166,8 @@ authRouter.post('/register', async (req, res) => {
   if (status === 'pending') {
     return res.status(202).json({ pending: true, message: 'Thanks! An admin needs to approve your account before you can sign in.' });
   }
-  startSession(req, res, id);
-  res.status(201).json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(id)) });
+  const session = startSession(req, res, id);
+  res.status(201).json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(id)), ...session });
 });
 
 authRouter.post('/login', async (req, res) => {
@@ -161,12 +178,12 @@ authRouter.post('/login', async (req, res) => {
   if (u.status && u.status !== 'active') {
     throw new HttpError(403, `This account is ${u.status}${u.status_reason ? `: ${u.status_reason}` : ''}`);
   }
-  startSession(req, res, u.id);
-  res.json({ user: userToPublic(u) });
+  const session = startSession(req, res, u.id);
+  res.json({ user: userToPublic(u), ...session });
 });
 
 authRouter.post('/logout', (req, res) => {
-  const token = req.cookies?.[COOKIE];
+  const token = sessionToken(req);
   if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
   res.clearCookie(COOKIE, { path: '/' });
   res.json({ ok: true });

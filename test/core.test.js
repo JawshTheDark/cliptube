@@ -41,6 +41,33 @@ test('private videos are hidden from others', async () => {
   assert.ok(!(await anon.get('/api/videos')).data.videos.some((x) => x.id === v.id));
 });
 
+test('the Android app signs in with a bearer token instead of a cookie', async () => {
+  const login = await fetch(`${inst.url}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'alice', password: 'alice-pass-1', return_token: true }),
+  });
+  assert.equal(login.status, 200);
+  assert.equal(login.headers.getSetCookie().length, 0, 'no cookie for app sessions');
+  const { token, user, token_expires_at } = await login.json();
+  assert.equal(user.username, 'alice');
+  assert.ok(token && token_expires_at > Date.now());
+  const auth = { Authorization: `Bearer ${token}` };
+  const me = await (await fetch(`${inst.url}/api/auth/me`, { headers: auth })).json();
+  assert.equal(me.user.username, 'alice');
+  // The video player sends the header too, so private clips play.
+  const secret = (await admin.get('/api/me/videos')).data.videos.find((x) => x.title === 'Secret');
+  assert.equal((await fetch(`${inst.url}${secret.video_url}`, { headers: auth })).status, 200);
+  assert.equal((await fetch(`${inst.url}/api/auth/me`, { headers: { Authorization: 'Bearer not-a-real-session-token-at-all' } }).then((r) => r.json())).user, null);
+  // Browsers still get a cookie and no token.
+  const web = await new Client(inst.url).post('/api/auth/login', { username: 'alice', password: 'alice-pass-1' });
+  assert.equal(web.data.token, undefined);
+  // Logging out ends that session only.
+  assert.equal((await fetch(`${inst.url}/api/auth/logout`, { method: 'POST', headers: auth })).status, 200);
+  assert.equal((await (await fetch(`${inst.url}/api/auth/me`, { headers: auth })).json()).user, null);
+  assert.equal((await admin.get('/api/auth/me')).data.user.username, 'alice');
+});
+
 test('the timeline editor renders a cut-down version', async () => {
   const v = (await admin.get('/api/videos')).data.videos.find((x) => x.title === 'Remux me');
   const r = await admin.post(`/api/videos/${v.id}/edit`, { segments: [{ start: 0.5, end: 1.5 }, { start: 2.5, end: 3.5 }], fade_out: 0.5 });
