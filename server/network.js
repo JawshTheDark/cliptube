@@ -550,22 +550,25 @@ export function cleanItem(it, origin) {
   };
 }
 
+// One video, one row: a ClipTube video seen through both protocols merges, and the ClipTube protocol's
+// richer path (live comment threads, immediate verdicts) wins once it knows the video.
 const UPSERT_VIDEO = `INSERT INTO network_videos (instance_id, remote_id, title, description, tags, duration, width, height, views, likes,
     created_at, updated_at, thumbnail_url, video_url, watch_url, uploader_username, uploader_display_name, uploader_avatar_url, uploader_url, fetched_at,
-    game_slug, game_name)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    game_slug, game_name, origin_type)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(instance_id, remote_id) DO UPDATE SET title = excluded.title, description = excluded.description, tags = excluded.tags,
+    origin_type = CASE WHEN excluded.origin_type = 'cliptube' THEN 'cliptube' ELSE network_videos.origin_type END,
     game_slug = excluded.game_slug, game_name = excluded.game_name,
     duration = excluded.duration, width = excluded.width, height = excluded.height, views = excluded.views, likes = excluded.likes,
     created_at = excluded.created_at, updated_at = excluded.updated_at, thumbnail_url = excluded.thumbnail_url, video_url = excluded.video_url,
     watch_url = excluded.watch_url, uploader_username = excluded.uploader_username, uploader_display_name = excluded.uploader_display_name,
     uploader_avatar_url = excluded.uploader_avatar_url, uploader_url = excluded.uploader_url, fetched_at = excluded.fetched_at`;
 
-function upsertVideo(instanceId, c, t, instanceUrl = null) {
+function upsertVideo(instanceId, c, t, instanceUrl = null, origin = 'cliptube') {
   const isNew = !db.prepare('SELECT 1 FROM network_videos WHERE instance_id = ? AND remote_id = ?').get(instanceId, c.remote_id);
   db.prepare(UPSERT_VIDEO).run(instanceId, c.remote_id, c.title, c.description, c.tags, c.duration, c.width, c.height, c.views, c.likes,
     c.created_at, c.updated_at, c.thumbnail_url, c.video_url, c.watch_url, c.uploader_username, c.uploader_display_name,
-    c.uploader_avatar_url, c.uploader_url, t, c.game_slug, c.game_name);
+    c.uploader_avatar_url, c.uploader_url, t, c.game_slug, c.game_name, origin);
   indexNetworkVideo(instanceId, c.remote_id);
   // People here subscribed to that channel hear about new uploads.
   if (isNew && db.prepare('SELECT 1 FROM network_subscriptions WHERE instance_id = ? AND username = ? LIMIT 1').get(instanceId, c.uploader_username)) {
@@ -579,8 +582,8 @@ function upsertVideo(instanceId, c, t, instanceUrl = null) {
   if (hide) db.prepare('UPDATE network_videos SET hidden = 1, hidden_by = ? WHERE instance_id = ? AND remote_id = ? AND hidden = 0').run(hide.url, instanceId, c.remote_id);
 }
 
-/** Adds or updates a network video (also used for videos that arrive over ActivityPub). */
-export const upsertNetworkVideo = (instanceId, item, t, instanceUrl) => upsertVideo(instanceId, item, t, instanceUrl);
+/** Adds or updates a network video that arrived over ActivityPub. */
+export const upsertNetworkVideo = (instanceId, item, t, instanceUrl) => upsertVideo(instanceId, item, t, instanceUrl, 'activitypub');
 
 // ---- shared block lists --------------------------------------------------------------------------------
 

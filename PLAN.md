@@ -17,7 +17,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | M5 Feeds, notifications, search, analytics | Done | v0.9.0, 2026-10-25 |
 | M6 ActivityPub and PeerTube | Done (live PeerTube check pending) | v1.0.0, 2026-10-25 |
 | M7 Mastodon, moves, export and import | Done (live Mastodon check pending) | v1.1.0, 2026-10-25 |
-| M8 One federation protocol | In progress | |
+| M8 One federation protocol | Done: decided to keep two layers (see docs/federation.md) | v1.2.0, 2026-10-25 |
 | Servers linked (clips.irc.so hub, laptop member) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you
@@ -318,11 +318,17 @@ timeline, replies, and the reply appears as a comment.
 
 ## M8: One federation protocol, size M
 
-- Compare the ClipTube protocol with ActivityPub for ClipTube-to-ClipTube traffic: features, reliability and
-  how much code each needs.
-- *Recommended outcome* if ActivityPub covers everything: ClipTube instances talk ActivityPub to each other,
+- ✅ Compare the ClipTube protocol with ActivityPub for ClipTube-to-ClipTube traffic: features, reliability and
+  how much code each needs. The comparison is in [docs/federation.md](docs/federation.md).
+- ✅ *Recommended outcome* if ActivityPub covers everything: ClipTube instances talk ActivityPub to each other,
   the hub becomes an optional directory and blocklist service (like the instance index PeerTube runs at
   joinpeertube.org), and the old protocol stays read-only for one release before it's removed.
+  *Outcome:* ActivityPub doesn't cover everything yet. Moving would lose immediate comment verdicts, whole
+  comment threads on other instances' videos, the hub's network-wide switches and a reliable video index.
+  So the decision is two layers with one job each: ActivityPub for people (and the whole fediverse), the
+  ClipTube protocol for instances. The hub is already optional. The doc lists when to revisit.
+  *Cleanup shipped:* one placeholder account per person and one row per video across both protocols, the
+  game carried over ActivityPub, and account deletions sent to every known fediverse server.
 
 ## Parallel workstreams
 

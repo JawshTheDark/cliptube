@@ -221,7 +221,10 @@ export async function ingestVideo(obj) {
   const html = links.find((l) => l && l.mediaType === 'text/html')?.href || obj.id;
   const icons = (Array.isArray(obj.icon) ? obj.icon : obj.icon ? [obj.icon] : []).filter((i) => i && idOf(i.url));
   const thumb = icons.sort((x, y) => (Number(y.width) || 0) - (Number(x.width) || 0))[0];
-  const remoteId = typeof obj.uuid === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(obj.uuid) ? obj.uuid : crypto.createHash('sha256').update(obj.id).digest('base64url').slice(0, 22);
+  // ClipTube videos keep their own id, so a video also known through the ClipTube network is one row.
+  const clipTubeId = /\/ap\/videos\/([A-Za-z0-9_-]{4,40})$/.exec(new URL(obj.id).pathname)?.[1];
+  const remoteId = clipTubeId || (typeof obj.uuid === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(obj.uuid) ? obj.uuid : crypto.createHash('sha256').update(obj.id).digest('base64url').slice(0, 22));
+  const game = obj.game && typeof obj.game === 'object' && /^[a-z0-9][a-z0-9-]{0,59}$/.test(String(obj.game.slug || '')) ? obj.game : null;
   const tags = (Array.isArray(obj.tag) ? obj.tag : [])
     .filter((t) => t?.type === 'Hashtag' && t.name)
     .map((t) => String(t.name).replace(/^#/, '').toLowerCase().slice(0, 30))
@@ -246,12 +249,13 @@ export async function ingestVideo(obj) {
     uploader_display_name: channel.name || channel.username,
     uploader_avatar_url: channel.icon_url,
     uploader_url: channel.url || channel.id,
-    game_slug: null,
-    game_name: null,
+    game_slug: game ? game.slug : null,
+    game_name: game ? str(game.name, 80).trim() || game.slug : null,
   };
   upsertNetworkVideo(inst.id, item, now(), inst.url);
   db.prepare(
-    "UPDATE network_videos SET ap_id = ?, origin_type = 'activitypub', hls_url = ?, ap_actor = ?, comments_enabled = ? WHERE instance_id = ? AND remote_id = ?",
+    `UPDATE network_videos SET ap_id = ?, origin_type = CASE WHEN origin_type = 'cliptube' THEN 'cliptube' ELSE 'activitypub' END, hls_url = ?, ap_actor = ?, comments_enabled = ?
+     WHERE instance_id = ? AND remote_id = ?`,
   ).run(obj.id, hls?.href || null, channel.id, obj.commentsEnabled === false || obj.commentsPolicy === 2 ? 0 : 1, inst.id, remoteId);
   indexNetworkVideo(inst.id, remoteId);
   return { instanceId: inst.id, remoteId };

@@ -217,6 +217,9 @@ ClipTube also speaks ActivityPub, the protocol of Mastodon, PeerTube and the res
   private link or by uploading it, add the old account as an alias there, then move. Fediverse followers get
   an ActivityPub `Move`, subscribers on the old instance and on other ClipTube instances are moved too, and
   the old channel points to the new one. Moves of fediverse accounts people here follow are followed in turn.
+- **Two layers:** ActivityPub carries what people do; ClipTube instances also keep their own protocol for
+  finding each other, the network video index, block lists and the hub's switches. Why, and when that may
+  change, is in [docs/federation.md](docs/federation.md).
 - **Under the hood:** WebFinger, NodeInfo and host-meta for discovery; RSA HTTP Signatures (draft-cavage,
   rsa-sha256) on every delivery and fetch, checked on every incoming activity; deliveries retried over three
   days through the job queue.

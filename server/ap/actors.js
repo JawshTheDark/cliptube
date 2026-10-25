@@ -155,6 +155,12 @@ export function shadowUser(actor) {
     db.prepare('UPDATE ap_actors SET user_id = ? WHERE id = ?').run(clash.id, actor.id);
     return clash;
   }
+  // The same person already known through the ClipTube network (same server, same name): one account, not two.
+  if (clash && !clash.ap_actor && clash.remote_instance_id === actor.instance_id && actor.type === 'Person') {
+    db.prepare('UPDATE users SET ap_actor = ? WHERE id = ?').run(actor.id, clash.id);
+    db.prepare('UPDATE ap_actors SET user_id = ? WHERE id = ?').run(clash.id, actor.id);
+    return db.prepare('SELECT * FROM users WHERE id = ?').get(clash.id);
+  }
   if (clash) handle = `${clean}.${newId(3)}@${actor.domain}`;
   const id = newId();
   db.prepare(

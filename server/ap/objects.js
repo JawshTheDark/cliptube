@@ -40,6 +40,9 @@ const PT_CONTEXT = [
     schema: 'http://schema.org#',
     PropertyValue: 'schema:PropertyValue',
     value: 'schema:value',
+    // ClipTube's one extension: the game a clip is from (see docs/federation.md).
+    cliptube: 'https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md#',
+    game: 'cliptube:game',
   },
 ];
 
@@ -176,6 +179,9 @@ export function videoJson(v, base) {
   if (fed) links.push({ type: 'Link', mediaType: 'video/mp4', href: `${base}/media/renditions/${fed.path}`, height: fed.height, size: fed.size_bytes, fps: Math.min(fps, 60) });
   const thumb = v.thumb_path ? `${base}/media/thumbs/${v.thumb_path}` : null;
   const tags = String(v.tag_list || '').split(',').filter((t) => t.length >= 2 && t.length <= 30);
+  const game = v.game_id ? db.prepare('SELECT id, name FROM games WHERE id = ?').get(v.game_id) : null;
+  // The game also travels as a hashtag, for servers that don't know the extension.
+  if (game && !tags.includes(game.id) && game.id.length <= 30) tags.push(game.id);
   const captions = db.prepare("SELECT id, lang, label FROM captions WHERE video_id = ? AND status = 'published'").all(v.id);
   const commentsPolicy = v.comment_mode === 'off' ? 2 : v.comment_mode === 'hold_all' ? 3 : 1;
   // Mastodon shows the first video attachment it can fetch; give it the smaller copy when there is one.
@@ -200,6 +206,7 @@ export function videoJson(v, base) {
     updated: iso(v.updated_at || v.created_at),
     originallyPublishedAt: null,
     category: v.game_id ? { identifier: '7', name: 'Gaming' } : null,
+    game: game ? { slug: game.id, name: game.name, url: `${base}/g/${game.id}` } : undefined,
     licence: null,
     language: null,
     mediaType: 'text/markdown',

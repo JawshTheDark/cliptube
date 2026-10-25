@@ -55,12 +55,18 @@ export function deliver(localActor, activity, inboxes, { key = null } = {}) {
   return n;
 }
 
-/** An account is being deleted: tell everyone following its account or channel. */
+/**
+ * An account is being deleted: tell every fediverse server this site knows (not only followers), so
+ * its comments and likes go everywhere, the way the ClipTube network's deletion notice already does.
+ */
 export function sendActorDelete(user) {
   const base = apBase();
   if (!base || !apEnabled()) return;
   const u = urls(base);
-  const targets = inboxesOf(followersOf([`u:${user.id}`, `c:${user.id}`]));
+  const targets = db
+    .prepare('SELECT DISTINCT COALESCE(a.shared_inbox, a.inbox) AS box FROM ap_actors a JOIN instances i ON i.id = a.instance_id WHERE i.blocked = 0 AND a.inbox IS NOT NULL')
+    .all()
+    .map((r) => r.box);
   if (!targets.length) return;
   for (const kind of ['u', 'c']) {
     const key = signerFor(`${kind}:${user.id}`, base);

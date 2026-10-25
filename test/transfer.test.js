@@ -285,3 +285,31 @@ test('Mastodon niceties: video attachment with a poster, profile fields, replies
   const c = await waitFor(async () => (await oldMe.get(`/api/videos/${v2.id}/comments`)).data.comments.find((x) => x.author.username.startsWith('mona@')), { what: 'the reply' });
   assert.equal(c.body, 'great ace');
 });
+
+test('one person, one video: things seen through both protocols are not duplicated', async () => {
+  const rl = await uploadReady(A, { title: 'Rocket League clip', game: 'Rocket League' });
+  const asAp = await ap(`${a.url}/ap/videos/${rl.id}`);
+  assert.equal(asAp.game?.name, 'Rocket League');
+  assert.ok(asAp.tag.some((t) => t.name === asAp.game.slug), 'the game travels as a hashtag too');
+
+  // B knows the video through the ClipTube network...
+  for (const x of [A, B]) await x.post('/api/admin/network/sync');
+  const titled = async () => (await dave.get('/api/videos?scope=network')).data.videos.filter((v) => v.title === 'Rocket League clip');
+  await waitFor(async () => (await titled()).length === 1, { what: 'the clip on B' });
+  // ...and Dave also follows the channel over ActivityPub, which brings the video in again.
+  const f = await dave.post('/api/fediverse/follow', { handle: `alice_channel@${host(a)}` });
+  assert.equal(f.status, 201, JSON.stringify(f.data));
+  await waitFor(() => b.log().includes(`imported 1 video(s) from ${a.url}/ap/channels/alice`) || b.log().includes(`video(s) from ${a.url}/ap/channels/alice`), { what: 'the ActivityPub backfill' });
+  const rows = await titled();
+  assert.equal(rows.length, 1, 'still one row');
+  assert.equal(rows[0].origin_type, 'cliptube', 'the ClipTube path (live threads, immediate verdicts) stays in charge');
+  assert.equal(rows[0].game?.name, 'Rocket League');
+
+  // Dave comments through the network and subscribes both ways: one placeholder account on A.
+  assert.equal((await dave.post(`/api/network/videos/${rows[0].remote.peer_id}/${rows[0].remote.remote_id}/comments`, { body: 'Nice save' })).status, 201);
+  assert.equal((await dave.post(`/api/network/channels/${rows[0].remote.peer_id}/alice/subscribe`)).status, 200);
+  await waitFor(async () => (await A.get('/api/users/alice')).data.channel.subscriber_count >= 1, { what: 'the follow to land on A' });
+  assert.equal((await A.get('/api/users/alice')).data.channel.subscriber_count, 1, 'the network subscription and the fediverse follow are the same person');
+  const authors = (await A.get(`/api/videos/${rl.id}/comments`)).data.comments.map((c) => c.author.username.toLowerCase());
+  assert.deepEqual(authors, [`dave@${host(b)}`]);
+});

@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v1.1.0): a hub (clips.irc.so) plus direct peering between instances, with
+Planned work. Current state (v1.2.0): a hub (clips.irc.so) plus direct peering between instances, with
 cross-instance likes, comments and subscriptions signed per instance, and ActivityPub so Mastodon and PeerTube can follow channels. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 
@@ -76,8 +76,10 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
 - [x] Let ClipTube follow PeerTube channels and instances; show their videos in Network and search.
 - [x] Make ClipTube videos playable from PeerTube (MP4 `url` entries; PeerTube prefers HLS, so add an HLS
       rendition, see "Playback" below).
-- [ ] Decide: stay a lightweight ClipTube-native network that also speaks ActivityPub, or recommend PeerTube
+- [x] Decide: stay a lightweight ClipTube-native network that also speaks ActivityPub, or recommend PeerTube
       for people who want the full fediverse feature set. Write up the trade-offs.
+      Decided: stay ClipTube and speak ActivityPub; point people who need live streaming, P2P or plugins to
+      PeerTube. ClipTube instances keep their own protocol for the instance layer. See docs/federation.md.
 - [ ] Test against a real PeerTube instance (docker image) in CI or a local script.
 
 ### Mastodon
