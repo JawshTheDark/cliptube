@@ -61,8 +61,50 @@ data/
 
 Back up the `data` folder and you have everything.
 
-## Sharing outside your network
+Optional: `FFMPEG_PATH` and `FFPROBE_PATH` point at a system ffmpeg instead of the bundled one, for
+example a build with NVENC support.
 
-Put it behind a reverse proxy with HTTPS (Caddy, nginx, Cloudflare Tunnel, Tailscale Funnel) and set
-the Public URL in Admin so link previews point to the right address. Turn off "Allow new people to
-create accounts" once your friends have signed up.
+## Deploy with Docker behind Nginx Proxy Manager
+
+On the server (Docker + Compose, a running Nginx Proxy Manager on a shared docker network):
+
+```bash
+git clone git@github.com:JawshTheDark/cliptube.git && cd cliptube
+mkdir -p data
+# Only if your proxy network is not called "proxy-net", or your uid/gid is not 1000:
+# printf 'PROXY_NETWORK=my-proxy-net\nPUID=1000\nPGID=1000\n' > .env
+docker compose up -d --build
+```
+
+The container publishes no host port. In Nginx Proxy Manager add a **Proxy Host**:
+
+| Field                | Value                                   |
+| -------------------- | --------------------------------------- |
+| Domain               | `clips.example.com`                     |
+| Scheme / Host / Port | `http` / `cliptube` / `3000`            |
+| Block Common Exploits | on                                     |
+| SSL                  | Request a new certificate, Force SSL, HTTP/2 |
+
+and paste this in the **Advanced** tab so multi-gigabyte uploads are not cut off:
+
+```nginx
+client_max_body_size 0;
+proxy_request_buffering off;
+proxy_read_timeout 3600s;
+proxy_send_timeout 3600s;
+```
+
+Then open the site, create the first (admin) account, set the **Public URL** in Admin so Discord previews
+use the right address, and turn off "Allow new people to create accounts" once your friends have joined.
+
+Update later with:
+
+```bash
+git pull && docker compose up -d --build
+```
+
+## Sharing outside your network without Docker
+
+Any reverse proxy with HTTPS works (Caddy, nginx, Cloudflare Tunnel, Tailscale Funnel). Set
+`TRUST_PROXY=1` so the app sees real client addresses and the HTTPS scheme, and raise the proxy's
+request body limit for uploads.

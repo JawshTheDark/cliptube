@@ -44,11 +44,12 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
-function startSession(res, userId) {
+function startSession(req, res, userId) {
   const token = newToken();
   const t = now();
   db.prepare('INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)').run(token, userId, t, t + SESSION_MS);
-  res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', maxAge: SESSION_MS, path: '/' });
+  // `secure` follows the request, so the cookie is HTTPS-only behind a TLS proxy but still works on plain-http LAN setups.
+  res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: req.secure, maxAge: SESSION_MS, path: '/' });
 }
 
 export const authRouter = Router();
@@ -66,7 +67,7 @@ authRouter.post('/register', async (req, res) => {
   db.prepare('INSERT INTO users (id, username, display_name, password_hash, is_admin, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
     id, username, str(display_name, 50).trim() || username, hash, first ? 1 : 0, now(),
   );
-  startSession(res, id);
+  startSession(req, res, id);
   res.status(201).json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(id)) });
 });
 
@@ -74,7 +75,7 @@ authRouter.post('/login', async (req, res) => {
   const { username, password } = req.body || {};
   const u = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username || ''));
   if (!u || !(await bcrypt.compare(String(password || ''), u.password_hash))) throw new HttpError(401, 'Wrong username or password');
-  startSession(res, u.id);
+  startSession(req, res, u.id);
   res.json({ user: userToPublic(u) });
 });
 

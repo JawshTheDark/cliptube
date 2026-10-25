@@ -1,0 +1,27 @@
+# Production setup behind Nginx Proxy Manager (or any reverse proxy on a shared docker network).
+#
+#   mkdir -p data && docker compose up -d --build
+#
+# No port is published on the host: the proxy reaches the app over the shared network as cliptube:3000.
+# To run it standalone instead, add `ports: ["3000:3000"]` and drop the networks section.
+
+services:
+  cliptube:
+    build: .
+    image: cliptube:latest
+    container_name: cliptube
+    restart: unless-stopped
+    # Match the owner of ./data so uploads are written as your user, not root.
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      - TRUST_PROXY=1
+      - DATA_DIR=/data
+    volumes:
+      - ./data:/data
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy-net}

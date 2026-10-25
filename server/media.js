@@ -6,7 +6,9 @@ import ffprobeStatic from 'ffprobe-static';
 import { db, getSettings } from './db.js';
 import { DIRS } from './config.js';
 
-const ffprobePath = ffprobeStatic.path;
+// Bundled binaries by default; set FFMPEG_PATH / FFPROBE_PATH to use a system build (e.g. one with NVENC).
+const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
+const ffprobeBin = process.env.FFPROBE_PATH || ffprobeStatic.path;
 
 function run(bin, args, { onStdoutLine } = {}) {
   return new Promise((resolve, reject) => {
@@ -40,7 +42,7 @@ function run(bin, args, { onStdoutLine } = {}) {
 }
 
 export async function probe(file) {
-  const { stdout } = await run(ffprobePath, ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', file]);
+  const { stdout } = await run(ffprobeBin,['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', file]);
   const info = JSON.parse(stdout);
   const streams = info.streams || [];
   const video = streams.find((s) => s.codec_type === 'video' && s.disposition?.attached_pic !== 1);
@@ -68,7 +70,7 @@ export async function probe(file) {
 }
 
 export async function makeThumbnail(input, output, seek) {
-  await run(ffmpegPath, ['-y', '-v', 'error', '-ss', String(seek), '-i', input, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', output]);
+  await run(ffmpegBin,['-y', '-v', 'error', '-ss', String(seek), '-i', input, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', output]);
 }
 
 /** Normalise an uploaded image: thumbnails become 1280-wide JPEGs, avatars 256x256 squares. */
@@ -76,7 +78,7 @@ export async function convertImage(input, output, kind) {
   const vf = kind === 'avatar'
     ? 'scale=256:256:force_original_aspect_ratio=increase,crop=256:256'
     : "scale='min(1280,iw)':-2";
-  await run(ffmpegPath, ['-y', '-v', 'error', '-i', input, '-frames:v', '1', '-vf', vf, '-q:v', '3', output]);
+  await run(ffmpegBin,['-y', '-v', 'error', '-i', input, '-frames:v', '1', '-vf', vf, '-q:v', '3', output]);
 }
 
 function parseOutTime(line) {
@@ -119,7 +121,7 @@ export async function transcode(input, output, info, settings, onProgress) {
   };
 
   if (!needsTranscode(info, maxHeight)) {
-    await run(ffmpegPath, [...base, '-c', 'copy', ...tail], { onStdoutLine: onLine });
+    await run(ffmpegBin,[...base, '-c', 'copy', ...tail], { onStdoutLine: onLine });
     return { copied: true, encoder: 'copy' };
   }
 
@@ -131,7 +133,7 @@ export async function transcode(input, output, info, settings, onProgress) {
   let lastErr;
   for (const enc of encoders) {
     try {
-      await run(ffmpegPath, [...base, ...vf, ...encoderArgs(enc), '-pix_fmt', 'yuv420p', ...audio, ...tail], { onStdoutLine: onLine });
+      await run(ffmpegBin,[...base, ...vf, ...encoderArgs(enc), '-pix_fmt', 'yuv420p', ...audio, ...tail], { onStdoutLine: onLine });
       return { copied: false, encoder: enc };
     } catch (e) {
       lastErr = e;
@@ -245,5 +247,5 @@ export function resumePending() {
 }
 
 export function ffmpegInfo() {
-  return { ffmpeg: ffmpegPath, ffprobe: ffprobePath };
+  return { ffmpeg: ffmpegBin, ffprobe: ffprobeBin };
 }
