@@ -135,7 +135,7 @@ export function getEditable(id, user) {
   return v;
 }
 
-function setTags(videoId, tags) {
+export function setTags(videoId, tags) {
   db.prepare('DELETE FROM tags WHERE video_id = ?').run(videoId);
   const ins = db.prepare('INSERT OR IGNORE INTO tags (video_id, tag) VALUES (?, ?)');
   for (const t of tags) ins.run(videoId, t);

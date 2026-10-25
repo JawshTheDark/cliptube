@@ -208,6 +208,15 @@ ClipTube also speaks ActivityPub, the protocol of Mastodon, PeerTube and the res
 - **Moderation:** blocked instances are blocked for ActivityPub too, reports about fediverse videos go to
   their server as a `Flag` from this instance (not from the person who reported), and incoming reports join
   the moderation queue.
+- **Mastodon:** clips arrive as a post with the title, a link and a playable video (with its poster frame).
+  Channel pages have *Follow from your server*, which opens the follow page on the viewer's own server, and
+  Follow buttons on other servers can point back here (`/authorize_interaction`). Support links show as
+  profile fields. The help page at `/help/fediverse` explains all of this for viewers.
+- **Moving a channel** (Settings → *Moving to another site*): export the channel (one archive with videos,
+  thumbnails, captions, comments and the subscriber list), import it on the new instance from the export's
+  private link or by uploading it, add the old account as an alias there, then move. Fediverse followers get
+  an ActivityPub `Move`, subscribers on the old instance and on other ClipTube instances are moved too, and
+  the old channel points to the new one. Moves of fediverse accounts people here follow are followed in turn.
 - **Under the hood:** WebFinger, NodeInfo and host-meta for discovery; RSA HTTP Signatures (draft-cavage,
   rsa-sha256) on every delivery and fetch, checked on every incoming activity; deliveries retried over three
   days through the job queue.

@@ -19,6 +19,7 @@ export function userToPublic(u) {
     avatar_url: remote ? u.remote_avatar_url || null : u.avatar ? `/media/avatars/${u.avatar}` : null,
     ...(remote ? { remote: true, profile_url: u.remote_profile_url || null } : {}),
     banner_url: u.banner ? `/media/avatars/${u.banner}` : null,
+    ...(u.moved_to && !remote ? { moved: { url: u.moved_to_url || u.moved_to, handle: u.moved_to_handle || null, at: u.moved_at } } : {}),
     is_admin: u.role === 'admin' || !!u.is_admin,
     is_moderator: u.role === 'admin' || u.role === 'moderator' || !!u.is_admin,
     role: u.role || (u.is_admin ? 'admin' : 'user'),

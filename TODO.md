@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v1.0.0): a hub (clips.irc.so) plus direct peering between instances, with
+Planned work. Current state (v1.1.0): a hub (clips.irc.so) plus direct peering between instances, with
 cross-instance likes, comments and subscriptions signed per instance, and ActivityPub so Mastodon and PeerTube can follow channels. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 
@@ -67,7 +67,9 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
 - [x] **Announce** (boosts/shares) counted and shown.
 - [x] **Delivery queue** with retries and backoff; shared inbox support.
 - [x] **Moderation**: domain blocks apply to ActivityPub traffic; `Flag` activities for reports.
-- [ ] **Account migration**: `Move` activity so a channel can move between instances keeping followers.
+- [x] **Account migration**: `Move` activity so a channel can move between instances keeping followers.
+      Aliases (`alsoKnownAs`) on the new account, `movedTo` and `Move` from the old one; incoming moves of
+      accounts people here follow are followed too, once the new account confirms the alias.
 
 ### PeerTube
 
@@ -80,9 +82,12 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
 
 ### Mastodon
 
-- [ ] Mastodon users can follow `@channel@clips.example.com`, see new clips in their timeline with a playable
+- [x] Mastodon users can follow `@channel@clips.example.com`, see new clips in their timeline with a playable
       video attachment, like and boost them, and reply (replies become comments).
-- [ ] Mastodon replies show the author's handle and avatar in the comment thread, linking to their profile.
+      The attachment carries the poster frame and alt text; support links show as profile fields; channel
+      pages have "Follow from your server" (remote follow), and `/authorize_interaction` works the other way.
+- [x] Mastodon replies show the author's handle and avatar in the comment thread, linking to their profile.
+      The leading @mention Mastodon adds to replies is dropped, since the thread shows it already.
 - [ ] Test against a real Mastodon instance (or GoToSocial for something lighter).
 
 ## 4. Better than YouTube (ideas from common complaints)
@@ -105,8 +110,10 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 - [x] Human-reviewed takedowns with a counter-notice flow and a public takedown log (see section 2).
 - [x] Every removal or restriction shows the reason and the rule it broke; instances publish their rules;
       appeals go to a human.
-- [ ] Full channel export (videos, metadata, comments, subscribers list) and import on another instance;
+- [x] Full channel export (videos, metadata, comments, subscribers list) and import on another instance;
       account moves between instances keep subscribers (ActivityPub `Move`, see section 3).
+      Settings, "Moving to another site". The new instance can fetch the archive itself from the export's
+      private link. Subscribers on the old instance and on other ClipTube instances move along too.
 - [x] Creator analytics that are honest and simple: views over time, where viewers came from, retention graph.
 
 ### Watching

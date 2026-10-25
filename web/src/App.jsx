@@ -20,6 +20,7 @@ import AdminNetwork from './pages/AdminNetwork.jsx';
 import AdminModeration from './pages/AdminModeration.jsx';
 import AdminLegal from './pages/AdminLegal.jsx';
 import { Legal, Transparency } from './pages/Legal.jsx';
+import HelpFediverse from './pages/HelpFediverse.jsx';
 import StudioComments from './pages/StudioComments.jsx';
 import { Games, GamePage } from './pages/Games.jsx';
 import AdminGames from './pages/AdminGames.jsx';
@@ -188,6 +189,7 @@ export default function App() {
                 }
               />
               <Route path="/legal" element={<Legal />} />
+              <Route path="/help/fediverse" element={<HelpFediverse />} />
               <Route path="/transparency" element={<Transparency />} />
               <Route path="/c/:username" element={<Channel />} />
               <Route path="/results" element={<Search />} />

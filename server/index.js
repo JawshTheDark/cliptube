@@ -34,6 +34,8 @@ import { apNegotiation, apRouter, apWellKnownRouter } from './ap/routes.js';
 import { apNetworkRouter, fediverseAdminRouter, fediverseRouter } from './ap/api.js';
 import { startApCleanup } from './ap/inbox.js';
 import { apEnabled, apBase } from './ap/common.js';
+import { moveRouter } from './ap/move.js';
+import { channelExportPublicRouter, transferRouter } from './transfer.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -78,6 +80,9 @@ app.get('/api/site', (req, res) => {
 app.use(networkProtocolRouter); // /.well-known/cliptube, /api/hub/*, /api/network/{verify,feed,inbox}
 app.use(apWellKnownRouter); // WebFinger, NodeInfo, host-meta
 app.use('/ap', apRouter); // ActivityPub actors, objects, collections, inboxes
+app.use(channelExportPublicRouter); // /api/channel-exports/<id>?token=... (import from a link)
+// Remote follow from another fediverse server ("Follow" on Mastodon pointing here): pick it up on Subscriptions.
+app.get('/authorize_interaction', (req, res) => res.redirect(`/subscriptions?follow=${encodeURIComponent(String(req.query.uri || '').slice(0, 500))}`));
 app.use('/api', legalPublicRouter); // /api/legal, /api/transparency
 app.use('/api/auth', authRouter);
 app.use('/api/auth', emailPublicRouter); // verify-email, forgot-password, reset-password
@@ -92,6 +97,8 @@ app.use('/api', watchingRouter); // captions, segments, community suggestions
 app.use('/api/users', usersRouter);
 app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);
+app.use('/api/me', moveRouter); // aliases and moves
+app.use('/api/me', transferRouter); // channel export and import
 app.use('/api/reports', reportsRouter);
 app.use('/api/mod', modRouter);
 app.use('/api/fediverse', fediverseRouter);

@@ -17,6 +17,7 @@ import { apFetch } from './http.js';
 import { PUBLIC, apBase, first, hostOf, htmlToText, idOf, originOf, parseDuration, parseLocal } from './common.js';
 import { getActor, instanceFor, isBlockedActor, shadowUser, signer, storeActor } from './actors.js';
 import { sendAcceptOrReject } from './deliver.js';
+import { followMove } from './move.js';
 
 const accepts = () => {
   const s = getSettings();
@@ -93,9 +94,38 @@ async function handle(a, actorId) {
       return type === 'EmojiReact' ? null : onLike(a, actorId, base, type === 'Like' ? 1 : -1);
     case 'Flag':
       return onFlag(a, actorId, base);
+    case 'Move':
+      return onMove(a, actorId);
     default:
       return null;
   }
+}
+
+/** An account people here follow moved: follow the new one if it confirms the move (see move.js). */
+async function onMove(a, actorId) {
+  const origin = idOf(a.object) || actorId;
+  if (origin !== actorId) return; // only an account can move itself
+  await followMove(origin, idOf(a.target));
+}
+
+/**
+ * Mastodon starts a reply with @mentions of the people it answers. The thread shows that already, so
+ * leading mentions that the note tags are dropped (unless nothing else is left).
+ */
+export function stripLeadingMentions(text, note) {
+  const tags = Array.isArray(note?.tag) ? note.tag : note?.tag ? [note.tag] : [];
+  const names = tags.filter((t) => t && t.type === 'Mention' && typeof t.name === 'string').map((t) => t.name.toLowerCase());
+  if (!names.length) return text;
+  let out = text;
+  for (;;) {
+    const m = /^@([\w.-]+?)(@[\w-]+(?:\.[\w-]+)+)?(?=[\s,:]|$)[\s,:]*/.exec(out);
+    if (!m) break;
+    const short = `@${m[1]}`.toLowerCase();
+    const full = `${short}${(m[2] || '').toLowerCase()}`;
+    if (!names.some((n) => n === full || n === short || n.startsWith(`${short}@`))) break;
+    out = out.slice(m[0].length);
+  }
+  return out.trim() || text;
 }
 
 // ---- follows ------------------------------------------------------------------------------------------
@@ -278,7 +308,7 @@ async function onNote(note, actorId, base) {
   if (originOf(authorId) !== originOf(actorId)) return;
   const replyTo = idOf(note.inReplyTo);
   if (!replyTo) return;
-  const body = str(htmlToText(note.content), 2000).trim();
+  const body = str(stripLeadingMentions(htmlToText(note.content).trim(), note), 2000).trim();
   if (!body) return;
   const actor = await getActor(authorId);
   const author = shadowUser(actor);
@@ -346,7 +376,7 @@ async function onUpdate(a, actorId, base) {
     return;
   }
   if ((o.type === 'Note' || o.type === 'Comment') && hostOf(o.id) === hostOf(actorId)) {
-    const body = str(htmlToText(o.content), 2000).trim();
+    const body = str(stripLeadingMentions(htmlToText(o.content).trim(), o), 2000).trim();
     if (!body) return;
     db.prepare('UPDATE comments SET body = ? WHERE ap_id = ?').run(body, o.id);
     db.prepare('UPDATE network_comments SET body = ? WHERE ap_id = ?').run(body, o.id);

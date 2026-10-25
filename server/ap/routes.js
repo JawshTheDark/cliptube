@@ -69,6 +69,8 @@ apWellKnownRouter.get('/.well-known/webfinger', requireAp, (req, res) => {
     links: [
       { rel: 'self', type: AP_CONTENT_TYPE, href },
       { rel: 'http://webfinger.net/rel/profile-page', type: 'text/html', href: profile },
+      // Lets people here follow fediverse accounts from those accounts' own pages.
+      { rel: 'http://ostatus.org/schema/1.0/subscribe', template: `${base}/authorize_interaction?uri={uri}` },
     ],
   });
 });

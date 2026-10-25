@@ -672,6 +672,53 @@ CREATE INDEX idx_network_comments_video ON network_comments(instance_id, remote_
       db.exec('CREATE INDEX IF NOT EXISTS idx_users_ap_actor ON users(ap_actor)');
     },
   },
+  {
+    version: 9,
+    name: 'moving channels: aliases and moves, channel export and import',
+    up(db) {
+      db.exec(`
+CREATE TABLE channel_exports (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'queued', -- queued | working | ready | failed
+  file TEXT,                             -- in DIRS.exports
+  token TEXT NOT NULL,                   -- lets another instance download it (import from a link)
+  size_bytes INTEGER,
+  error TEXT,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER
+);
+CREATE INDEX idx_channel_exports_user ON channel_exports(user_id, created_at);
+CREATE TABLE channel_imports (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'queued', -- queued | downloading | working | done | failed
+  source_url TEXT,                       -- set when imported from a link
+  file TEXT,                             -- the archive while it waits, in DIRS.tmp
+  size_bytes INTEGER,
+  apply_profile INTEGER NOT NULL DEFAULT 1,
+  progress INTEGER NOT NULL DEFAULT 0,
+  stats TEXT,                            -- JSON
+  error TEXT,
+  created_at INTEGER NOT NULL,
+  finished_at INTEGER
+);
+CREATE INDEX idx_channel_imports_user ON channel_imports(user_id, created_at);
+`);
+      addColumn(db, 'users', 'also_known_as', 'TEXT'); // JSON: old accounts (actor URIs) this one moved from
+      addColumn(db, 'users', 'moved_to', 'TEXT'); // the new account (Person URI) after a move
+      addColumn(db, 'users', 'moved_to_group', 'TEXT'); // its channel (Group URI), when it has one
+      addColumn(db, 'users', 'moved_to_url', 'TEXT');
+      addColumn(db, 'users', 'moved_to_handle', 'TEXT');
+      addColumn(db, 'users', 'moved_at', 'INTEGER');
+      addColumn(db, 'ap_actors', 'also_known_as', 'TEXT'); // JSON array
+      addColumn(db, 'ap_actors', 'moved_to', 'TEXT');
+      addColumn(db, 'videos', 'import_key', 'TEXT'); // <source site>#<video id> for imported videos
+      addColumn(db, 'comments', 'import_key', 'TEXT');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_videos_import ON videos(user_id, import_key) WHERE import_key IS NOT NULL');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_comments_import ON comments(import_key) WHERE import_key IS NOT NULL');
+    },
+  },
 ];
 
 export function currentVersion(db) {

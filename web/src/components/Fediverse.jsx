@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Avatar } from './Avatar.jsx';
@@ -28,7 +29,41 @@ export function FediverseHandles({ username }) {
           </button>
         </div>
       ))}
+      <RemoteFollow handle={handles[1][0]} />
+      <p className="hint small">
+        <Link to="/help/fediverse">Following from Mastodon and PeerTube</Link>
+      </p>
     </div>
+  );
+}
+
+const SERVER_KEY = 'cliptube.fediverse_server';
+
+/** "Follow from your own server": opens the follow page on the viewer's Mastodon (or similar) server. */
+function RemoteFollow({ handle }) {
+  const [server, setServer] = useState(() => {
+    try {
+      return localStorage.getItem(SERVER_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
+  const go = (e) => {
+    e.preventDefault();
+    const host = server.trim().replace(/^https?:\/\//, '').replace(/^@?[^@\s]+@/, '').replace(/\/.*$/, '');
+    if (!host) return;
+    try {
+      localStorage.setItem(SERVER_KEY, host);
+    } catch {}
+    window.open(`https://${host}/authorize_interaction?uri=${encodeURIComponent(handle)}`, '_blank', 'noopener');
+  };
+  return (
+    <form className="follow-form top-gap" onSubmit={go}>
+      <input className="input" value={server} onChange={(e) => setServer(e.target.value)} placeholder="Your server, like mastodon.social" aria-label="Your fediverse server" />
+      <button className="btn" disabled={!server.trim()}>
+        Follow from there
+      </button>
+    </form>
   );
 }
 
@@ -38,26 +73,39 @@ const STATUS = { pending: ['warn', 'Waiting for them to accept'], accepted: ['ok
 export function FediverseFollow() {
   const { site } = useAuth();
   const toast = useToast();
-  const [q, setQ] = useState('');
+  const [params, setParams] = useSearchParams();
+  const [q, setQ] = useState(() => params.get('follow') || '');
   const [preview, setPreview] = useState(null);
   const [follows, setFollows] = useState(null);
   const [busy, setBusy] = useState(false);
   const load = () => api('/fediverse/follows').then((r) => setFollows(r.follows)).catch(() => setFollows([]));
-  useEffect(() => {
-    if (site.activitypub) load();
-  }, [site.activitypub]);
-  if (!site.activitypub) return null;
-  const lookup = async (e) => {
-    e.preventDefault();
+  const find = async (query) => {
     setBusy(true);
     setPreview(null);
     try {
-      setPreview((await api(`/fediverse/lookup?q=${encodeURIComponent(q.trim())}`)).actor);
+      setPreview((await api(`/fediverse/lookup?q=${encodeURIComponent(query.trim())}`)).actor);
     } catch (err) {
       toast(err.message);
     } finally {
       setBusy(false);
     }
+  };
+  useEffect(() => {
+    if (site.activitypub) load();
+  }, [site.activitypub]);
+  // Arriving from a "Follow" button on another fediverse server (/authorize_interaction).
+  useEffect(() => {
+    const incoming = params.get('follow');
+    if (!site.activitypub || !incoming) return;
+    find(incoming);
+    params.delete('follow');
+    setParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [site.activitypub]);
+  if (!site.activitypub) return null;
+  const lookup = (e) => {
+    e.preventDefault();
+    find(q);
   };
   const follow = async (handle) => {
     setBusy(true);

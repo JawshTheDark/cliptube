@@ -16,8 +16,8 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | M4 Watching upgrades | Done | v0.8.0, 2026-10-25 |
 | M5 Feeds, notifications, search, analytics | Done | v0.9.0, 2026-10-25 |
 | M6 ActivityPub and PeerTube | Done (live PeerTube check pending) | v1.0.0, 2026-10-25 |
-| M7 Mastodon, moves, export and import | In progress | |
-| M8 One federation protocol | Not started | |
+| M7 Mastodon, moves, export and import | Done (live Mastodon check pending) | v1.1.0, 2026-10-25 |
+| M8 One federation protocol | In progress | |
 | Servers linked (clips.irc.so hub, laptop member) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you
@@ -294,14 +294,23 @@ comment posted there shows up on ClipTube, and the reverse works too.
 
 ## M7: Mastodon, account moves, export and import (v1.1), size L to XL
 
-- **Mastodon**: people follow `@user@clips.example.com`, and new clips appear in their timeline with the
+- ◐ **Mastodon**: people follow `@user@clips.example.com`, and new clips appear in their timeline with the
   title, thumbnail and a playable video attachment using the federation rendition. Likes, boosts and replies
   come back as likes, shares and comments. Checked against GoToSocial, and Mastodon if you choose it. (M)
-- **Channel export and import**: one archive with videos, metadata, comments and the subscriber list; import
+  *As built:* the attachment carries the poster frame and alt text, support links are profile fields,
+  channels have "Follow from your server", and the leading @mention on Mastodon replies is dropped. Checked
+  against a Mastodon-like stand-in in the tests, not a real Mastodon or GoToSocial yet (see "Needs you").
+- ✅ **Channel export and import**: one archive with videos, metadata, comments and the subscriber list; import
   recreates the channel on another instance. (M)
-- **Account moves**: ActivityPub `Move` with `alsoKnownAs`, so followers carry over. The ClipTube network
+  *As built:* the new instance can fetch the archive from the export's private link, so it never passes
+  through a phone. Comments keep their authors as linked placeholder accounts, the owner's own comments
+  become the new account's, and old videos are not announced as new uploads. Videos taken down by
+  moderators stay behind.
+- ✅ **Account moves**: ActivityPub `Move` with `alsoKnownAs`, so followers carry over. The ClipTube network
   learns about the move too. (M)
-- **Public docs**: how to follow ClipTube channels from Mastodon and PeerTube. (S)
+  *As built:* subscribers on the old instance are moved by it, and other ClipTube instances get a signed
+  "account moved" message and move their people, after checking the new account lists the old one.
+- ✅ **Public docs**: how to follow ClipTube channels from Mastodon and PeerTube. (S) At `/help/fediverse`.
 
 **Schema:** `users.moved_to`, `users.also_known_as`; export archives run as jobs.
 **Done when:** a sandbox Mastodon or GoToSocial account follows a ClipTube channel, watches a clip in its

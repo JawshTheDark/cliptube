@@ -5,6 +5,7 @@ import { useAuth, useTitle } from '../auth.jsx';
 import { Avatar } from '../components/Avatar.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { MoveSettings } from '../components/MoveChannel.jsx';
 import { formatBytes, formatDate, isAnonymous, setAnonymous, usePref } from '../util.js';
 
 export default function Settings() {
@@ -179,6 +180,7 @@ function MoreSettings() {
       <PrivacySettings s={s} patch={patch} />
       <StorageCard storage={s.storage} />
       <DataSettings />
+      <MoveSettings />
       <DeleteAccount initial={s.delete_requested_at} />
     </>
   );

@@ -18,7 +18,7 @@ export class ApError extends Error {
   }
 }
 
-async function assertPublic(url) {
+export async function assertPublic(url) {
   const u = new URL(url);
   if (!['https:', 'http:'].includes(u.protocol)) throw new ApError(0, 'Only http(s) addresses');
   if (ALLOW_PRIVATE_FEDERATION) return;

@@ -10,6 +10,7 @@ import { ReportButton } from '../components/ReportDialog.jsx';
 import { SupportLinks } from '../components/WatchExtras.jsx';
 import { FeedButton } from '../components/FeedLink.jsx';
 import { FediverseHandles } from '../components/Fediverse.jsx';
+import { Icon } from '../components/Icons.jsx';
 
 const SORTS = [
   ['new', 'Latest'],
@@ -74,6 +75,15 @@ export default function Channel() {
             <span>{plural(channel.total_views, 'view')}</span>
           </div>
           {channel.bio && <p className="bio">{channel.bio}</p>}
+          {channel.moved && (
+            <div className="notice moved-banner">
+              <Icon name="public" /> This channel moved to{' '}
+              <a href={channel.moved.url} target="_blank" rel="noopener noreferrer">
+                {channel.moved.handle || channel.moved.url}
+              </a>
+              . New videos are posted there.
+            </div>
+          )}
           <div className="actions">
             {channel.is_self ? (
               <>
@@ -86,9 +96,15 @@ export default function Channel() {
               </>
             ) : (
               <>
-                <button className={`btn ${channel.subscribed ? '' : 'btn-primary'}`} onClick={toggleSub}>
-                  {channel.subscribed ? 'Subscribed' : 'Subscribe'}
-                </button>
+                {channel.moved && !channel.subscribed ? (
+                  <a className="btn btn-primary" href={channel.moved.url} target="_blank" rel="noopener noreferrer">
+                    Go to the new channel
+                  </a>
+                ) : (
+                  <button className={`btn ${channel.subscribed ? '' : 'btn-primary'}`} onClick={toggleSub}>
+                    {channel.subscribed ? 'Subscribed' : 'Subscribe'}
+                  </button>
+                )}
                 <ReportButton target={{ type: 'user', id: channel.id, label: `@${channel.username}` }} className="btn btn-icon" iconOnly />
               </>
             )}

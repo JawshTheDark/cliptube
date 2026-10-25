@@ -1669,6 +1669,14 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
     const r = db.prepare('DELETE FROM users WHERE username = ? AND remote_instance_id = ?').run(`${username}@${hostOf(inst.url)}`, inst.id);
     return res.json({ ok: true, removed: r.changes });
   }
+  // So are moves: people here subscribed to that channel follow it to its new home (once the new
+  // account confirms it, which the handler checks).
+  if (b.type === 'actor_moved') {
+    const username = String(b.actor?.username || '');
+    if (!USERNAME_RE.test(username)) throw new HttpError(400, 'Bad account name');
+    const moved = movedHandler ? await movedHandler(inst, username, b.target && typeof b.target === 'object' ? b.target : {}) : 0;
+    return res.json({ ok: true, moved });
+  }
 
   if (!peerAllowed(inst) || !inst.allow_interactions) throw new HttpError(403, 'Your instance is not allowed to interact on this network');
 
@@ -1760,7 +1768,7 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
 async function sendToInstance(inst, type, data, user) {
   if (!networkActive()) throw new HttpError(400, 'This site is not connected to a network');
   if (!inst || inst.is_self) throw new HttpError(404, 'Instance not found');
-  const always = type === 'report' || type === 'actor_delete';
+  const always = type === 'report' || type === 'actor_delete' || type === 'actor_moved';
   if (inst.blocked && !always) throw new HttpError(403, 'You have blocked this instance');
   if (!always && (!peerAllowed(inst) || !inst.allow_interactions)) throw new HttpError(403, `${instName(inst)} cannot receive likes or comments right now`);
   const kind = KIND[type];
@@ -1809,6 +1817,61 @@ export async function announceAccountDeletion(user) {
     }
   }
   return sent;
+}
+
+let movedHandler = null;
+/** Registers what to do when another instance says one of its accounts moved (see ap/move.js). */
+export function onRemoteAccountMoved(fn) {
+  movedHandler = fn;
+}
+
+/** Tells every known instance that a local account moved, so their people subscribed to it follow along. */
+export async function announceAccountMove(user, target) {
+  if (!networkActive()) return 0;
+  let sent = 0;
+  for (const inst of db.prepare('SELECT * FROM instances WHERE is_self = 0 AND public_key IS NOT NULL').all()) {
+    if (inst.blocked || (inst.source === 'activitypub' && !inst.protocol)) continue;
+    try {
+      await sendToInstance(inst, 'actor_moved', { target }, user);
+      sent++;
+    } catch (e) {
+      console.warn(`[network] could not tell ${inst.url} about a move: ${e.message}`);
+    }
+  }
+  return sent;
+}
+
+/** The ClipTube peer at this address, if it is one we can subscribe through. */
+export function clipTubePeer(origin) {
+  let url;
+  try {
+    url = normalizeInstanceUrl(origin);
+  } catch {
+    return null;
+  }
+  const inst = instByUrl(url);
+  return inst && peerAllowed(inst) && inst.allow_interactions && inst.public_key && (inst.protocol || 0) >= 2 ? inst : null;
+}
+
+/** Peers with another ClipTube instance (found through a move), when this one may take new peers. */
+export async function peerWith(origin) {
+  if (!participating() || !storedSelf()) return null;
+  try {
+    const desc = await fetchJson(`${normalizeInstanceUrl(origin)}/.well-known/cliptube`, { timeout: 8000 });
+    if (desc?.software !== 'cliptube') return null;
+    await introduce(origin, 'peer');
+  } catch {
+    return null;
+  }
+  return clipTubePeer(origin);
+}
+
+/** Subscribes a local person to a channel on a peer (the same as pressing Subscribe on its page). */
+export async function subscribeRemote(user, inst, username, { display_name = null, avatar_url = null, profile_url = null } = {}) {
+  await sendToInstance(inst, 'subscribe', { channel: username }, user);
+  db.prepare(
+    'INSERT OR REPLACE INTO network_subscriptions (user_id, instance_id, username, display_name, avatar_url, profile_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(user.id, inst.id, username, display_name || username, avatar_url, profile_url || `${inst.url}/c/${username}`, now());
 }
 
 // ---- local API for this instance's own pages (/api/network) -----------------------------------------

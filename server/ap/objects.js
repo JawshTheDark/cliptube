@@ -35,8 +35,38 @@ const PT_CONTEXT = [
     manuallyApprovesFollowers: 'as:manuallyApprovesFollowers',
     discoverable: 'toot:discoverable',
     toot: 'http://joinmastodon.org/ns#',
+    alsoKnownAs: { '@id': 'as:alsoKnownAs', '@type': '@id' },
+    movedTo: { '@id': 'as:movedTo', '@type': '@id' },
+    schema: 'http://schema.org#',
+    PropertyValue: 'schema:PropertyValue',
+    value: 'schema:value',
   },
 ];
+
+const aliasList = (u) => {
+  try {
+    const v = JSON.parse(u.also_known_as || '[]');
+    return Array.isArray(v) && v.length ? v : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** Support links as profile fields, which Mastodon shows on the profile. */
+function profileFields(json) {
+  try {
+    const list = JSON.parse(json || '[]');
+    if (!Array.isArray(list) || !list.length) return undefined;
+    return list.slice(0, 4).map((l) => ({
+      type: 'PropertyValue',
+      name: String(l.label || 'Link').slice(0, 255),
+      value: `<a href="${escapeAttr(l.url)}" target="_blank" rel="nofollow noopener noreferrer me">${escapeAttr(String(l.url).replace(/^https?:\/\//, ''))}</a>`,
+    }));
+  } catch {
+    return undefined;
+  }
+}
+const escapeAttr = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function supportText(json) {
   try {
@@ -56,6 +86,8 @@ function actorCommon(base, id, u) {
     endpoints: { sharedInbox: urls(base).sharedInbox() },
     publicKey: { id: `${id}#main-key`, owner: id, publicKeyPem: userKeys(u.id).publicKey },
     icon: u.avatar ? { type: 'Image', mediaType: 'image/jpeg', url: `${base}/media/avatars/${u.avatar}` } : undefined,
+    image: u.banner ? { type: 'Image', mediaType: 'image/jpeg', url: `${base}/media/avatars/${u.banner}` } : undefined,
+    alsoKnownAs: aliasList(u),
     published: iso(u.created_at),
     manuallyApprovesFollowers: false,
     discoverable: true,
@@ -72,6 +104,8 @@ export function personJson(u, base) {
     name: u.display_name,
     summary: u.bio ? textToHtml(u.bio) : '',
     url: `${base}/c/${u.username}`,
+    attachment: profileFields(u.support_links),
+    movedTo: u.moved_to || undefined,
     ...actorCommon(base, id, u),
   };
 }
@@ -88,6 +122,7 @@ export function groupJson(u, base) {
     url: `${base}/c/${u.username}`,
     support: supportText(u.support_links),
     attributedTo: [{ type: 'Person', id: urls(base).person(u.username) }],
+    movedTo: u.moved_to ? u.moved_to_group || u.moved_to : undefined,
     ...actorCommon(base, id, u),
   };
 }
@@ -175,7 +210,18 @@ export function videoJson(v, base) {
     subtitleLanguage: captions.map((c) => ({ identifier: c.lang, name: c.label, url: `${base}/media/captions/${c.id}.vtt` })),
     icon: thumb ? [{ type: 'Image', url: thumb, mediaType: 'image/jpeg', width: 1280, height: Math.round((1280 * (v.height || 720)) / (v.width || 1280)) }] : [],
     url: links,
-    attachment: [{ type: 'Document', mediaType: 'video/mp4', url: small, name: v.title }],
+    // Mastodon: the playable file, its poster frame (icon) and alt text (name).
+    attachment: [
+      {
+        type: 'Document',
+        mediaType: 'video/mp4',
+        url: small,
+        name: v.title,
+        width: fed?.height ? Math.round((fed.height * (v.width || 16)) / (v.height || 9)) : v.width || undefined,
+        height: fed?.height || v.height || undefined,
+        ...(thumb ? { icon: { type: 'Image', mediaType: 'image/jpeg', url: thumb } } : {}),
+      },
+    ],
     aspectRatio: v.width && v.height ? Math.round((v.width / v.height) * 10000) / 10000 : null,
     likes: `${id}/likes`,
     dislikes: `${id}/dislikes`,

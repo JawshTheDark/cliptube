@@ -99,7 +99,10 @@ defineJob('ap.video', {
     if (federated) {
       const video = videoJson(v, base);
       delete video['@context'];
-      if (!v.ap_published_at) {
+      if (!v.ap_published_at && v.import_key && now() - (v.published_at || v.created_at) > 3 * 86400_000) {
+        // An older video brought over with a channel import: available, but not announced as new.
+        db.prepare('UPDATE videos SET ap_published_at = ? WHERE id = ?').run(now(), id);
+      } else if (!v.ap_published_at) {
         deliver(`u:${owner}`, { '@context': CONTEXT, id: u.activity(), type: 'Create', actor: person, to: video.to, cc: video.cc, published: video.published, object: video }, inboxesOf(audience));
         // Channel followers and instance followers (PeerTube mirrors, Mastodon) also get an Announce.
         deliver(`c:${owner}`, { '@context': CONTEXT, id: u.activity(), type: 'Announce', actor: u.group(v.username), to: [PUBLIC, `${u.group(v.username)}/followers`], object: video.id }, inboxesOf(followersOf([`c:${owner}`])));

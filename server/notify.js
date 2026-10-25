@@ -20,6 +20,7 @@ export const KINDS = {
   mention: 'Mentions of you in comments',
   comment: 'Comments on your videos',
   moderation: 'Decisions about your videos, reports and account',
+  move: 'Channels you subscribe to moving to another site',
 };
 const DEFAULT_PREFS = { push: Object.keys(KINDS), email: ['moderation'] };
 const RECENT_UPLOAD_MS = 3 * 86400_000;

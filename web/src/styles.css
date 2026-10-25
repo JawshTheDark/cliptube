@@ -3536,3 +3536,38 @@ th.num {
 .fedi-follow {
   margin-top: 24px;
 }
+
+/* ---- moving a channel (M7) ---- */
+.moved-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.move-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 8px;
+}
+.move-cols h4 {
+  margin: 0 0 6px;
+}
+@media (max-width: 720px) {
+  .move-cols {
+    grid-template-columns: 1fr;
+  }
+}
+.check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+}
+.help-page h2 {
+  margin-top: 28px;
+}
+.help-page li {
+  margin: 6px 0;
+}

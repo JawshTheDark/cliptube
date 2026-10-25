@@ -10,7 +10,7 @@
  */
 import { db } from './db.js';
 
-export const LANES = { media: 1, network: 4, default: 2 };
+export const LANES = { media: 1, network: 4, default: 2, transfer: 1 };
 
 const handlers = new Map();
 const active = Object.fromEntries(Object.keys(LANES).map((l) => [l, 0]));

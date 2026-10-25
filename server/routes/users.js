@@ -78,6 +78,7 @@ usersRouter.post('/:username/subscribe', requireAuth, (req, res) => {
   const u = channelByUsername(req.params.username);
   if (!u) throw new HttpError(404, 'Channel not found');
   if (u.id === req.user.id) throw new HttpError(400, 'You cannot subscribe to yourself');
+  if (u.moved_to) throw new HttpError(400, `This channel moved to ${u.moved_to_handle || u.moved_to_url}. Subscribe to it there.`);
   db.prepare('INSERT OR IGNORE INTO subscriptions (subscriber_id, channel_id, created_at) VALUES (?, ?, ?)').run(req.user.id, u.id, now());
   res.json({ channel: channelInfo(u, req.user) });
 });

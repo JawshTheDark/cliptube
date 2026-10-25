@@ -54,17 +54,21 @@ export function storeActor(a, fetchedFrom = null) {
   const key = a.publicKey && typeof a.publicKey === 'object' ? first(a.publicKey) : null;
   const username = str(a.preferredUsername || hostOf(a.id), 100).trim();
   const inst = instanceFor(a.id);
+  // Old accounts this one says it moved from, and where it moved to (if it did).
+  const aka = (Array.isArray(a.alsoKnownAs) ? a.alsoKnownAs : a.alsoKnownAs ? [a.alsoKnownAs] : []).map(idOf).filter((x) => typeof x === 'string' && /^https?:\/\//.test(x)).slice(0, 20);
+  const movedTo = idOf(a.movedTo);
   const vals = [
     a.type, username, hostOf(a.id), str(a.name || username, 100), str(a.summary, 2000), inbox, idOf(a.endpoints?.sharedInbox) || null, idOf(a.outbox),
     idOf(a.followers), htmlUrl(a), iconOf(a), key?.id || null, key?.publicKeyPem || null, idOf(first(a.attributedTo)), inst.id, now(),
+    aka.length ? JSON.stringify(aka) : null, typeof movedTo === 'string' && /^https?:\/\//.test(movedTo) ? movedTo : null,
   ];
   db.prepare(
-    `INSERT INTO ap_actors (type, username, domain, name, summary, inbox, shared_inbox, outbox, followers_url, url, icon_url, key_id, public_key, attributed_to, instance_id, fetched_at, id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO ap_actors (type, username, domain, name, summary, inbox, shared_inbox, outbox, followers_url, url, icon_url, key_id, public_key, attributed_to, instance_id, fetched_at, also_known_as, moved_to, id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET type = excluded.type, username = excluded.username, domain = excluded.domain, name = excluded.name, summary = excluded.summary,
        inbox = excluded.inbox, shared_inbox = excluded.shared_inbox, outbox = excluded.outbox, followers_url = excluded.followers_url, url = excluded.url,
        icon_url = excluded.icon_url, key_id = excluded.key_id, public_key = excluded.public_key, attributed_to = excluded.attributed_to,
-       instance_id = excluded.instance_id, fetched_at = excluded.fetched_at`,
+       instance_id = excluded.instance_id, fetched_at = excluded.fetched_at, also_known_as = excluded.also_known_as, moved_to = excluded.moved_to`,
   ).run(...vals, a.id);
   const row = db.prepare('SELECT * FROM ap_actors WHERE id = ?').get(a.id);
   if (row.user_id) refreshShadow(row);
@@ -106,7 +110,8 @@ export async function resolveActor(input) {
     const doc = await apFetch(s, { signer: signer() }).catch((e) => {
       throw new HttpError(400, `Could not load ${s}: ${e.message}`);
     });
-    if (ACTOR_TYPES.has(doc.type)) return storeActor(doc, doc.id);
+    // Only trust an actor document from its own host; otherwise load it from there.
+    if (ACTOR_TYPES.has(doc.type)) return hostOf(doc.id) === hostOf(s) ? storeActor(doc, s) : getActor(String(doc.id), { refresh: true });
     // A video or note URL: return its channel, if it has one.
     const owners = (Array.isArray(doc.attributedTo) ? doc.attributedTo : [doc.attributedTo]).filter(Boolean);
     const owner = idOf(owners.find((a) => typeof a === 'object' && a.type === 'Group') || owners[0]);
