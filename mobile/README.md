@@ -66,6 +66,10 @@ This regenerates `android/`, builds a release APK for arm64-v8a, armeabi-v7a and
 `dist/cliptube-<version>.apk`. It needs the Android SDK (`ANDROID_HOME`, or Android Studio's default
 location) and JDK 17 or newer (`JAVA_HOME`, or the JDK that ships with Android Studio).
 
+On Windows the native parts would pass the 260-character path limit from a folder this deep, so the script
+builds in a mirror at `C:\Users\<name>\.ctb` (or `CLIPTUBE_BUILD_DIR`), kept in sync with robocopy. The
+first build there takes about six minutes; delete the folder to reclaim the space.
+
 The APK is signed with the upload key when these are set, in the environment or in
 `~/.cliptube/android-release.properties`:
 
