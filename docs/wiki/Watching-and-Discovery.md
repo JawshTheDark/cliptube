@@ -31,7 +31,9 @@ or dislike, subscribe, **Share** (with a *start at* time, or a looping range), *
 and download the original when the uploader allows it.
 
 Shared links show a preview with an inline player in Discord, Slack and anything else that reads Open Graph
-tags, so set the Public URL in Admin for them to point at the right address.
+tags, so set the Public URL in Admin for them to point at the right address. That includes clips from other
+servers in the network: their card says who posted them and where, and the thumbnail and video come from the
+server that hosts them.
 
 ## Adaptive streaming
 

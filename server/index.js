@@ -133,35 +133,38 @@ app.use(apNegotiation); // /watch/<id> and /c/<name> as ActivityPub JSON for fed
 const dist = path.join(ROOT_DIR, 'web', 'dist');
 const indexFile = path.join(dist, 'index.html');
 
-/** Open Graph tags so Discord / Slack / iMessage show a thumbnail and inline player for shared links. */
-function ogTags(v, settings, req) {
-  const base = (settings.public_url || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
-  const url = `${base}/watch/${v.id}`;
-  const videoUrl = `${base}/media/videos/${v.id}.mp4`;
-  const description = (v.description || '').replace(/\s+/g, ' ').trim().slice(0, 200) || `${v.display_name} on ${settings.site_name}`;
+/**
+ * Open Graph tags so Discord / Slack / iMessage show a thumbnail and inline player for shared links: a page's
+ * address, the video's title and description, and absolute addresses of its thumbnail and MP4.
+ */
+function ogTags({ url, title, description, image, video, width, height }, settings) {
+  const w = width || 1280;
+  const h = height || 720;
   const tags = [
     ['og:site_name', settings.site_name],
     ['og:type', 'video.other'],
     ['og:url', url],
-    ['og:title', v.title],
+    ['og:title', title],
     ['og:description', description],
-    v.thumb_path && ['og:image', `${base}/media/thumbs/${v.thumb_path}`],
-    v.thumb_path && ['og:image:width', '1280'],
-    v.thumb_path && ['og:image:height', String(Math.round((1280 * (v.height || 9)) / (v.width || 16)))],
-    ['og:video', videoUrl],
-    ['og:video:secure_url', videoUrl],
-    ['og:video:type', 'video/mp4'],
-    ['og:video:width', String(v.width || 1280)],
-    ['og:video:height', String(v.height || 720)],
-    ['twitter:card', 'player'],
-    ['twitter:title', v.title],
+    image && ['og:image', image],
+    image && ['og:image:width', '1280'],
+    image && ['og:image:height', String(Math.round((1280 * h) / w))],
+    video && ['og:video', video],
+    video && ['og:video:secure_url', video],
+    video && ['og:video:type', 'video/mp4'],
+    video && ['og:video:width', String(w)],
+    video && ['og:video:height', String(h)],
+    ['twitter:card', video ? 'player' : 'summary_large_image'],
+    ['twitter:title', title],
     ['twitter:description', description],
-    v.thumb_path && ['twitter:image', `${base}/media/thumbs/${v.thumb_path}`],
-    ['twitter:player:stream', videoUrl],
-    ['twitter:player:stream:content_type', 'video/mp4'],
+    image && ['twitter:image', image],
+    video && ['twitter:player:stream', video],
+    video && ['twitter:player:stream:content_type', 'video/mp4'],
   ].filter(Boolean);
   return tags.map(([p, c]) => `<meta property="${p}" content="${escapeHtml(c)}">`).join('\n    ') + '\n';
 }
+const oneLine = (s) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+const webUrl = (u) => (/^https?:\/\/\S+$/.test(String(u || '')) ? u : null);
 
 if (fs.existsSync(indexFile)) {
   // The service worker (web push) must always be fetched fresh.
@@ -171,6 +174,7 @@ if (fs.existsSync(indexFile)) {
     const settings = getSettings();
     let html = fs.readFileSync(indexFile, 'utf8');
     let title = settings.site_name;
+    const base = (settings.public_url || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
     const m = /^\/watch\/([A-Za-z0-9_-]+)/.exec(req.path);
     if (m) {
       const v = db.prepare('SELECT v.*, u.display_name FROM videos v JOIN users u ON u.id = v.user_id WHERE v.id = ?').get(m[1]);
@@ -179,8 +183,46 @@ if (fs.existsSync(indexFile)) {
         const alt = apEnabled() && v.visibility === 'public' && v.federate && !v.moderation_status
           ? `<link rel="alternate" type="application/activity+json" href="${escapeHtml(`${apBase(req)}/ap/videos/${v.id}`)}">\n    `
           : '';
-        html = html.replace('</head>', `    ${alt}${ogTags(v, settings, req)}</head>`);
+        const og = ogTags(
+          {
+            url: `${base}/watch/${v.id}`,
+            title: v.title,
+            description: oneLine(v.description) || `${v.display_name} on ${settings.site_name}`,
+            image: v.thumb_path && `${base}/media/thumbs/${v.thumb_path}`,
+            video: `${base}/media/videos/${v.id}.mp4`,
+            width: v.width,
+            height: v.height,
+          },
+          settings,
+        );
+        html = html.replace('</head>', `    ${alt}${og}</head>`);
       }
+    }
+    // A clip from another server in the network, shared from here: its card says where it's from, and the
+    // thumbnail and video come from that server.
+    const n = /^\/n\/(\d+)\/([^/]+)$/.exec(req.path);
+    let remoteId = null;
+    try {
+      remoteId = n && decodeURIComponent(n[2]);
+    } catch {}
+    const r = remoteId
+      ? db.prepare(`SELECT r.*, p.name AS peer_name FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE r.instance_id = ? AND r.remote_id = ? AND ${NETWORK_VISIBLE}`).get(Number(n[1]), remoteId)
+      : null;
+    if (r) {
+      title = `${r.title} - ${settings.site_name}`;
+      const og = ogTags(
+        {
+          url: `${base}${req.path}`,
+          title: r.title,
+          description: oneLine(r.description) || `${r.uploader_display_name || r.uploader_username} on ${r.peer_name}`,
+          image: webUrl(r.thumbnail_url),
+          video: webUrl(r.video_url),
+          width: r.width,
+          height: r.height,
+        },
+        settings,
+      );
+      html = html.replace('</head>', `    ${og}</head>`);
     }
     const c = /^\/c\/([A-Za-z0-9_]{3,20})$/.exec(req.path);
     const owner = c && apEnabled() ? db.prepare('SELECT id FROM users WHERE username = ? AND remote_instance_id IS NULL').get(c[1]) : null;

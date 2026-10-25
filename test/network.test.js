@@ -82,6 +82,20 @@ test("Sync now on the hub reads each member's name at its own address", async ()
   assert.equal(await onHub(), 'Member B');
 });
 
+test("a clip from another server shared from here gets a link preview", { skip: !fs.existsSync(path.join(import.meta.dirname, '..', 'web', 'dist', 'index.html')) && 'the web app is not built' }, async () => {
+  const item = (await net(A)).find((v) => v.title === 'Bob on the member');
+  const html = await (await fetch(`${hub.url}/n/${item.remote.peer_id}/${encodeURIComponent(item.remote.remote_id)}`)).text();
+  const meta = (p) => new RegExp(`<meta property="${p}" content="([^"]*)"`).exec(html)?.[1];
+  assert.equal(meta('og:title'), 'Bob on the member');
+  assert.equal(meta('og:site_name'), 'Hub A');
+  assert.equal(meta('og:description'), 'bob on Member B');
+  assert.ok(meta('og:image')?.startsWith(member.url), meta('og:image'));
+  assert.ok(meta('og:video')?.startsWith(`${member.url}/media/videos/`), meta('og:video'));
+  assert.match(html, /<title>Bob on the member - Hub A<\/title>/);
+  // Nothing for a clip that isn't there.
+  assert.equal(/og:title/.test(await (await fetch(`${hub.url}/n/${item.remote.peer_id}/nope`)).text()), false);
+});
+
 test('likes, comments and subscriptions across instances', async () => {
   const remoteA = (await net(B))[0];
   const iidOnB = remoteA.remote.peer_id;
