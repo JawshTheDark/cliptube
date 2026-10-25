@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db, getSettings, userCount } from './db.js';
 import { HttpError, newId, newToken, now, str } from './util.js';
@@ -52,12 +53,36 @@ function startSession(req, res, userId) {
   res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: req.secure, maxAge: SESSION_MS, path: '/' });
 }
 
+/**
+ * While no accounts exist, the first registration (which becomes admin) must supply a one-time
+ * setup code that is printed to the server console. This stops a stranger from claiming the admin
+ * account on a freshly deployed public instance. Set SETUP_CODE in the environment to choose it.
+ */
+let setupCode = null;
+export function ensureSetupCode() {
+  if (userCount() > 0) {
+    setupCode = null;
+    return null;
+  }
+  if (!setupCode) {
+    setupCode = (process.env.SETUP_CODE || crypto.randomBytes(4).toString('hex')).trim();
+    console.log(`\nNo accounts exist yet. Create the first (admin) account at /register using setup code: ${setupCode}\n`);
+  }
+  return setupCode;
+}
+
 export const authRouter = Router();
 
 authRouter.post('/register', async (req, res) => {
-  const { username, password, display_name } = req.body || {};
+  const { username, password, display_name, setup_code } = req.body || {};
   const first = userCount() === 0;
   if (!first && getSettings().allow_registration !== 'true') throw new HttpError(403, 'Registration is closed on this site');
+  if (first) {
+    const code = ensureSetupCode();
+    if (String(setup_code || '').trim().toLowerCase() !== code.toLowerCase()) {
+      throw new HttpError(403, 'Wrong setup code. The code is printed in the server console when it starts (for Docker: docker logs cliptube).');
+    }
+  }
   if (!USERNAME_RE.test(username || '')) throw new HttpError(400, 'Username must be 3-20 letters, numbers or underscores');
   if (typeof password !== 'string' || password.length < 6) throw new HttpError(400, 'Password must be at least 6 characters');
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) throw new HttpError(409, 'That username is taken');

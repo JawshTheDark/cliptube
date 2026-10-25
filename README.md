@@ -25,7 +25,9 @@ npm run build
 npm start
 ```
 
-Open http://localhost:3000. The first account you create becomes the admin.
+Open http://localhost:3000. The first account you create becomes the admin; the register form asks
+for the one-time **setup code** that the server prints in its console at startup, so nobody else can
+claim the admin account on a public instance (with Docker: `docker logs cliptube`).
 The console also prints your LAN address so friends on your network can connect.
 
 Development (hot reload, frontend on http://localhost:5173, API on 3000):

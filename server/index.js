@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { ROOT_DIR, DIRS, PORT, HOST, LOG_REQUESTS } from './config.js';
 import { db, getSettings, userCount } from './db.js';
-import { attachUser, authRouter } from './auth.js';
+import { attachUser, authRouter, ensureSetupCode } from './auth.js';
 import { videosRouter } from './routes/videos.js';
 import { usersRouter, meRouter } from './routes/users.js';
 import { adminRouter } from './routes/admin.js';
@@ -138,6 +138,7 @@ const server = app.listen(PORT, HOST, () => {
   }
   if (!fs.existsSync(indexFile)) console.log('  (frontend not built yet: "npm run dev" for development, "npm run build" for production)');
   console.log('');
+  ensureSetupCode();
 });
 
 // Large uploads can take a long time, so disable the default 5 minute request timeout.

@@ -80,6 +80,7 @@ export function Register() {
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [setupCode, setSetupCode] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   useTitle('Create account');
@@ -92,7 +93,7 @@ export function Register() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api('/auth/register', { method: 'POST', body: { username, password, display_name: displayName } });
+      const r = await api('/auth/register', { method: 'POST', body: { username, password, display_name: displayName, setup_code: setupCode } });
       setUser(r.user);
       refresh().catch(() => {});
     } catch (err) {
@@ -113,6 +114,13 @@ export function Register() {
         <>
           {error && <div className="error">{error}</div>}
           <form onSubmit={submit}>
+            {site.needs_setup && (
+              <div className="field">
+                <label>Setup code</label>
+                <input className="input" value={setupCode} onChange={(e) => setSetupCode(e.target.value)} autoComplete="off" required />
+                <span className="hint">Printed in the server console when it starts. With Docker: <code>docker logs cliptube</code></span>
+              </div>
+            )}
             <div className="field">
               <label>Username</label>
               <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" pattern="[A-Za-z0-9_]{3,20}" title="3-20 letters, numbers or underscores" autoFocus required />
