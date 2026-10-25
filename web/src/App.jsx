@@ -21,6 +21,9 @@ import AdminModeration from './pages/AdminModeration.jsx';
 import AdminLegal from './pages/AdminLegal.jsx';
 import { Legal, Transparency } from './pages/Legal.jsx';
 import StudioComments from './pages/StudioComments.jsx';
+import { Games, GamePage } from './pages/Games.jsx';
+import AdminGames from './pages/AdminGames.jsx';
+import Compare from './pages/Compare.jsx';
 import Editor from './pages/Editor.jsx';
 import Network from './pages/Network.jsx';
 import RemoteWatch from './pages/RemoteWatch.jsx';
@@ -135,6 +138,17 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <StudioComments />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/games" element={<Games />} />
+              <Route path="/g/:id" element={<GamePage />} />
+              <Route path="/compare" element={<Compare />} />
+              <Route
+                path="/admin/games"
+                element={
+                  <RequireAuth moderator>
+                    <AdminGames />
                   </RequireAuth>
                 }
               />

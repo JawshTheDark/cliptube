@@ -4,19 +4,48 @@ import { useEffect } from 'react';
  * Native <video> with YouTube-style keyboard shortcuts, resume position and progress reporting.
  * `videoRef` is owned by the parent so the description timestamps and share dialog can reach the element.
  */
-export function Player({ video, videoRef, startAt = 0, onProgress, theater, onToggleTheater }) {
-  // Seek to the start position once metadata is known.
+export function Player({ video, videoRef, startAt = 0, exactStart = false, loop = null, onProgress, theater, onToggleTheater }) {
+  // Seek to the start position once metadata is known. Resume points skip the very start and end;
+  // a time from a shared link (exactStart) is used as is.
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
     const seek = () => {
-      if (startAt > 3 && startAt < (el.duration || video.duration) - 5) el.currentTime = startAt;
+      const d = el.duration || video.duration;
+      if (exactStart ? startAt > 0 && startAt < d : startAt > 3 && startAt < d - 5) el.currentTime = startAt;
     };
     if (el.readyState >= 1) seek();
     else el.addEventListener('loadedmetadata', seek, { once: true });
     return () => el.removeEventListener('loadedmetadata', seek);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.id]);
+
+  // Loop a range from a shared link (?t=..&end=..).
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !loop) return;
+    // Animation frames give a tight loop point; timeupdate keeps it working in background tabs.
+    let raf;
+    const check = () => {
+      if (el.currentTime >= loop.end) el.currentTime = loop.start;
+    };
+    const step = () => {
+      check();
+      raf = requestAnimationFrame(step);
+    };
+    const onEnded = () => {
+      el.currentTime = loop.start;
+      el.play().catch(() => {});
+    };
+    raf = requestAnimationFrame(step);
+    el.addEventListener('timeupdate', check);
+    el.addEventListener('ended', onEnded);
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener('timeupdate', check);
+      el.removeEventListener('ended', onEnded);
+    };
+  }, [video.id, loop?.start, loop?.end, videoRef]);
 
   // Report playback position (throttled) for watch history / resume.
   useEffect(() => {

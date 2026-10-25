@@ -4,6 +4,7 @@ import { api, uploadWithProgress } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { GameField } from '../components/GameField.jsx';
 import { formatBytes, copyText, VISIBILITY_HELP } from '../util.js';
 
 const VIDEO_RE = /\.(mp4|mkv|mov|webm|avi|m4v|ts|wmv|flv|mpg|mpeg|3gp|mts|m2ts)$/i;
@@ -45,6 +46,8 @@ export default function Upload() {
         description: '',
         tags: '',
         visibility: 'public',
+        game: '',
+        allow_clips: false,
         progress: 0,
         status: 'waiting', // waiting | uploading | processing | ready | failed
         video: null,
@@ -63,7 +66,7 @@ export default function Upload() {
       try {
         const { video } = await api(`/videos/${it.video.id}`, {
           method: 'PATCH',
-          body: { title: it.title, description: it.description, tags: it.tags, visibility: it.visibility },
+          body: { title: it.title, description: it.description, tags: it.tags, visibility: it.visibility, game: it.game, allow_clips: it.allow_clips },
         });
         update(key, { video, dirty: false, saving: false });
         toast('Details saved');
@@ -84,6 +87,8 @@ export default function Upload() {
       fd.append('description', it.description);
       fd.append('tags', it.tags);
       fd.append('visibility', it.visibility);
+      fd.append('game', it.game);
+      fd.append('allow_clips', it.allow_clips ? 'true' : 'false');
       fd.append('file', it.file);
       update(key, { status: 'uploading', progress: 0, error: null });
       const { promise, abort } = uploadWithProgress('/videos', fd, (loaded, total) => update(key, { progress: Math.round((loaded / total) * 100) }));
@@ -253,6 +258,7 @@ function UploadItem({ it, onChange, onSave, onCancel, onRemove }) {
           <input className="input" value={it.tags} placeholder="valorant, ace, clutch" onChange={(e) => onChange({ tags: e.target.value })} />
           <span className="hint">Separate tags with commas. Tags become the filter chips on the home page.</span>
         </div>
+        <GameField value={it.game} onChange={(game) => onChange({ game })} />
         <div className="field">
           <label>Visibility</label>
           <select className="select" value={it.visibility} onChange={(e) => onChange({ visibility: e.target.value })}>
@@ -262,6 +268,14 @@ function UploadItem({ it, onChange, onSave, onCancel, onRemove }) {
           </select>
           <span className="hint">{VISIBILITY_HELP[it.visibility]}</span>
         </div>
+        <label className="checkbox field">
+          <input type="checkbox" checked={it.allow_clips} onChange={(e) => onChange({ allow_clips: e.target.checked })} />
+          <span>
+            Let others clip this video
+            <br />
+            <span className="hint">Signed-in viewers can cut their own clips from it. Clips link back here.</span>
+          </span>
+        </label>
         <div className="row-actions">
           <button className="btn btn-primary" disabled={!v || !it.dirty || it.saving} onClick={onSave}>
             {it.saving ? 'Saving…' : v ? (it.dirty ? 'Save details' : 'Saved') : 'Save details'}

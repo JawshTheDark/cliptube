@@ -29,6 +29,9 @@ export function AdminTabs() {
       <NavLink to="/admin/moderation" className={tabClass}>
         Moderation
       </NavLink>
+      <NavLink to="/admin/games" className={tabClass}>
+        Games
+      </NavLink>
       {admin && (
         <NavLink to="/admin/legal" className={tabClass}>
           Legal

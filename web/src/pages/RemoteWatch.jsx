@@ -147,6 +147,13 @@ export default function RemoteWatch() {
 
       <div className="watch-body">
         <h1 className="watch-title">{video.title}</h1>
+        {video.game && (
+          <div className="watch-subline">
+            <Link to={`/g/${video.game.id}`} className="game-chip">
+              <Icon name="game" /> {video.game.name}
+            </Link>
+          </div>
+        )}
         <div className="watch-row">
           <div className="watch-channel">
             <a href={u.url || r.peer_url} target="_blank" rel="noopener noreferrer">
@@ -189,6 +196,9 @@ export default function RemoteWatch() {
             <a className="btn btn-icon" href={r.watch_url} target="_blank" rel="noopener noreferrer" title={`Open on ${r.peer_url}`}>
               <Icon name="open" />
             </a>
+            <Link className="btn btn-icon" to={`/compare?a=n:${peerId}:${encodeURIComponent(remoteId)}`} title="Compare side by side with another clip">
+              <Icon name="compare" />
+            </Link>
             <ReportButton target={{ type: 'remote_video', id: `${peerId}:${remoteId}`, label: video.title }} className="btn btn-icon" iconOnly />
             <button className={`btn btn-icon ${theater ? 'active' : ''}`} onClick={toggleTheater} title="Theater mode (t)">
               <Icon name="theater" />

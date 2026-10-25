@@ -6,6 +6,7 @@ import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { Empty } from '../components/VideoCard.jsx';
 import { Timeline, PAD } from '../components/Timeline.jsx';
+import { ClipDialog, rangeBefore } from '../components/ClipDialog.jsx';
 import { formatDuration } from '../util.js';
 
 const MIN_SEG = 0.1;
@@ -87,6 +88,7 @@ export default function Editor() {
   const audio = useRef(null);
   const renderPrev = useRef(null);
   const tlWidth = useRef(0);
+  const [clipOpen, setClipOpen] = useState(false);
 
   const duration = data?.duration || 0;
   const fps = data?.assets?.meta?.fps || data?.video?.fps || 30;
@@ -709,6 +711,14 @@ export default function Editor() {
           </section>
 
           <section>
+            <h3>Clip a moment</h3>
+            <p className="hint">Make a separate video from the selected part, or from the 30 seconds before the playhead. It is cut from the unedited recording.</p>
+            <button className="btn btn-sm" onClick={() => setClipOpen(true)}>
+              <Icon name="cut" /> Make a clip
+            </button>
+          </section>
+
+          <section>
             <h3>Parts</h3>
             <div className="ed-parts">
               {segs.map((s, i) => (
@@ -802,6 +812,16 @@ export default function Editor() {
       />
       {data.assets.status === 'building' && <div className="ed-note">Generating the filmstrip and waveform…</div>}
       {data.assets.status === 'failed' && <div className="ed-note err">Could not build the filmstrip: {data.assets.error}</div>}
+      {clipOpen && (
+        <ClipDialog
+          video={v}
+          videoRef={videoRef}
+          duration={duration}
+          from="source"
+          initial={sel && segs.length > 1 ? { start: sel.start, end: sel.end } : rangeBefore(playheadRef.current, duration)}
+          onClose={() => setClipOpen(false)}
+        />
+      )}
     </div>
   );
 }

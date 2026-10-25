@@ -10,6 +10,20 @@ export function formatDuration(s) {
   return `${h ? h + ':' : ''}${mm}:${String(sec).padStart(2, '0')}`;
 }
 
+/** Seconds with tenths, like 1:23.4. */
+export function formatPrecise(s) {
+  s = Math.max(0, Number(s) || 0);
+  const whole = Math.floor(s);
+  const tenth = Math.min(9, Math.floor((s - whole) * 10 + 1e-6));
+  return `${formatDuration(whole)}.${tenth}`;
+}
+
+/** Seconds for a URL: whole numbers stay whole, otherwise one decimal. */
+export function urlSeconds(s) {
+  const r = Math.round((Number(s) || 0) * 10) / 10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+
 export function compact(n) {
   n = Number(n) || 0;
   if (n < 1000) return String(n);

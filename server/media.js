@@ -9,10 +9,10 @@ import { onLocalVideosChanged } from './network.js';
 import { defineJob, enqueueJob, jobStats, jobPending } from './jobs.js';
 
 // Bundled binaries by default; set FFMPEG_PATH / FFPROBE_PATH to use a system build (e.g. one with NVENC).
-const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
-const ffprobeBin = process.env.FFPROBE_PATH || ffprobeStatic.path;
+export const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
+export const ffprobeBin = process.env.FFPROBE_PATH || ffprobeStatic.path;
 
-function run(bin, args, { onStdoutLine } = {}) {
+export function run(bin, args, { onStdoutLine } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, { windowsHide: true });
     let stdout = '';
@@ -88,7 +88,9 @@ export async function grabFrame(input, t, output) {
 export async function convertImage(input, output, kind) {
   const vf = kind === 'avatar'
     ? 'scale=256:256:force_original_aspect_ratio=increase,crop=256:256'
-    : "scale='min(1280,iw)':-2";
+    : kind === 'cover'
+      ? 'scale=600:800:force_original_aspect_ratio=increase,crop=600:800'
+      : "scale='min(1280,iw)':-2";
   await run(ffmpegBin, ['-y', '-v', 'error', '-i', input, '-frames:v', '1', '-vf', vf, '-q:v', '3', output]);
 }
 
@@ -118,7 +120,7 @@ function encoderArgs(enc) {
 }
 
 /** Runs an encode with the configured encoder, falling back to libx264 if a hardware encoder fails. */
-async function encodeWithFallback(settings, buildArgs, onLine) {
+export async function encodeWithFallback(settings, buildArgs, onLine) {
   const encoders = [settings.encoder || 'libx264'];
   if (!encoders.includes('libx264')) encoders.push('libx264');
   let lastErr;
@@ -135,14 +137,14 @@ async function encodeWithFallback(settings, buildArgs, onLine) {
   throw lastErr;
 }
 
-function progressReader(total, onProgress) {
+export function progressReader(total, onProgress) {
   return (line) => {
     const t = parseOutTime(line);
     if (t != null && total > 0) onProgress?.(Math.min(99, Math.round((t / total) * 100)));
   };
 }
 
-function throttledWriter(write) {
+export function throttledWriter(write) {
   let last = -1;
   let lastAt = 0;
   return (p) => {
@@ -300,7 +302,7 @@ export function queueInfo() {
   return { waiting: s.lanes.media.queued, current: media ? `${media.type} #${media.id}` : null, jobs: s };
 }
 
-async function processVideo(id) {
+export async function processVideo(id) {
   const v = db.prepare('SELECT * FROM videos WHERE id = ?').get(id);
   if (!v || v.status === 'ready') return;
   const settings = getSettings();
@@ -369,7 +371,8 @@ async function processVideo(id) {
 export function resumePending() {
   let n = 0;
   for (const r of db.prepare("SELECT id FROM videos WHERE status IN ('queued', 'processing') ORDER BY created_at").all()) {
-    if (!jobPending(`process:${r.id}`)) {
+    // Clips are cut by their own job, which then processes them.
+    if (!jobPending(`process:${r.id}`) && !jobPending(`clip:${r.id}`)) {
       enqueue(r.id);
       n++;
     }

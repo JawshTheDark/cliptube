@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v0.5.0): one hub (clips.irc.so) that every instance joins, with
+Planned work. Current state (v0.6.0): one hub (clips.irc.so) that every instance joins, with
 cross-instance likes, comments and subscriptions signed per instance. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 
@@ -139,11 +139,11 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 
 - [x] Timeline editor for trimming and cutting clips out of longer recordings.
 - [x] Discord and Slack link previews with an inline player.
-- [ ] One-click "clip the last 30 seconds" (or any length) from a long video or stream VOD.
-- [ ] GIF and short MP4 export of a selection.
-- [ ] Share links with precise start and end times (`?t=` and `&end=`), looping the selection.
-- [ ] Game tags with a per-game browse page and game artwork.
-- [ ] Side-by-side comparison player for two clips (same play, two angles), synced.
+- [x] One-click "clip the last 30 seconds" (or any length) from a long video or stream VOD.
+- [x] GIF and short MP4 export of a selection.
+- [x] Share links with precise start and end times (`?t=` and `&end=`), looping the selection.
+- [x] Game tags with a per-game browse page and game artwork.
+- [x] Side-by-side comparison player for two clips (same play, two angles), synced.
 
 ## 5. Smaller follow-ups
 

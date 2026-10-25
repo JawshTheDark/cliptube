@@ -91,6 +91,23 @@ test('reports about remote videos reach the instance that hosts them', async () 
   assert.equal((await net(B)).length, 1);
 });
 
+test('games travel with videos across the network', async () => {
+  assert.equal((await A.post('/api/games', { name: 'Counter-Strike 2', short_name: 'CS2' })).status, 201);
+  await A.patch(`/api/videos/${aVideo.id}`, { game: 'cs2' });
+  await B.post('/api/admin/network/sync');
+  const item = (await net(B))[0];
+  assert.deepEqual(item.game, { id: 'cs2', name: 'Counter-Strike 2' });
+  assert.ok(item.tags.includes('cs2'), item.tags.join());
+  // B doesn't list the game itself but can still browse it...
+  const page = (await B.get('/api/games/cs2')).data.game;
+  assert.equal(page.remote_only, true);
+  assert.equal(page.network_count, 1);
+  // ...and once B adds it under another id, an alias ties the two together.
+  await B.post('/api/games', { name: 'CS2 (Valve)', short_name: 'counter-strike', aliases: 'cs2' });
+  const byGame = (await B.get('/api/videos?scope=all&game=counter-strike')).data.videos;
+  assert.deepEqual(byGame.map((v) => v.title), ['Alice on the hub']);
+});
+
 test('blocking, network switches and hub moderation', async () => {
   const iidOnB = (await net(B))[0].remote.peer_id;
   const iidOnA = (await net(A))[0].remote.peer_id;

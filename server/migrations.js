@@ -355,6 +355,49 @@ CREATE TABLE comment_filters (
       }
     },
   },
+  {
+    version: 4,
+    name: 'gaming clip tools: games, clips cut from videos, GIF and MP4 exports',
+    up(db) {
+      db.exec(`
+CREATE TABLE games (
+  id TEXT PRIMARY KEY,               -- slug, also used as the network tag
+  name TEXT NOT NULL,
+  short_name TEXT,
+  aliases TEXT NOT NULL DEFAULT '',  -- comma-separated slugs that mean the same game
+  artwork TEXT,                      -- file in DIRS.thumbs
+  created_by TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE media_exports (
+  id TEXT PRIMARY KEY,
+  video_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  format TEXT NOT NULL,              -- gif | mp4
+  start_s REAL NOT NULL,
+  end_s REAL NOT NULL,
+  width INTEGER,
+  muted INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'queued', -- queued | working | ready | failed
+  progress INTEGER NOT NULL DEFAULT 0,
+  file TEXT,
+  size_bytes INTEGER,
+  error TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_media_exports_user ON media_exports(user_id, created_at);
+`);
+      addColumn(db, 'videos', 'game_id', 'TEXT');
+      addColumn(db, 'videos', 'source_video_id', 'TEXT'); // set on clips cut from another video
+      addColumn(db, 'videos', 'source_start', 'REAL');
+      addColumn(db, 'videos', 'source_end', 'REAL');
+      addColumn(db, 'videos', 'allow_clips', 'INTEGER NOT NULL DEFAULT 0'); // others may clip it
+      addColumn(db, 'network_videos', 'game_slug', 'TEXT');
+      addColumn(db, 'network_videos', 'game_name', 'TEXT');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_videos_game ON videos(game_id)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_videos_source ON videos(source_video_id)');
+    },
+  },
 ];
 
 export function currentVersion(db) {

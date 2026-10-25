@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { GameField } from '../components/GameField.jsx';
 import { Empty } from '../components/VideoCard.jsx';
 import { StatusBadge } from './Studio.jsx';
 import { copyText, formatBytes, formatDuration, VISIBILITY_HELP } from '../util.js';
@@ -26,6 +27,8 @@ export default function EditVideo() {
     visibility: v.visibility,
     federate: v.federate,
     comment_mode: v.comment_mode || 'inherit',
+    game: v.game?.name || '',
+    allow_clips: !!v.allow_clips,
   });
   const load = useCallback(
     () =>
@@ -61,7 +64,9 @@ export default function EditVideo() {
     form.visibility !== video.visibility ||
     form.tags !== video.tags.join(', ') ||
     form.federate !== video.federate ||
-    form.comment_mode !== (video.comment_mode || 'inherit');
+    form.comment_mode !== (video.comment_mode || 'inherit') ||
+    form.game !== (video.game?.name || '') ||
+    form.allow_clips !== !!video.allow_clips;
 
   const save = async (e) => {
     e?.preventDefault();
@@ -145,6 +150,7 @@ export default function EditVideo() {
             <input className="input" value={form.tags} onChange={(e) => set({ tags: e.target.value })} placeholder="valorant, ace, clutch" />
             <span className="hint">Separate with commas.</span>
           </div>
+          <GameField value={form.game} onChange={(game) => set({ game })} />
           <div className="field">
             <label>Visibility</label>
             <select className="select" value={form.visibility} onChange={(e) => set({ visibility: e.target.value })}>
@@ -163,6 +169,19 @@ export default function EditVideo() {
               <option value="off">Turn comments off</option>
             </select>
           </div>
+          <label className="checkbox field">
+            <input type="checkbox" checked={form.allow_clips} onChange={(e) => set({ allow_clips: e.target.checked })} />
+            <span>
+              Let others clip this video
+              <br />
+              <span className="hint">Signed-in viewers can cut their own clips from it, and every clip links back here.</span>
+            </span>
+          </label>
+          {video.source && (
+            <p className="hint">
+              <Icon name="cut" size={14} /> Clipped from <Link to={`/watch/${video.source.id}`}>{video.source.title || 'another video'}</Link>.
+            </p>
+          )}
           {site.federation && (
             <label className="checkbox field">
               <input type="checkbox" checked={form.federate} onChange={(e) => set({ federate: e.target.checked })} disabled={form.visibility !== 'public'} />

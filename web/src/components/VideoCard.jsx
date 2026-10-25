@@ -94,6 +94,11 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
               <Icon name="public" /> {remote.peer_name}
             </span>
           )}
+          {v.game && (
+            <Link to={`/g/${v.game.id}`} className="card-game" title={`More ${v.game.name} clips`}>
+              <Icon name="game" /> {v.game.name}
+            </Link>
+          )}
           {variant !== 'list' && (
             <div className="card-meta">
               {compact(v.views)} {v.views === 1 ? 'view' : 'views'} • {timeAgo(v.created_at)}

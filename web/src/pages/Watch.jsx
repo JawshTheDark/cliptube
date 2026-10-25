@@ -9,7 +9,8 @@ import { Avatar } from '../components/Avatar.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { ReportButton } from '../components/ReportDialog.jsx';
-import { compact, formatDate, formatDuration, parseTimestamp, copyText, isAnonymous, timeAgo } from '../util.js';
+import { ClipDialog, TimeField } from '../components/ClipDialog.jsx';
+import { compact, formatDate, formatDuration, formatPrecise, parseTimestamp, copyText, isAnonymous, timeAgo, urlSeconds } from '../util.js';
 
 /** Shown to the uploader and moderators when a video is hidden or removed. */
 function ModerationBanner({ video, isOwner }) {
@@ -132,11 +133,16 @@ export function Description({ text, onSeek }) {
   return <>{parts}</>;
 }
 
-function ShareDialog({ video, videoRef, onClose }) {
+function ShareDialog({ video, videoRef, loop, onClose }) {
   const toast = useToast();
-  const [withTime, setWithTime] = useState(false);
-  const [t] = useState(() => Math.floor(videoRef.current?.currentTime || 0));
-  const url = `${window.location.origin}/watch/${video.id}${withTime && t > 0 ? `?t=${t}` : ''}`;
+  const [withTime, setWithTime] = useState(!!loop);
+  const [withEnd, setWithEnd] = useState(!!loop);
+  const [start, setStart] = useState(() => (loop ? loop.start : Math.floor((videoRef.current?.currentTime || 0) * 10) / 10));
+  const [end, setEnd] = useState(() => (loop ? loop.end : Math.min(video.duration || 0, Math.round((start + 10) * 10) / 10)));
+  const clamp = (t) => Math.max(0, Math.min(video.duration || 0, Math.round(t * 10) / 10));
+  const ranged = withEnd && end > start;
+  const query = ranged ? `?t=${urlSeconds(start)}&end=${urlSeconds(end)}` : withTime && start > 0 ? `?t=${urlSeconds(start)}` : '';
+  const url = `${window.location.origin}/watch/${video.id}${query}`;
 
   useEffect(() => {
     const h = (e) => e.key === 'Escape' && onClose();
@@ -166,8 +172,19 @@ function ShareDialog({ video, videoRef, onClose }) {
           </button>
         </div>
         <label className="share-opts checkbox">
-          <input type="checkbox" checked={withTime} onChange={(e) => setWithTime(e.target.checked)} /> Start at {formatDuration(t)}
+          <input type="checkbox" checked={withTime || withEnd} onChange={(e) => (setWithTime(e.target.checked), !e.target.checked && setWithEnd(false))} /> Start at{' '}
+          {formatPrecise(start)}
         </label>
+        <label className="share-opts checkbox">
+          <input type="checkbox" checked={withEnd} onChange={(e) => setWithEnd(e.target.checked)} /> Loop a range
+        </label>
+        {(withTime || withEnd) && (
+          <div className="field-row">
+            <TimeField label="Start" value={start} onChange={(t) => setStart(clamp(t))} onNow={() => setStart(clamp(videoRef.current?.currentTime || 0))} />
+            {withEnd && <TimeField label="End" value={end} onChange={(t) => setEnd(clamp(t))} onNow={() => setEnd(clamp(videoRef.current?.currentTime || 0))} />}
+          </div>
+        )}
+        {withEnd && end <= start && <p className="error">The end has to come after the start.</p>}
         <p className="hint">
           {video.visibility === 'private'
             ? 'This video is private: only you and admins can open the link.'
@@ -220,6 +237,9 @@ export default function Watch() {
   const [theater, setTheater] = useState(() => localStorage.getItem('theater') === '1');
   const [expanded, setExpanded] = useState(false);
   const [share, setShare] = useState(false);
+  const [clipOpen, setClipOpen] = useState(false);
+  const [looping, setLooping] = useState(true);
+  useEffect(() => setLooping(true), [id]);
 
   useEffect(() => {
     let dead = false;
@@ -327,13 +347,26 @@ export default function Watch() {
 
   const u = video.uploader;
   const isOwner = user?.id === u.id;
-  const startAt = Number(params.get('t')) || video.resume_at || 0;
+  const tParam = params.get('t');
+  const loopStart = Number(tParam) || 0;
+  const loopEnd = Number(params.get('end')) || 0;
+  const loopRange = loopEnd > loopStart ? { start: loopStart, end: loopEnd } : null;
+  const startAt = loopRange ? loopRange.start : Number(tParam) || video.resume_at || 0;
 
   return (
     <div className={`watch ${theater ? 'theater' : ''}`}>
       <div className="player-wrap">
         {video.status === 'ready' && video.video_url ? (
-          <Player video={video} videoRef={videoRef} startAt={startAt} onProgress={onProgress} theater={theater} onToggleTheater={toggleTheater} />
+          <Player
+            video={video}
+            videoRef={videoRef}
+            startAt={startAt}
+            exactStart={tParam !== null}
+            loop={looping ? loopRange : null}
+            onProgress={onProgress}
+            theater={theater}
+            onToggleTheater={toggleTheater}
+          />
         ) : video.status === 'ready' ? (
           <div className="player">
             <div className="processing-panel">
@@ -352,6 +385,27 @@ export default function Watch() {
       <div className="watch-body">
         {video.moderation_status && <ModerationBanner video={video} isOwner={isOwner} onChanged={(v) => setVideo(v)} />}
         <h1 className="watch-title">{video.title}</h1>
+        {(video.game || video.source || loopRange) && (
+          <div className="watch-subline">
+            {video.game && (
+              <Link to={`/g/${video.game.id}`} className="game-chip">
+                <Icon name="game" /> {video.game.name}
+              </Link>
+            )}
+            {video.source && (
+              <span className="muted">
+                Clipped from{' '}
+                <Link to={`/watch/${video.source.id}?t=${urlSeconds(video.source.start)}&end=${urlSeconds(video.source.end)}`}>{video.source.title}</Link> by @
+                {video.source.uploader.username}
+              </span>
+            )}
+            {loopRange && (
+              <button className={`chip ${looping ? 'active' : ''}`} onClick={() => setLooping((l) => !l)} title={looping ? 'Stop looping' : 'Loop this range'}>
+                <Icon name="loop" /> {looping ? 'Looping' : 'Loop'} {formatPrecise(loopRange.start)}–{formatPrecise(loopRange.end)}
+              </button>
+            )}
+          </div>
+        )}
         <div className="watch-row">
           <div className="watch-channel">
             <Link to={`/c/${u.username}`}>
@@ -395,6 +449,16 @@ export default function Watch() {
             <button className="btn" onClick={() => setShare(true)}>
               <Icon name="share" /> Share
             </button>
+            {user && video.video_url && video.status === 'ready' && (
+              <button className="btn" onClick={() => setClipOpen(true)} title={video.can_clip ? 'Make a clip, a GIF or a short MP4' : 'Export a GIF or a short MP4'}>
+                <Icon name="cut" /> Clip
+              </button>
+            )}
+            {video.video_url && (
+              <Link className="btn btn-icon" to={`/compare?a=${video.id}`} title="Compare side by side with another clip">
+                <Icon name="compare" />
+              </Link>
+            )}
             {video.video_url && (
               <a className="btn" href={`${video.video_url}${video.video_url.includes('?') ? '&' : '?'}download`}>
                 <Icon name="download" /> Download
@@ -482,7 +546,8 @@ export default function Watch() {
         {related.length === 0 && <p className="muted side-note">More clips will show up here as they get uploaded.</p>}
       </aside>
 
-      {share && <ShareDialog video={video} videoRef={videoRef} onClose={() => setShare(false)} />}
+      {share && <ShareDialog video={video} videoRef={videoRef} loop={loopRange} onClose={() => setShare(false)} />}
+      {clipOpen && <ClipDialog video={video} videoRef={videoRef} duration={video.duration} canClip={video.can_clip} onClose={() => setClipOpen(false)} />}
     </div>
   );
 }

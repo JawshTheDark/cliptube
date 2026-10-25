@@ -18,6 +18,8 @@ import { privacyRouter } from './privacy.js';
 import { registrationMode } from './auth.js';
 import './spam.js'; // registers the comment spam checks with the intake pipeline
 import { HttpError, escapeHtml } from './util.js';
+import { gamesRouter } from './games.js';
+import { clipsRouter } from './clips.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -58,6 +60,8 @@ app.use(networkProtocolRouter); // /.well-known/cliptube, /api/hub/*, /api/netwo
 app.use('/api', legalPublicRouter); // /api/legal, /api/transparency
 app.use('/api/auth', authRouter);
 app.use('/api/videos', videosRouter);
+app.use('/api/games', gamesRouter);
+app.use('/api', clipsRouter); // /api/videos/:id/clip, /api/videos/:id/exports, /api/exports/:id
 app.use('/api/users', usersRouter);
 app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);

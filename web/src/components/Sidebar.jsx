@@ -42,6 +42,7 @@ export function Sidebar({ mini = false, drawer = false, onClose }) {
       )}
       <Item to="/" icon="home" label="Home" end />
       <Item to="/trending" icon="trending" label="Trending" />
+      <Item to="/games" icon="game" label="Games" />
       {site.federation && <Item to="/network" icon="public" label="Network" />}
       {user && <Item to="/subscriptions" icon="subscriptions" label="Subscriptions" />}
 

@@ -19,6 +19,7 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 - **Network**: instances join one hub to browse and search each other's clips, with likes, comments and subscriptions across instances
 - **Moderation**: reports (also across instances), a moderation queue with an audit log, comment spam holds, copyright takedowns with counter-notices and strikes, invite or approval sign-up, storage quotas
 - **Privacy**: pause history, anonymous mode, download all your data, delete your account
+- **Clip tools**: clip a moment into a new video, GIF and MP4 export, looping share links, games with their own pages, side-by-side compare
 - Keyboard shortcuts: `k` play/pause, `j`/`l` seek 10s, arrows seek 5s, `f` fullscreen, `t` theater, `m` mute, `0-9` jump
 
 ## Run it
@@ -54,6 +55,25 @@ Open it from Studio (scissors icon), the video details page, or the Editor butto
   shared links keep working. **Revert to original** restores the upload at any time, because edits are
   non-destructive: the first processed file is kept as the editing source (an edited video uses roughly
   twice its disk space).
+
+## Gaming clip tools
+
+- **Clip a moment.** The Clip button on a watch page (and "Make a clip" in the editor) cuts a range into a
+  new video that links back to where it came from. It defaults to the 30 seconds before the playhead.
+  "Exact" starts where you chose; "Fast" starts at the nearest keyframe before it and copies without
+  re-encoding, so it keeps full quality and is ready almost at once. Uploaders can tick "Let others clip
+  this video" so viewers can make their own clips of it.
+- **GIF and MP4 export.** The same dialog exports a range as a palette-optimised GIF (up to 15 seconds) or a
+  720p MP4 (up to 60 seconds, with or without sound). Downloads last a day.
+- **Looping links.** Share → "Loop a range" makes a link like `/watch/abc?t=12&end=20` that plays and loops
+  just that part.
+- **Games.** Moderators keep a list in Admin → Games, with box art and other spellings ("Also known as").
+  Uploads and video details have a Game field; each game has a page at `/g/<id>` and all of them are under
+  Games in the sidebar. The game travels with the video across the network, and aliases match it to the
+  same game on other instances.
+- **Compare.** The compare button on a watch page opens `/compare` with that clip on one side. Pick the
+  other, line up the same moment with each side's start buttons (down to one frame), then play both on one
+  transport bar at up to 1/10 speed. "Copy link" shares the lined-up comparison.
 
 ## Network (one hub, many instances)
 

@@ -11,6 +11,7 @@ import { intakeComment, intakeLike } from '../intake.js';
 import { effectiveCommentMode } from '../spam.js';
 import { logAction } from '../reports.js';
 import { networkActive, serializeRemote, NETWORK_VISIBLE, acceptsFromNetwork, publicComment, onLocalVideosChanged } from '../network.js';
+import { findGame, gameSlugs, networkGameWhere, resolveGame } from '../games.js';
 
 export const videosRouter = Router();
 
@@ -28,7 +29,8 @@ videosRouter.use((req, res, next) => {
 const VISIBILITIES = ['public', 'unlisted', 'private'];
 
 export function videoSelect(extra = '') {
-  return `SELECT v.*, u.username, u.display_name, u.avatar AS u_avatar${extra ? ', ' + extra : ''} FROM videos v JOIN users u ON u.id = v.user_id`;
+  return `SELECT v.*, u.username, u.display_name, u.avatar AS u_avatar, g.name AS game_name, g.short_name AS game_short${extra ? ', ' + extra : ''}
+    FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN games g ON g.id = v.game_id`;
 }
 
 /** Versioned URL so browsers and CDNs fetch the new file after an edit. */
@@ -62,6 +64,9 @@ export function serializeVideo(v) {
     moderation_status: v.moderation_status || null,
     moderation_reason: v.moderation_status ? v.moderation_reason || null : null,
     comment_mode: v.comment_mode || 'inherit',
+    game: v.game_id ? { id: v.game_id, name: v.game_name || v.game_id, short_name: v.game_short || null } : null,
+    allow_clips: !!v.allow_clips,
+    source: v.source_video_id ? { id: v.source_video_id, start: v.source_start, end: v.source_end } : null,
     uploader: {
       id: v.user_id,
       username: v.username,
@@ -132,6 +137,16 @@ export function fullVideo(id, user) {
   out.fps = v.fps || 0;
   out.can_moderate = !!user?.is_moderator;
   if (!canPlay(v, user)) out.video_url = null;
+  out.can_clip = !!user && v.status === 'ready' && !!out.video_url && (canEdit(v, user) || (!!v.allow_clips && v.visibility === 'public' && !v.moderation_status));
+  if (v.source_video_id) {
+    const s = loadVideo(v.source_video_id);
+    out.source = s && canView(s, user)
+      ? { id: s.id, title: s.title, start: v.source_start, end: v.source_end, uploader: { username: s.username, display_name: s.display_name } }
+      : null;
+  }
+  out.clip_count = db
+    .prepare("SELECT COUNT(*) AS n FROM videos WHERE source_video_id = ? AND status = 'ready' AND visibility = 'public' AND moderation_status IS NULL")
+    .get(v.id).n;
   return out;
 }
 
@@ -153,11 +168,13 @@ export { removeFiles as removeVideoFiles };
 export const LOCAL_LIST_COLS = `'local' AS src, v.id AS vid, NULL AS peer_id, v.title, v.description, v.duration, v.width, v.height, v.views,
   v.created_at, v.thumb_path AS thumb, v.edit_version AS ver, v.user_id, u.username AS u_username, u.display_name AS u_display,
   u.avatar AS u_avatar, NULL AS u_avatar_url, NULL AS thumb_url, NULL AS video_url, NULL AS watch_url, NULL AS uploader_url,
-  NULL AS peer_name, NULL AS peer_url, '' AS tags, (SELECT COALESCE(SUM(value), 0) FROM likes l WHERE l.video_id = v.id) AS score`;
+  NULL AS peer_name, NULL AS peer_url, '' AS tags, (SELECT COALESCE(SUM(value), 0) FROM likes l WHERE l.video_id = v.id) AS score,
+  v.game_id AS game_id, (SELECT name FROM games WHERE id = v.game_id) AS game_name`;
 export const REMOTE_LIST_COLS = `'remote' AS src, r.remote_id AS vid, r.instance_id AS peer_id, r.title, r.description, r.duration, r.width,
   r.height, r.views, r.created_at, NULL AS thumb, 0 AS ver, NULL AS user_id, r.uploader_username AS u_username,
   r.uploader_display_name AS u_display, NULL AS u_avatar, r.uploader_avatar_url AS u_avatar_url, r.thumbnail_url AS thumb_url,
-  r.video_url, r.watch_url, r.uploader_url, p.name AS peer_name, p.url AS peer_url, r.tags, r.likes AS score`;
+  r.video_url, r.watch_url, r.uploader_url, p.name AS peer_name, p.url AS peer_url, r.tags, r.likes AS score,
+  r.game_slug AS game_id, r.game_name AS game_name`;
 
 export function mapListRow(r) {
   if (r.src === 'local') {
@@ -174,10 +191,12 @@ export function mapListRow(r) {
       created_at: r.created_at,
       thumbnail_url: r.thumb ? `/media/thumbs/${r.thumb}` : null,
       video_url: videoUrl({ id: r.vid, edit_version: r.ver }),
+      game: r.game_id ? { id: r.game_id, name: r.game_name || r.game_id } : null,
       uploader: { id: r.user_id, username: r.u_username, display_name: r.u_display, avatar_url: r.u_avatar ? `/media/avatars/${r.u_avatar}` : null },
     };
   }
   return serializeRemote({
+    game_slug: r.game_id, game_name: r.game_name,
     instance_id: r.peer_id, remote_id: r.vid, title: r.title, description: r.description, duration: r.duration, width: r.width,
     height: r.height, views: r.views, likes: r.score, created_at: r.created_at, tags: r.tags, thumbnail_url: r.thumb_url,
     video_url: r.video_url, watch_url: r.watch_url, uploader_username: r.u_username, uploader_display_name: r.u_display,
@@ -195,6 +214,7 @@ function likeParam(q) {
  */
 videosRouter.get('/', (req, res) => {
   const { q, tag, sort = 'new', user } = req.query;
+  const game = req.query.game ? findGame(req.query.game) || { id: String(req.query.game), aliases: '' } : null;
   const limit = clampInt(req.query.limit, 1, 100, 24);
   const offset = clampInt(req.query.offset, 0, 1_000_000, 0);
   let scope = ['local', 'network', 'all'].includes(req.query.scope) ? req.query.scope : 'local';
@@ -221,6 +241,10 @@ videosRouter.get('/', (req, res) => {
       where.push('u.username = ?');
       params.push(String(user));
     }
+    if (game) {
+      where.push('v.game_id = ?');
+      params.push(game.id);
+    }
     parts.push(`SELECT ${LOCAL_LIST_COLS} FROM videos v JOIN users u ON u.id = v.user_id WHERE ${where.join(' AND ')}`);
   }
 
@@ -240,6 +264,11 @@ videosRouter.get('/', (req, res) => {
     if (tag) {
       where.push("(',' || r.tags || ',') LIKE ?");
       params.push(`%,${String(tag).toLowerCase()},%`);
+    }
+    if (game) {
+      const w = networkGameWhere(gameSlugs(game));
+      where.push(w.sql);
+      params.push(...w.params);
     }
     parts.push(`SELECT ${REMOTE_LIST_COLS} FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE ${where.join(' AND ')}`);
   }
@@ -291,10 +320,18 @@ videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
   const title = str(req.body.title, 120).trim() || fallbackTitle || 'Untitled clip';
   const visibility = VISIBILITIES.includes(req.body.visibility) ? req.body.visibility : 'public';
   const t = now();
+  let gameId = null;
+  try {
+    gameId = resolveGame(req.body.game, req.user) ?? null;
+  } catch (e) {
+    discard({ path: path.join(DIRS.originals, originalName) });
+    throw e;
+  }
+  const allowClips = req.body.allow_clips === 'true' || req.body.allow_clips === true ? 1 : 0;
 
   db.prepare(
-    "INSERT INTO videos (id, user_id, title, description, visibility, status, original_name, original_path, size_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?)",
-  ).run(id, req.user.id, title, str(req.body.description), visibility, req.file.originalname.slice(0, 255), originalName, req.file.size, t, t);
+    "INSERT INTO videos (id, user_id, title, description, visibility, status, original_name, original_path, size_bytes, created_at, updated_at, game_id, allow_clips) VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, req.user.id, title, str(req.body.description), visibility, req.file.originalname.slice(0, 255), originalName, req.file.size, t, t, gameId, allowClips);
   setTags(id, parseTags(req.body.tags));
   enqueue(id);
   res.status(201).json({ video: fullVideo(id, req.user) });
@@ -330,8 +367,11 @@ videosRouter.patch('/:id', requireAuth, (req, res) => {
   const federate = b.federate !== undefined ? (b.federate ? 1 : 0) : v.federate;
   const commentMode = b.comment_mode !== undefined ? b.comment_mode : v.comment_mode || 'inherit';
   if (!['inherit', 'open', 'hold_all', 'off'].includes(commentMode)) throw new HttpError(400, 'Comment mode must be inherit, open, hold_all or off');
-  db.prepare('UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, updated_at = ? WHERE id = ?').run(
-    title, description, visibility, federate, commentMode, now(), v.id,
+  const game = resolveGame(b.game, req.user);
+  const gameId = game === undefined ? v.game_id : game;
+  const allowClips = b.allow_clips !== undefined ? (b.allow_clips ? 1 : 0) : v.allow_clips || 0;
+  db.prepare('UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, game_id = ?, allow_clips = ?, updated_at = ? WHERE id = ?').run(
+    title, description, visibility, federate, commentMode, gameId, allowClips, now(), v.id,
   );
   if (b.tags !== undefined) setTags(v.id, parseTags(b.tags));
   res.json({ video: fullVideo(v.id, req.user) });

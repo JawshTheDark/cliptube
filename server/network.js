@@ -283,11 +283,15 @@ function ensureShadowUser(inst, actor) {
 
 /** A local video as other instances see it (absolute URLs). */
 function localItem(r, base) {
+  const tags = r.tag_list ? r.tag_list.split(',') : [];
+  // The game travels as its own field and as a tag, so instances that don't know the field still group by it.
+  if (r.game_id && !tags.includes(r.game_id)) tags.push(r.game_id);
   return {
     id: r.id,
     title: r.title,
     description: r.description,
-    tags: r.tag_list ? r.tag_list.split(',') : [],
+    tags,
+    game: r.game_id ? { slug: r.game_id, name: r.game_name || r.game_id } : null,
     duration: r.duration,
     width: r.width,
     height: r.height,
@@ -308,6 +312,7 @@ function localItem(r, base) {
 }
 
 const LOCAL_FEED_SELECT = `SELECT v.*, u.username, u.display_name, u.avatar AS u_avatar,
+    (SELECT name FROM games g WHERE g.id = v.game_id) AS game_name,
     (SELECT COUNT(*) FROM likes l WHERE l.video_id = v.id AND l.value = 1) AS like_count,
     (SELECT group_concat(tag, ',') FROM tags t WHERE t.video_id = v.id) AS tag_list
   FROM videos v JOIN users u ON u.id = v.user_id`;
@@ -327,6 +332,7 @@ export function serializeRemote(r) {
     likes: r.likes,
     created_at: r.created_at,
     tags: r.tags ? String(r.tags).split(',').filter(Boolean) : [],
+    game: r.game_slug ? { id: r.game_slug, name: r.game_name || r.game_slug } : null,
     thumbnail_url: r.thumbnail_url,
     video_url: r.video_url,
     uploader: {
@@ -363,8 +369,12 @@ export function cleanItem(it, origin) {
   const up = it.uploader && typeof it.uploader === 'object' ? it.uploader : {};
   const username = str(up.username, 40).trim();
   if (!username) return null;
+  const game = it.game && typeof it.game === 'object' ? it.game : null;
+  const gameSlug = game && /^[a-z0-9-]{1,30}$/.test(String(game.slug || '')) ? String(game.slug) : null;
   return {
     remote_id: id,
+    game_slug: gameSlug,
+    game_name: gameSlug ? str(game.name, 80).trim() || gameSlug : null,
     title: str(it.title, 120).trim() || 'Untitled',
     description: str(it.description, 5000),
     tags: parseTags(Array.isArray(it.tags) ? it.tags.map((t) => str(t, 40)) : []).join(','),
@@ -386,9 +396,11 @@ export function cleanItem(it, origin) {
 }
 
 const UPSERT_VIDEO = `INSERT INTO network_videos (instance_id, remote_id, title, description, tags, duration, width, height, views, likes,
-    created_at, updated_at, thumbnail_url, video_url, watch_url, uploader_username, uploader_display_name, uploader_avatar_url, uploader_url, fetched_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    created_at, updated_at, thumbnail_url, video_url, watch_url, uploader_username, uploader_display_name, uploader_avatar_url, uploader_url, fetched_at,
+    game_slug, game_name)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(instance_id, remote_id) DO UPDATE SET title = excluded.title, description = excluded.description, tags = excluded.tags,
+    game_slug = excluded.game_slug, game_name = excluded.game_name,
     duration = excluded.duration, width = excluded.width, height = excluded.height, views = excluded.views, likes = excluded.likes,
     created_at = excluded.created_at, updated_at = excluded.updated_at, thumbnail_url = excluded.thumbnail_url, video_url = excluded.video_url,
     watch_url = excluded.watch_url, uploader_username = excluded.uploader_username, uploader_display_name = excluded.uploader_display_name,
@@ -397,7 +409,7 @@ const UPSERT_VIDEO = `INSERT INTO network_videos (instance_id, remote_id, title,
 function upsertVideo(instanceId, c, t) {
   db.prepare(UPSERT_VIDEO).run(instanceId, c.remote_id, c.title, c.description, c.tags, c.duration, c.width, c.height, c.views, c.likes,
     c.created_at, c.updated_at, c.thumbnail_url, c.video_url, c.watch_url, c.uploader_username, c.uploader_display_name,
-    c.uploader_avatar_url, c.uploader_url, t);
+    c.uploader_avatar_url, c.uploader_url, t, c.game_slug, c.game_name);
 }
 
 
@@ -609,13 +621,14 @@ function hubIndexParts() {
         (SELECT COUNT(*) FROM likes l WHERE l.video_id = v.id AND l.value = 1) AS likes, v.created_at, v.updated_at, v.thumb_path, v.edit_version,
         u.username AS u_username, u.display_name AS u_display, u.avatar AS u_avatar,
         (SELECT group_concat(tag, ',') FROM tags t WHERE t.video_id = v.id) AS tags,
-        NULL AS thumbnail_url, NULL AS video_url, NULL AS watch_url, NULL AS uploader_avatar_url, NULL AS uploader_url, ? || '|' || v.id AS k
+        NULL AS thumbnail_url, NULL AS video_url, NULL AS watch_url, NULL AS uploader_avatar_url, NULL AS uploader_url,
+        v.game_id AS game_slug, (SELECT name FROM games g WHERE g.id = v.game_id) AS game_name, ? || '|' || v.id AS k
       FROM videos v JOIN users u ON u.id = v.user_id WHERE ${PUBLIC_WHERE}`);
     params.push(self.url, self.url);
   }
   parts.push(`SELECT 'remote', p.url, r.remote_id, r.title, r.description, r.duration, r.width, r.height, r.views, r.likes, r.created_at,
       r.updated_at, NULL, 0, r.uploader_username, r.uploader_display_name, NULL, r.tags, r.thumbnail_url, r.video_url, r.watch_url,
-      r.uploader_avatar_url, r.uploader_url, p.url || '|' || r.remote_id
+      r.uploader_avatar_url, r.uploader_url, r.game_slug, r.game_name, p.url || '|' || r.remote_id
     FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE ${NETWORK_VISIBLE}`);
   return { sql: parts.join(' UNION ALL '), params, base: self?.url || '' };
 }
@@ -629,6 +642,7 @@ function indexItem(r, base) {
           id: r.vid, title: r.title, description: r.description, tag_list: r.tags, duration: r.duration, width: r.width, height: r.height,
           views: r.views, like_count: r.likes, created_at: r.created_at, updated_at: r.updated_at, thumb_path: r.thumb_path,
           edit_version: r.edit_version, username: r.u_username, display_name: r.u_display, u_avatar: r.u_avatar,
+          game_id: r.game_slug, game_name: r.game_name,
         },
         base,
       ),
@@ -640,6 +654,7 @@ function indexItem(r, base) {
     title: r.title,
     description: r.description,
     tags: r.tags ? r.tags.split(',') : [],
+    game: r.game_slug ? { slug: r.game_slug, name: r.game_name || r.game_slug } : null,
     duration: r.duration,
     width: r.width,
     height: r.height,

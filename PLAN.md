@@ -4,14 +4,15 @@ How to build everything in [TODO.md](TODO.md). Drafted 2026-10-25 against v0.3.0
 
 ## Status
 
-Work order follows the suggested order below. Updated as each milestone lands.
+Work order follows the suggested order below. Updated as each milestone lands. Version numbers follow release
+order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones move up one place.
 
 | Milestone | Status | Released |
 | --- | --- | --- |
 | M0 Foundations | Done | v0.4.0, 2026-10-25 |
 | M1 Trust and safety | Done | v0.5.0, 2026-10-25 |
-| M3 Gaming clip tools | In progress | |
-| M2 Hub-optional network | Not started | |
+| M3 Gaming clip tools | Done | v0.6.0, 2026-10-25 |
+| M2 Hub-optional network | In progress | |
 | M4 Watching upgrades | Not started | |
 | M5 Feeds, notifications, search, analytics | Not started | |
 | M6 ActivityPub and PeerTube | Not started | |
@@ -185,16 +186,16 @@ of the test, and syncing, likes and comments keep working.
 
 ## M3: Gaming clip tools (v0.7), size L
 
-- **Clip a moment**: a Clip button in the player and the editor makes a new video from a range of an
+- ✅ **Clip a moment**: a Clip button in the player and the editor makes a new video from a range of an
   existing one, defaulting to the 30 seconds before the playhead. The new clip links back to its source.
   Runs as a job; copies without re-encoding when the cut points fall on keyframes. (M)
-- **GIF and short MP4 export** of a selection, with size and length limits and a palette-optimised GIF. (M)
-- **Share ranges**: `?t=` and `&end=` with looping playback, and start and end fields in the share dialog,
+- ✅ **GIF and short MP4 export** of a selection, with size and length limits and a palette-optimised GIF. (M)
+- ✅ **Share ranges**: `?t=` and `&end=` with looping playback, and start and end fields in the share dialog,
   filled from the current selection. (S)
-- **Games**: a games list (name, short name, artwork, aliases), a game field on videos with autocomplete,
+- ✅ **Games**: a games list (name, short name, artwork, aliases), a game field on videos with autocomplete,
   per-game browse pages, and the game shown on video cards. Shared with the network as a tag, so other
   instances group clips by game too. (M)
-- **Side-by-side compare** (`/compare?a=…&b=…`): two players on one transport bar, a per-side offset to line
+- ✅ **Side-by-side compare** (`/compare?a=…&b=…`): two players on one transport bar, a per-side offset to line
   up the action, and audio from either side. Works with videos from other instances. (M)
 
 **Schema:** `games`, `videos.game_id`, `videos.source_video_id`, `videos.source_start`, `videos.source_end`.
