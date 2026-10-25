@@ -229,7 +229,7 @@ the environment:
 | `DATA_DIR` | `./data` (`/data` in Docker) | Database, videos, thumbnails and backups |
 | `TRUST_PROXY` | unset (`1` in Docker) | Trust `X-Forwarded-*` headers from a reverse proxy |
 | `SETUP_CODE` | random | The code needed to create the first (admin) account |
-| `FFMPEG_PATH`, `FFPROBE_PATH` | bundled | Use another FFmpeg, for example one built for your GPU |
+| `FFMPEG_PATH`, `FFPROBE_PATH` | bundled | Use another FFmpeg, for example one built for your GPU (on ARM, ffprobe comes from the system) |
 
 All settings, the data folder and what to back up: [Configuration](docs/wiki/Configuration.md).
 
@@ -296,7 +296,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 ## Status
 
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.9.0**); smaller ideas are tracked in
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.9.1**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/cliptube/releases).
 

@@ -21,8 +21,8 @@ settings you can change afterwards are in [Configuration](Configuration.md).
 
 | | |
 | --- | --- |
-| **Machine** | A 64-bit x86 server, VM or PC. The Docker image is built for x86-64; Node.js runs anywhere Node does. |
-| **Software** | Docker Engine with Compose v2, or Node.js 22.13 or newer. FFmpeg comes bundled. |
+| **Machine** | A 64-bit server, VM or PC: x86-64, or ARM64 such as a Raspberry Pi 4 or 5. The Docker image builds on both; Node.js runs anywhere Node does. |
+| **Software** | Docker Engine with Compose v2, or Node.js 22.13 or newer. FFmpeg comes bundled (on ARM the image adds Debian's, see [Without Docker](#without-docker) for ARM without it). |
 | **Disk** | Room for your clips. An edited video keeps its first version as the editing source (about twice the space), and adaptive streaming adds a few renditions per video. |
 | **CPU** | Transcoding is the only heavy work, and H.264 recordings skip it (they are remuxed in seconds). A GPU encoder helps with the rest. |
 | **Network** | For anything beyond your LAN: a domain name and HTTPS. Linking with other servers and the fediverse needs a public `https://` address. |
@@ -193,6 +193,9 @@ npm start          # serves it on http://localhost:3000
 
 Data goes to `./data` unless you set `DATA_DIR`. Behind a reverse proxy, set `TRUST_PROXY=1`. The server
 prints its LAN address at startup so friends on your network can connect.
+
+On Linux on ARM (a Raspberry Pi, for example), also install FFmpeg from your package manager
+(`sudo apt install ffmpeg`): the bundled ffprobe has no ARM build, so ClipTube uses the one on your PATH.
 
 To keep it running on Linux, a systemd unit such as `/etc/systemd/system/cliptube.service`:
 

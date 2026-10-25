@@ -22,7 +22,7 @@ needs before it starts are environment variables.
 | `DATA_DIR` | `./data` (`/data` in Docker) | Where everything is stored, see [The data folder](#the-data-folder) |
 | `TRUST_PROXY` | unset (`1` in Docker) | `1` behind a reverse proxy, so the app sees real client addresses and HTTPS |
 | `SETUP_CODE` | random | The code needed to create the first (admin) account |
-| `FFMPEG_PATH`, `FFPROBE_PATH` | bundled | Use another FFmpeg, for example one built with your GPU's encoder |
+| `FFMPEG_PATH`, `FFPROBE_PATH` | bundled | Use another FFmpeg, for example one built with your GPU's encoder. Where nothing is bundled for your machine (ffprobe on Linux ARM), the one on your PATH is used. |
 | `LOG_REQUESTS` | unset | `1` prints every request (same as `--log`) |
 | `FEDERATION_ALLOW_PRIVATE` | unset | `1` lets the network contact LAN and localhost addresses (same as `--allow-private-federation`). Only for testing several servers on one machine. |
 | `LIVE_SERVER` | unset | MediaMTX's host name on the Docker network (`cliptube-live`); turns on [live streaming](Live-Streaming.md#turning-it-on-admins) with `LIVE_SECRET` |

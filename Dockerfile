@@ -1,5 +1,5 @@
-# ---- build the frontend --------------------------------------------------
-FROM node:24-bookworm-slim AS build
+# ---- build the frontend (on the build machine's own platform: the output is the same for every CPU) ----
+FROM --platform=$BUILDPLATFORM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
@@ -16,9 +16,13 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 # Production deps only. ffmpeg-static downloads its binary in a postinstall script.
 RUN npm ci --omit=dev && npm cache clean --force \
-    && test -x node_modules/ffmpeg-static/ffmpeg \
-    && test -x node_modules/ffprobe-static/bin/linux/x64/ffprobe \
-    && mkdir -p /data && chown node:node /data
+    && node_modules/ffmpeg-static/ffmpeg -version >/dev/null
+# ffprobe-static has no Linux ARM builds (a Raspberry Pi, an Ampere or Graviton server, Docker on Apple silicon):
+# there, ffprobe comes from Debian's FFmpeg, and the app uses the one on PATH.
+RUN "$(node -p "require('ffprobe-static').path")" -version >/dev/null 2>&1 \
+    || (apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/* \
+        && ffprobe -version >/dev/null)
+RUN mkdir -p /data && chown node:node /data
 COPY server ./server
 COPY --from=build /app/web/dist ./web/dist
 VOLUME /data

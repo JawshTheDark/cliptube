@@ -46,6 +46,12 @@ Raise the proxy's timeouts and turn off request buffering:
 or a Cloudflare Tunnel, a single upload is capped at 100 MB on the free plan. Also check the site's own limit in
 Admin → Overview, and the uploader's storage quota.
 
+**Every upload fails with "ffprobe was not found on this server"**
+Older versions said `spawn /app/node_modules/ffprobe-static/bin/linux/arm64/ffprobe ENOENT`. The server runs on
+ARM, where the bundled ffprobe has no build. Update to v1.9.1 or newer and rebuild (`git pull`, then
+`docker compose up -d --build`): the image then adds Debian's FFmpeg. Without Docker, install FFmpeg
+(`sudo apt install ffmpeg`). The startup log shows the same message when FFmpeg can't run.
+
 **A video is stuck at "Processing" or failed**
 Look for its `[media]` lines in the log. Common causes: the disk is full, or the file isn't really a video. A
 GPU encoder that fails falls back to the CPU on its own (`falling back to libx264`), which is slower but works.

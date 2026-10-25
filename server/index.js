@@ -10,7 +10,7 @@ import { videosRouter } from './routes/videos.js';
 import { usersRouter, meRouter } from './routes/users.js';
 import { adminRouter } from './routes/admin.js';
 import { mediaRouter } from './routes/media.js';
-import { resumePending } from './media.js';
+import { checkFfmpeg, resumePending } from './media.js';
 import { startJobs } from './jobs.js';
 import { networkProtocolRouter, networkAdminRouter, networkRouter, networkActive, networkPeers, networkInfo, startNetwork } from './network.js';
 import { modRouter, reportsRouter, legalAdminRouter, legalPublicRouter } from './moderation.js';
@@ -217,6 +217,7 @@ for (const f of fs.readdirSync(DIRS.tmp)) {
   try { fs.unlinkSync(path.join(DIRS.tmp, f)); } catch {}
 }
 startJobs();
+checkFfmpeg();
 startNotifyCleanup();
 startApCleanup();
 startLinkChecks();

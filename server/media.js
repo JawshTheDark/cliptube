@@ -10,9 +10,24 @@ import { defineJob, enqueueJob, jobStats, jobPending } from './jobs.js';
 import { maybeNotifyUpload } from './notify.js';
 import { apVideoChanged } from './ap/deliver.js';
 
-// Bundled binaries by default; set FFMPEG_PATH / FFPROBE_PATH to use a system build (e.g. one with NVENC).
-export const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
-export const ffprobeBin = process.env.FFPROBE_PATH || ffprobeStatic.path;
+// Bundled binaries by default; set FFMPEG_PATH / FFPROBE_PATH to use a system build (e.g. one with NVENC). Where a
+// package has no binary for this machine (ffprobe-static has none for Linux on ARM), the one on PATH is used.
+const bundled = (file) => (file && fs.existsSync(file) ? file : null);
+export const ffmpegBin = process.env.FFMPEG_PATH || bundled(ffmpegPath) || 'ffmpeg';
+export const ffprobeBin = process.env.FFPROBE_PATH || bundled(ffprobeStatic.path) || 'ffprobe';
+const missing = (bin) =>
+  new Error(`${path.basename(bin)} was not found on this server: install FFmpeg, or set ${bin === ffprobeBin ? 'FFPROBE_PATH' : 'FFMPEG_PATH'} to it`);
+
+/** Says at startup, rather than at the first upload, when FFmpeg can't run here. */
+export async function checkFfmpeg() {
+  for (const bin of [ffmpegBin, ffprobeBin]) {
+    try {
+      await run(bin, ['-version']);
+    } catch (e) {
+      console.error(`[media] ${e.message}`);
+    }
+  }
+}
 
 export function run(bin, args, { onStdoutLine, cwd } = {}) {
   return new Promise((resolve, reject) => {
@@ -37,7 +52,7 @@ export function run(bin, args, { onStdoutLine, cwd } = {}) {
       stderr += d.toString();
       if (stderr.length > 20000) stderr = stderr.slice(-20000);
     });
-    child.on('error', reject);
+    child.on('error', (e) => reject(e.code === 'ENOENT' ? missing(bin) : e));
     child.on('close', (code) => {
       if (code === 0) return resolve({ stdout, stderr });
       const tail = stderr.split(/\r?\n/).filter(Boolean).slice(-4).join(' | ');
