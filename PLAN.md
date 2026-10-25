@@ -30,6 +30,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Uploads in pieces that resume, for proxies with a request cap such as Cloudflare's | Done | v1.10.0, 2026-10-25 |
 | The hub shows each member's current version, not the one it joined with | Done | v1.10.1, 2026-10-25 |
 | Merging duplicate games (by hand, and a member's copy into the hub's); a renamed member shows its new name | Done | v1.10.2, 2026-10-25 |
+| Sync now reads each server's name and version at its own address (hourly otherwise) | Done | v1.10.3, 2026-10-25 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

@@ -1221,6 +1221,18 @@ const backoffMs = (fails) => Math.min(6 * 3600_000, 60_000 * 2 ** Math.max(0, fa
  * Pulls one instance's public videos. Peers that speak v3 are pulled with signed requests; on the hub,
  * older members are still pulled with the feed token they registered.
  */
+/**
+ * Reads an instance's name, description and version again at its own address (with its key): on a full sync,
+ * such as Sync now, or else when the last read is over an hour old. Renamed sites show their new name without
+ * waiting for the daily key check. Unreachable for now: what we have stays.
+ */
+async function refreshDescriptor(inst, { always = false } = {}) {
+  if (!always && inst.key_checked_at && now() - inst.key_checked_at < 3600_000) return;
+  try {
+    recordDescriptor(inst.url, await fetchDescriptor(inst.url));
+  } catch {}
+}
+
 async function pullMember(inst, { full = false, force = false } = {}) {
   if (!inst || inst.is_self || pulling.has(inst.id)) return;
   // Protocol 4: reconcile with the peer's outbox over ActivityPub instead of pulling a feed.
@@ -1230,6 +1242,7 @@ async function pullMember(inst, { full = false, force = false } = {}) {
     pulling.add(inst.id);
     const t = now();
     try {
+      await refreshDescriptor(inst, { always: full });
       const r = await ap.reconcile(inst, { full });
       const count = db.prepare('SELECT COUNT(*) AS n FROM network_videos WHERE instance_id = ?').get(inst.id).n;
       db.prepare('UPDATE instances SET last_sync_at = ?, last_ok_at = ?, video_count = ?, last_error = NULL, fail_count = 0, next_try_at = NULL WHERE id = ?').run(t, t, count, inst.id);
@@ -1252,6 +1265,7 @@ async function pullMember(inst, { full = false, force = false } = {}) {
   const t = now();
   const get = (target) => (legacy ? fetchJson(`${inst.url}${target}`, { token: inst.feed_token, timeout: 30000 }) : signedFetch(inst, target, { timeout: 30000 }));
   try {
+    await refreshDescriptor(inst, { always: full });
     const cap = Math.max(1, Number(S().hub_max_videos_per_instance) || 5000);
     const isFull = full || !inst.last_full_sync_at || t - inst.last_full_sync_at > FULL_SYNC_MS;
     let since = isFull ? 0 : inst.cursor || 0;

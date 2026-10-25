@@ -71,6 +71,17 @@ test("a member's new name reaches the hub at its next sync", async () => {
   assert.equal(await onHub(), 'Member B');
 });
 
+test("Sync now on the hub reads each member's name at its own address", async () => {
+  const onHub = async () => (await A.get('/api/admin/network')).data.hub.members.find((m) => m.url === member.url)?.name;
+  // As if the member had been renamed while running a version that doesn't say so itself.
+  const hubDb = new DatabaseSync(path.join(hub.dataDir, 'cliptube.db'));
+  hubDb.prepare("UPDATE instances SET name = 'Its old name' WHERE url = ?").run(member.url);
+  hubDb.close();
+  assert.equal(await onHub(), 'Its old name');
+  await A.post('/api/admin/network/sync');
+  assert.equal(await onHub(), 'Member B');
+});
+
 test('likes, comments and subscriptions across instances', async () => {
   const remoteA = (await net(B))[0];
   const iidOnB = remoteA.remote.peer_id;
