@@ -37,6 +37,7 @@ import { apEnabled, apBase } from './ap/common.js';
 import { moveRouter } from './ap/move.js';
 import { channelExportPublicRouter, transferRouter } from './transfer.js';
 import { linksRouter, relMeLinks, startLinkChecks } from './links.js';
+import { channelPlaylistsRouter, playlistsRouter } from './playlists.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -96,6 +97,8 @@ app.use('/api/games', gamesRouter);
 app.use('/api', clipsRouter); // /api/videos/:id/clip, /api/videos/:id/exports, /api/exports/:id
 app.use('/api', watchingRouter); // captions, segments, community suggestions
 app.use('/api/users', usersRouter);
+app.use('/api/users', channelPlaylistsRouter); // /api/users/:username/playlists
+app.use('/api/playlists', playlistsRouter);
 app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);
 app.use('/api/me', moveRouter); // aliases and moves

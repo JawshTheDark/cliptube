@@ -8,6 +8,7 @@
 - [Support links](#support-links)
 - [Home](#home)
 - [Search](#search)
+- [Playlists](#playlists)
 - [Feeds](#feeds)
 - [Subscriptions and notifications](#subscriptions-and-notifications)
 - [Analytics](#analytics)
@@ -88,6 +89,22 @@ its clips (see [Clip Tools and Games](Clip-Tools-and-Games.md#games)).
 Search ranks by relevance across titles, tags, games, channels and descriptions. Put words in quotes for an
 exact phrase. Filters narrow by length, upload date, shape (vertical or not), game, and where a clip is hosted
 (this server, the network or the fediverse).
+
+## Playlists
+
+**Save** under any video (from this server or from the rest of the network) adds it to **Watch later** or to
+any of your playlists, or starts a new one. Your playlists are under **Playlists** in the sidebar.
+
+- **Who sees a playlist:** *public* ones show on your channel's *Playlists* tab, *unlisted* ones open for
+  anyone with the link, *private* ones only for you. Watch later is always private.
+- **Playing:** *Play all* starts at the top and *Shuffle* in a random order. While you watch, the playlist sits
+  beside the player with the next videos; its buttons turn shuffle, looping the whole list, and autoplay on or
+  off.
+- **Editing:** on the playlist's page, drag videos to reorder them (or use the arrows), remove them, and rename
+  the list, describe it or change who can see it.
+- **Videos that go away** (deleted here, or hidden from the network) disappear from the list or stay as
+  *No longer available*, with their title.
+- Public and unlisted playlists have their own feed: `/feeds/playlist/<id>.atom` (or `.rss`).
 
 ## Feeds
 

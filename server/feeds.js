@@ -115,6 +115,20 @@ feedsRouter.get('/channel/:file', (req, res) => {
   send(req, res, m[2], { base, self: `${base}/feeds/channel/${u.username}.${m[2]}`, title: `${u.display_name} on ${getSettings().site_name}`, subtitle: u.bio, link: `${base}/c/${u.username}`, videos });
 });
 
+// A public or unlisted playlist: its videos from this site, newest additions first.
+feedsRouter.get('/playlist/:file', (req, res) => {
+  const m = /^([A-Za-z0-9_-]{1,40})\.(atom|rss)$/.exec(String(req.params.file));
+  if (!m) throw new HttpError(404, 'Not found');
+  const p = db.prepare("SELECT p.*, u.display_name FROM playlists p JOIN users u ON u.id = p.user_id WHERE p.id = ? AND p.kind = 'user' AND p.visibility != 'private'").get(m[1]);
+  if (!p) throw new HttpError(404, 'Playlist not found');
+  const base = baseUrl(req);
+  const videos = db
+    .prepare(`${SELECT.replace("v.visibility = 'public'", "v.visibility != 'private'")} AND v.id IN (SELECT video_id FROM playlist_items WHERE playlist_id = ?)
+      ORDER BY (SELECT added_at FROM playlist_items i WHERE i.playlist_id = ? AND i.video_id = v.id) DESC LIMIT ${LIMIT}`)
+    .all(p.id, p.id);
+  send(req, res, m[2], { base, self: `${base}/feeds/playlist/${p.id}.${m[2]}`, title: `${p.title} by ${p.display_name}`, subtitle: p.description, link: `${base}/playlist/${p.id}`, videos });
+});
+
 feedsRouter.get('/game/:file', (req, res) => {
   const m = /^([a-z0-9-]{1,30})\.(atom|rss)$/.exec(String(req.params.file));
   if (!m) throw new HttpError(404, 'Not found');

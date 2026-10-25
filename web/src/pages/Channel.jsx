@@ -11,6 +11,7 @@ import { SupportLinks } from '../components/WatchExtras.jsx';
 import { FeedButton } from '../components/FeedLink.jsx';
 import { FediverseHandles } from '../components/Fediverse.jsx';
 import { Icon } from '../components/Icons.jsx';
+import { PlaylistCard } from '../components/Playlists.jsx';
 
 const SORTS = [
   ['new', 'Latest'],
@@ -28,6 +29,13 @@ export default function Channel() {
   const [tab, setTab] = useState('videos');
   const [sort, setSort] = useState('new');
   const [withLinked, setWithLinked] = useState(false);
+  const [playlists, setPlaylists] = useState(null);
+  useEffect(() => {
+    if (tab !== 'playlists') return;
+    api(`/users/${encodeURIComponent(username)}/playlists`)
+      .then((r) => setPlaylists(r.playlists))
+      .catch(() => setPlaylists([]));
+  }, [tab, username]);
 
   useEffect(() => {
     let dead = false;
@@ -155,12 +163,27 @@ export default function Channel() {
         <button className={`tab ${tab === 'videos' ? 'active' : ''}`} onClick={() => setTab('videos')}>
           Videos
         </button>
+        <button className={`tab ${tab === 'playlists' ? 'active' : ''}`} onClick={() => setTab('playlists')}>
+          Playlists
+        </button>
         <button className={`tab ${tab === 'about' ? 'active' : ''}`} onClick={() => setTab('about')}>
           About
         </button>
       </div>
 
-      {tab === 'videos' ? (
+      {tab === 'playlists' ? (
+        playlists === null ? (
+          <div className="spinner" />
+        ) : playlists.length === 0 ? (
+          <Empty icon="playlist" title="No playlists yet" />
+        ) : (
+          <div className="video-grid">
+            {playlists.map((p) => (
+              <PlaylistCard key={p.id} p={p} />
+            ))}
+          </div>
+        )
+      ) : tab === 'videos' ? (
         <>
           <div className="chips">
             {SORTS.map(([k, label]) => (

@@ -11,6 +11,7 @@ import { useToast } from '../components/Toast.jsx';
 import { ReportButton } from '../components/ReportDialog.jsx';
 import { ClipDialog, TimeField } from '../components/ClipDialog.jsx';
 import { ContributeMenu, DownloadMenu, SupportLinks } from '../components/WatchExtras.jsx';
+import { PlaylistPanel, SaveDialog } from '../components/Playlists.jsx';
 import { cameFrom, compact, displayed, formatDate, formatDuration, formatPrecise, parseTimestamp, copyText, isAnonymous, timeAgo, urlSeconds, usePref } from '../util.js';
 
 /**
@@ -298,6 +299,8 @@ export default function Watch() {
   const [looping, setLooping] = useState(true);
   const [communityPref] = usePref('community');
   const [showOriginal, setShowOriginal] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const listId = params.get('list');
   useEffect(() => {
     setLooping(true);
     setShowOriginal(false);
@@ -529,6 +532,11 @@ export default function Watch() {
             <button className="btn" onClick={() => setShare(true)}>
               <Icon name="share" /> Share
             </button>
+            {video.status === 'ready' && video.video_url && (
+              <button className="btn" onClick={() => (user ? setSaveOpen(true) : requireLogin())} title="Save to Watch later or a playlist">
+                <Icon name="playlist_add" /> Save
+              </button>
+            )}
             {user && video.video_url && video.status === 'ready' && (
               <button className="btn" onClick={() => setClipOpen(true)} title={video.can_clip ? 'Make a clip, a GIF or a short MP4' : 'Export a GIF or a short MP4'}>
                 <Icon name="cut" /> Clip
@@ -619,11 +627,13 @@ export default function Watch() {
       </div>
 
       <aside className="watch-secondary">
+        {listId && <PlaylistPanel listId={listId} currentKey={`v:${video.id}`} shuffle={params.get('shuffle') === '1'} />}
         {related.map((v) => (
           <VideoCard key={v.id} video={v} variant="compact" />
         ))}
         {related.length === 0 && <p className="muted side-note">More clips will show up here as they get uploaded.</p>}
       </aside>
+      {saveOpen && <SaveDialog videoKey={`v:${video.id}`} onClose={() => setSaveOpen(false)} />}
 
       {share && <ShareDialog video={video} videoRef={videoRef} loop={loopRange} onClose={() => setShare(false)} />}
       {clipOpen && <ClipDialog video={video} videoRef={videoRef} duration={video.duration} canClip={video.can_clip} onClose={() => setClipOpen(false)} />}

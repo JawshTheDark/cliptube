@@ -23,6 +23,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Android app (mobile/, Expo); bearer-token sign-in for it | Done | v1.5.0 and android-v1.0.0, 2026-10-25 |
 | After M8: linked accounts (one person on several servers, verified both ways) | Done | v1.6.0, 2026-10-25 |
 | Security pass before going public: sign-in and sign-up limits, SECURITY.md, no private details in the repo | Done | v1.6.1, 2026-10-25 |
+| Playlists and Watch later | Done | v1.7.0, 2026-10-25 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

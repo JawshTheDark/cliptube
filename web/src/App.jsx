@@ -31,6 +31,7 @@ import { ForgotPassword, ResetPassword, VerifyEmail } from './pages/EmailPages.j
 import Editor from './pages/Editor.jsx';
 import Network from './pages/Network.jsx';
 import RemoteWatch from './pages/RemoteWatch.jsx';
+import Playlist, { MyPlaylists, WatchLater } from './pages/Playlist.jsx';
 import { Empty } from './components/VideoCard.jsx';
 
 function Layout() {
@@ -232,6 +233,23 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <Liked />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/playlist/:id" element={<Playlist />} />
+              <Route
+                path="/playlists"
+                element={
+                  <RequireAuth>
+                    <MyPlaylists />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/watch-later"
+                element={
+                  <RequireAuth>
+                    <WatchLater />
                   </RequireAuth>
                 }
               />

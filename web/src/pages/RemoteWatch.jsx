@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 import { Player } from '../components/Player.jsx';
@@ -11,6 +11,7 @@ import { useToast } from '../components/Toast.jsx';
 import { Description } from './Watch.jsx';
 import { ReportButton } from '../components/ReportDialog.jsx';
 import { compact, formatDate, copyText } from '../util.js';
+import { PlaylistPanel, SaveDialog } from '../components/Playlists.jsx';
 
 /**
  * Watch page for a video hosted on another instance in the network. The file streams straight
@@ -28,6 +29,9 @@ export default function RemoteWatch() {
   const [theater, setTheater] = useState(() => localStorage.getItem('theater') === '1');
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [params] = useSearchParams();
+  const listId = params.get('list');
+  const [saveOpen, setSaveOpen] = useState(false);
 
   useEffect(() => {
     let dead = false;
@@ -196,6 +200,9 @@ export default function RemoteWatch() {
             <a className="btn btn-icon" href={r.watch_url} target="_blank" rel="noopener noreferrer" title={`Open on ${r.peer_url}`}>
               <Icon name="open" />
             </a>
+            <button className="btn" onClick={() => (user ? setSaveOpen(true) : nav('/login', { state: { from: `/n/${peerId}/${remoteId}` } }))} title="Save to Watch later or a playlist">
+              <Icon name="playlist_add" /> Save
+            </button>
             <Link className="btn btn-icon" to={`/compare?a=n:${peerId}:${encodeURIComponent(remoteId)}`} title="Compare side by side with another clip">
               <Icon name="compare" />
             </Link>
@@ -276,11 +283,13 @@ export default function RemoteWatch() {
       </div>
 
       <aside className="watch-secondary">
+        {listId && <PlaylistPanel listId={listId} currentKey={`n:${peerId}:${remoteId}`} shuffle={params.get('shuffle') === '1'} />}
         {data.related.length > 0 && <div className="side-heading">More from {r.peer_name}</div>}
         {data.related.map((v) => (
           <VideoCard key={v.id} video={v} variant="compact" />
         ))}
       </aside>
+      {saveOpen && <SaveDialog videoKey={`n:${peerId}:${remoteId}`} onClose={() => setSaveOpen(false)} />}
     </div>
   );
 }

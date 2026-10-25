@@ -75,6 +75,7 @@ around what a clip site needs:
 - Community titles and thumbnails, visible dislikes, support links
 - Link previews with an inline player in Discord and Slack
 - Original downloads when the uploader allows them
+- **Playlists** and Watch later, mixing clips from any server, with shuffle, loop and autoplay
 
 </td>
 </tr>
@@ -291,7 +292,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 ## Status
 
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.6.1**); smaller ideas are tracked in
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.7.0**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/cliptube/releases).
 

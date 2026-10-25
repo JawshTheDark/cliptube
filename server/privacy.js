@@ -71,6 +71,10 @@ function exportData(userId) {
     subscriptions: db.prepare('SELECT u.username, s.created_at FROM subscriptions s JOIN users u ON u.id = s.channel_id WHERE s.subscriber_id = ?').all(userId),
     network_subscriptions: db.prepare('SELECT i.url AS instance, s.username, s.created_at FROM network_subscriptions s JOIN instances i ON i.id = s.instance_id WHERE s.user_id = ?').all(userId),
     linked_accounts: db.prepare('SELECT handle, profile_url, created_at, verified_at FROM account_links WHERE user_id = ? ORDER BY created_at').all(userId),
+    playlists: db
+      .prepare("SELECT id, title, description, visibility, kind, created_at FROM playlists WHERE user_id = ? AND kind != 'party' ORDER BY created_at")
+      .all(userId)
+      .map((p) => ({ ...p, videos: db.prepare('SELECT video_id, instance_id, remote_id, title, added_at FROM playlist_items WHERE playlist_id = ? ORDER BY position').all(p.id) })),
     subscribers: db.prepare('SELECT COUNT(*) AS n FROM subscriptions WHERE channel_id = ?').get(userId).n,
     watch_history: db.prepare('SELECT video_id, watched_at, position FROM history WHERE user_id = ? ORDER BY watched_at DESC').all(userId),
   };

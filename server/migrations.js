@@ -771,6 +771,41 @@ CREATE INDEX IF NOT EXISTS idx_account_links_group ON account_links(group_id) WH
 `);
     },
   },
+  {
+    version: 13,
+    name: 'playlists, Watch later and watch party queues',
+    up(db) {
+      db.exec(`
+CREATE TABLE IF NOT EXISTS playlists (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  visibility TEXT NOT NULL DEFAULT 'public',   -- public | unlisted | private
+  kind TEXT NOT NULL DEFAULT 'user',           -- user | watch_later | party (a watch party's queue)
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id, kind, updated_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_playlists_watch_later ON playlists(user_id) WHERE kind = 'watch_later';
+CREATE TABLE IF NOT EXISTS playlist_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  playlist_id TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  video_id TEXT REFERENCES videos(id) ON DELETE CASCADE,  -- a video here
+  instance_id INTEGER,                                     -- or one from the network index
+  remote_id TEXT,
+  title TEXT NOT NULL DEFAULT '',                          -- as it was when added, for when it is gone
+  thumbnail_url TEXT,
+  added_at INTEGER NOT NULL,
+  added_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_playlist_items_list ON playlist_items(playlist_id, position);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_playlist_items_local ON playlist_items(playlist_id, video_id) WHERE video_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_playlist_items_remote ON playlist_items(playlist_id, instance_id, remote_id) WHERE remote_id IS NOT NULL;
+`);
+    },
+  },
 ];
 
 export function currentVersion(db) {
