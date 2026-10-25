@@ -63,6 +63,9 @@ export const DEFAULT_SETTINGS = {
   delete_originals: 'false',
   public_url: '',
   instance_description: '',
+  hls_ladder: 'off', // off | 720 (720p plus source) | full (1080p, 720p, 480p plus source)
+  federation_rendition: 'true', // a ~720p MP4 for platforms that only cache small remote videos
+  show_dislikes: 'true',
 
   // Membership in a network (this instance as a member of a hub).
   network_enabled: 'false',

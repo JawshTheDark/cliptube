@@ -438,6 +438,75 @@ CREATE INDEX idx_blocklist_entries_target ON blocklist_entries(kind, target);
       db.prepare("UPDATE instances SET source = 'hub' WHERE source IS NULL AND hub_status IS NOT NULL").run();
     },
   },
+  {
+    version: 6,
+    name: 'watching upgrades: HLS renditions, captions, skippable segments, community titles and thumbnails',
+    up(db) {
+      db.exec(`
+CREATE TABLE renditions (
+  video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                  -- hls | federation
+  edit_version INTEGER NOT NULL DEFAULT 0,
+  path TEXT NOT NULL,                  -- HLS folder or MP4 file, relative to its media folder
+  height INTEGER,
+  size_bytes INTEGER NOT NULL DEFAULT 0,
+  meta TEXT,                           -- JSON: the HLS rungs
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (video_id, kind)
+);
+CREATE TABLE captions (
+  id TEXT PRIMARY KEY,
+  video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  lang TEXT NOT NULL,
+  label TEXT NOT NULL,
+  file TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'published', -- published | pending
+  submitted_by TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_captions_video ON captions(video_id);
+CREATE TABLE segments (
+  id TEXT PRIMARY KEY,
+  video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                  -- sponsor | intro | outro | recap | selfpromo
+  start_s REAL NOT NULL,
+  end_s REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'published', -- published | pending
+  submitted_by TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_segments_video ON segments(video_id);
+CREATE TABLE title_suggestions (
+  id TEXT PRIMARY KEY,
+  video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  votes INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_title_suggestions_video ON title_suggestions(video_id, votes);
+CREATE TABLE thumbnail_suggestions (
+  id TEXT PRIMARY KEY,
+  video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  time_s REAL NOT NULL,
+  file TEXT NOT NULL,
+  votes INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_thumbnail_suggestions_video ON thumbnail_suggestions(video_id, votes);
+CREATE TABLE suggestion_votes (
+  kind TEXT NOT NULL,                  -- title | thumbnail
+  suggestion_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (kind, suggestion_id, user_id)
+);
+`);
+      addColumn(db, 'videos', 'allow_original_download', 'INTEGER NOT NULL DEFAULT 0');
+      addColumn(db, 'users', 'support_links', 'TEXT'); // JSON [{label, url}]
+    },
+  },
 ];
 
 export function currentVersion(db) {

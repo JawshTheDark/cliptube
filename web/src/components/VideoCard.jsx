@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar } from './Avatar.jsx';
 import { Icon } from './Icons.jsx';
-import { compact, formatDuration, timeAgo } from '../util.js';
+import { compact, displayed, formatDuration, timeAgo, usePref } from '../util.js';
 
 /**
  * variant: 'grid' (home / channel), 'compact' (watch sidebar), 'list' (search results)
  */
 export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
+  const [communityPref] = usePref('community');
+  const shown = displayed(v, communityPref);
   const [preview, setPreview] = useState(false);
   const timer = useRef(null);
   const u = v.uploader;
@@ -40,9 +42,9 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
 
   return (
     <article className={`card ${variant}`}>
-      <Link to={watchUrl} className="thumb" onMouseEnter={enter} onMouseLeave={leave} aria-label={v.title}>
-        {v.thumbnail_url ? (
-          <img src={v.thumbnail_url} alt="" loading="lazy" />
+      <Link to={watchUrl} className="thumb" onMouseEnter={enter} onMouseLeave={leave} aria-label={shown.title}>
+        {shown.thumbnail_url ? (
+          <img src={shown.thumbnail_url} alt="" loading="lazy" />
         ) : (
           <div className="thumb-placeholder">
             <Icon name="video" size={40} />
@@ -75,8 +77,8 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
           </ChannelLink>
         )}
         <div className="card-text">
-          <Link to={watchUrl} className="card-title" title={v.title}>
-            {v.title}
+          <Link to={watchUrl} className="card-title" title={shown.community ? `Community title. Original: ${v.title}` : v.title}>
+            {shown.title}
           </Link>
           {variant === 'list' && (
             <div className="card-meta">

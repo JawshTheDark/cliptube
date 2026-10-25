@@ -166,6 +166,37 @@ export function setAnonymous(on) {
   } catch {}
 }
 
+/** Per-browser viewing preferences (skip mode, community titles, quality). */
+const PREF_DEFAULTS = { skip: 'ask', community: 'off', quality: 'auto', captions: 'off' };
+export function getPref(key) {
+  try {
+    return localStorage.getItem(`ct_pref_${key}`) || PREF_DEFAULTS[key];
+  } catch {
+    return PREF_DEFAULTS[key];
+  }
+}
+export function setPref(key, value) {
+  try {
+    localStorage.setItem(`ct_pref_${key}`, value);
+  } catch {}
+  window.dispatchEvent(new Event('ct-prefs'));
+}
+export function usePref(key) {
+  const [v, setV] = useState(() => getPref(key));
+  useEffect(() => {
+    const h = () => setV(getPref(key));
+    window.addEventListener('ct-prefs', h);
+    return () => window.removeEventListener('ct-prefs', h);
+  }, [key]);
+  return [v, (x) => setPref(key, x)];
+}
+
+/** The title and thumbnail to show for a video, using community versions when the viewer opted in. */
+export function displayed(video, community) {
+  const c = community === 'on' ? video.community : null;
+  return { title: c?.title || video.title, thumbnail_url: c?.thumbnail_url || video.thumbnail_url, community: !!(c?.title || c?.thumbnail_url) };
+}
+
 export const VISIBILITY_HELP = {
   public: 'Anyone can find and watch this video.',
   unlisted: 'Only people with the link can watch. It will not show up in listings or search.',

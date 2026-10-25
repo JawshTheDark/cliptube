@@ -22,6 +22,9 @@ export const DIRS = {
   avatars: path.join(DATA_DIR, 'avatars'),
   editor: path.join(DATA_DIR, 'editor'),
   exports: path.join(DATA_DIR, 'exports'),
+  hls: path.join(DATA_DIR, 'hls'),
+  renditions: path.join(DATA_DIR, 'renditions'),
+  captions: path.join(DATA_DIR, 'captions'),
   tmp: path.join(DATA_DIR, 'tmp'),
 };
 

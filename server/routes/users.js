@@ -8,7 +8,7 @@ import { requireAuth, userToPublic } from '../auth.js';
 import { imageUpload, discard } from '../uploads.js';
 import { HttpError, now, str, clampInt } from '../util.js';
 import { convertImage } from '../media.js';
-import { videoSelect, serializeVideo, LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapListRow, storageFor } from './videos.js';
+import { videoSelect, serializeVideo, LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapListRow, storageFor, parseSupportLinks } from './videos.js';
 import { NETWORK_VISIBLE, serializeRemote, networkActive } from '../network.js';
 
 /** Local channels only; people from other instances have placeholder accounts with no channel page here. */
@@ -26,7 +26,28 @@ export function channelInfo(u, viewer) {
     total_views: db.prepare(`SELECT COALESCE(SUM(views), 0) AS n FROM videos WHERE user_id = ? ${visibility}`).get(u.id).n,
     subscribed: viewer ? !!db.prepare('SELECT 1 FROM subscriptions WHERE subscriber_id = ? AND channel_id = ?').get(viewer.id, u.id) : false,
     is_self: !!viewer && viewer.id === u.id,
+    support_links: parseSupportLinks(u.support_links),
   };
+}
+
+/** Validates support links from the settings form: up to five https links with short labels. */
+function cleanSupportLinks(input) {
+  if (!Array.isArray(input)) throw new HttpError(400, 'Support links must be a list');
+  const out = [];
+  for (const l of input.slice(0, 5)) {
+    const label = str(l?.label, 40).trim();
+    const raw = String(l?.url || '').trim();
+    if (!raw) continue;
+    let url;
+    try {
+      url = new URL(raw);
+    } catch {
+      throw new HttpError(400, `"${raw.slice(0, 60)}" is not a valid link`);
+    }
+    if (url.protocol !== 'https:') throw new HttpError(400, 'Support links must start with https://');
+    out.push({ label: label || url.hostname.replace(/^www\./, ''), url: url.href });
+  }
+  return out;
 }
 
 // ---- /api/users -------------------------------------------------------------
@@ -175,6 +196,7 @@ meRouter.patch('/', async (req, res) => {
     if (!['open', 'hold_all'].includes(b.comment_mode)) throw new HttpError(400, 'Comment mode must be open or hold_all');
     db.prepare('UPDATE users SET comment_mode = ? WHERE id = ?').run(b.comment_mode, u.id);
   }
+  if (b.support_links !== undefined) db.prepare('UPDATE users SET support_links = ? WHERE id = ?').run(JSON.stringify(cleanSupportLinks(b.support_links)), u.id);
 
   if (b.new_password) {
     if (typeof b.new_password !== 'string' || b.new_password.length < 6) throw new HttpError(400, 'New password must be at least 6 characters');
@@ -191,6 +213,7 @@ meRouter.get('/settings', (req, res) => {
     history_paused: !!u.history_paused,
     comment_mode: u.comment_mode || 'open',
     comment_filters: db.prepare('SELECT word, action FROM comment_filters WHERE user_id = ? ORDER BY word').all(req.user.id),
+    support_links: parseSupportLinks(db.prepare('SELECT support_links FROM users WHERE id = ?').get(req.user.id).support_links),
     storage: storageFor(req.user.id),
     delete_requested_at: u.delete_requested_at || null,
   });

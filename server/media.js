@@ -12,9 +12,9 @@ import { defineJob, enqueueJob, jobStats, jobPending } from './jobs.js';
 export const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
 export const ffprobeBin = process.env.FFPROBE_PATH || ffprobeStatic.path;
 
-export function run(bin, args, { onStdoutLine } = {}) {
+export function run(bin, args, { onStdoutLine, cwd } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { windowsHide: true });
+    const child = spawn(bin, args, { windowsHide: true, ...(cwd ? { cwd } : {}) });
     let stdout = '';
     let stderr = '';
     let buf = '';
@@ -120,13 +120,13 @@ function encoderArgs(enc) {
 }
 
 /** Runs an encode with the configured encoder, falling back to libx264 if a hardware encoder fails. */
-export async function encodeWithFallback(settings, buildArgs, onLine) {
+export async function encodeWithFallback(settings, buildArgs, onLine, runOpts = {}) {
   const encoders = [settings.encoder || 'libx264'];
   if (!encoders.includes('libx264')) encoders.push('libx264');
   let lastErr;
   for (const enc of encoders) {
     try {
-      await run(ffmpegBin, buildArgs(encoderArgs(enc)), { onStdoutLine: onLine });
+      await run(ffmpegBin, buildArgs(encoderArgs(enc)), { onStdoutLine: onLine || undefined, ...runOpts });
       return enc;
     } catch (e) {
       lastErr = e;
@@ -268,7 +268,11 @@ async function renderEdit(id) {
   }
   console.log(`[media] ${id}: edit v${version} rendered (${encoder}, ${edit.segments.length} part(s), ${duration.toFixed(1)}s)`);
   onLocalVideosChanged();
+  queueRenditions(id);
 }
+
+/** HLS and federation renditions are built by their own job (see renditions.js). */
+export const queueRenditions = (id) => enqueueJob('video.renditions', { id }, { dedupe: `renditions:${id}` });
 
 // ---- processing jobs (persistent, see jobs.js) ---------------------------------------
 
@@ -362,6 +366,7 @@ export async function processVideo(id) {
   }
   console.log(`[media] ${id}: ready (${result.encoder}, ${(size / 1048576).toFixed(1)} MB)`);
   onLocalVideosChanged();
+  queueRenditions(id);
 }
 
 /**

@@ -150,12 +150,13 @@ export async function registerUser(inst, username) {
 
 const clipCache = path.join(os.tmpdir(), 'cliptube-test-clips');
 
-/** Generates (once, cached) a small test clip: 'h264' (remux path) or 'vp9' (transcode path). */
+/** Generates (once, cached) a small test clip: 'h264' (remux path), 'vp9' (transcode path) or 'hd' (1080p60 H.264). */
 export function testClip(kind = 'h264') {
   fs.mkdirSync(clipCache, { recursive: true });
-  const file = path.join(clipCache, kind === 'vp9' ? 'clip-vp9.webm' : 'clip-h264.mp4');
+  const file = path.join(clipCache, { vp9: 'clip-vp9.webm', hd: 'clip-hd.mp4' }[kind] || 'clip-h264.mp4');
   if (fs.existsSync(file)) return file;
-  const common = ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=320x240:rate=30', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '4'];
+  const size = kind === 'hd' ? 'size=1920x1080:rate=60' : 'size=320x240:rate=30';
+  const common = ['-y', '-v', 'error', '-f', 'lavfi', '-i', `testsrc2=${size}`, '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', kind === 'hd' ? '3' : '4'];
   const codec =
     kind === 'vp9'
       ? ['-c:v', 'libvpx-vp9', '-b:v', '300k', '-deadline', 'realtime', '-cpu-used', '8', '-c:a', 'libopus']

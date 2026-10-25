@@ -6,12 +6,14 @@ import { DIRS } from '../config.js';
 import { requireAuth } from '../auth.js';
 import { videoUpload, imageUpload, discard } from '../uploads.js';
 import { HttpError, newId, now, parseTags, str, clampInt, sha256 } from '../util.js';
-import { enqueue, enqueueRender, convertImage, grabFrame, editorAssets, editorDir } from '../media.js';
+import { enqueue, enqueueRender, convertImage, grabFrame, editorAssets, editorDir, queueRenditions } from '../media.js';
 import { intakeComment, intakeLike } from '../intake.js';
 import { effectiveCommentMode } from '../spam.js';
 import { logAction } from '../reports.js';
 import { networkActive, serializeRemote, NETWORK_VISIBLE, acceptsFromNetwork, publicComment, onLocalVideosChanged } from '../network.js';
 import { findGame, gameSlugs, networkGameWhere, resolveGame } from '../games.js';
+import { removeRenditionFiles, renditionUrls } from '../renditions.js';
+import { canDownloadOriginal, communityFor, originalFile, publishedCaptions, publishedSegments, removeWatchingFiles } from '../watching.js';
 
 export const videosRouter = Router();
 
@@ -28,9 +30,25 @@ videosRouter.use((req, res, next) => {
 
 const VISIBILITIES = ['public', 'unlisted', 'private'];
 
+/** The top-voted community title and thumbnail, as columns (see watching.js). */
+const COMMUNITY_COLS = `(SELECT ts.title FROM title_suggestions ts WHERE ts.video_id = v.id AND ts.votes > 0 ORDER BY ts.votes DESC, ts.created_at LIMIT 1) AS c_title,
+  (SELECT th.file FROM thumbnail_suggestions th WHERE th.video_id = v.id AND th.votes > 0 ORDER BY th.votes DESC, th.created_at LIMIT 1) AS c_thumb`;
+const community = (r) => (r.c_title || r.c_thumb ? { title: r.c_title || null, thumbnail_url: r.c_thumb ? `/media/thumbs/${r.c_thumb}` : null } : null);
+
 export function videoSelect(extra = '') {
-  return `SELECT v.*, u.username, u.display_name, u.avatar AS u_avatar, g.name AS game_name, g.short_name AS game_short${extra ? ', ' + extra : ''}
+  return `SELECT v.*, u.username, u.display_name, u.avatar AS u_avatar, u.support_links AS u_support_links, g.name AS game_name, g.short_name AS game_short,
+    ${COMMUNITY_COLS}${extra ? ', ' + extra : ''}
     FROM videos v JOIN users u ON u.id = v.user_id LEFT JOIN games g ON g.id = v.game_id`;
+}
+
+/** A channel's support links (tips, merch, Patreon...), validated when saved. */
+export function parseSupportLinks(json) {
+  try {
+    const list = JSON.parse(json || '[]');
+    return Array.isArray(list) ? list.filter((l) => l && typeof l.url === 'string' && /^https:\/\//.test(l.url)).slice(0, 5) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** Versioned URL so browsers and CDNs fetch the new file after an edit. */
@@ -66,6 +84,8 @@ export function serializeVideo(v) {
     comment_mode: v.comment_mode || 'inherit',
     game: v.game_id ? { id: v.game_id, name: v.game_name || v.game_id, short_name: v.game_short || null } : null,
     allow_clips: !!v.allow_clips,
+    allow_original_download: !!v.allow_original_download,
+    community: community(v),
     source: v.source_video_id ? { id: v.source_video_id, start: v.source_start, end: v.source_end } : null,
     uploader: {
       id: v.user_id,
@@ -147,6 +167,19 @@ export function fullVideo(id, user) {
   out.clip_count = db
     .prepare("SELECT COUNT(*) AS n FROM videos WHERE source_video_id = ? AND status = 'ready' AND visibility = 'public' AND moderation_status IS NULL")
     .get(v.id).n;
+  const ren = renditionUrls(v);
+  out.hls_url = out.video_url ? ren.hls_url : null;
+  out.hls_rungs = out.video_url ? ren.hls_rungs : null;
+  out.federation_url = out.video_url ? ren.federation_url : null;
+  out.captions = publishedCaptions(v.id);
+  out.segments = publishedSegments(v.id);
+  if (getSettings().show_dislikes !== 'true' && !canEdit(v, user)) out.dislikes = null;
+  out.original_download = null;
+  if (out.video_url && canDownloadOriginal(v, user)) {
+    const o = originalFile(v);
+    if (o) out.original_download = { url: `/media/original/${v.id}`, name: v.original_name || null, size: o.size, upload: o.upload };
+  }
+  out.uploader.support_links = parseSupportLinks(v.u_support_links);
   return out;
 }
 
@@ -159,6 +192,8 @@ function removeFiles(v) {
   ];
   for (const f of files) if (f) try { fs.unlinkSync(f); } catch {}
   try { fs.rmSync(editorDir(v.id), { recursive: true, force: true }); } catch {}
+  removeRenditionFiles(v.id);
+  removeWatchingFiles(v.id);
 }
 export { removeFiles as removeVideoFiles };
 
@@ -169,12 +204,12 @@ export const LOCAL_LIST_COLS = `'local' AS src, v.id AS vid, NULL AS peer_id, v.
   v.created_at, v.thumb_path AS thumb, v.edit_version AS ver, v.user_id, u.username AS u_username, u.display_name AS u_display,
   u.avatar AS u_avatar, NULL AS u_avatar_url, NULL AS thumb_url, NULL AS video_url, NULL AS watch_url, NULL AS uploader_url,
   NULL AS peer_name, NULL AS peer_url, '' AS tags, (SELECT COALESCE(SUM(value), 0) FROM likes l WHERE l.video_id = v.id) AS score,
-  v.game_id AS game_id, (SELECT name FROM games WHERE id = v.game_id) AS game_name`;
+  v.game_id AS game_id, (SELECT name FROM games WHERE id = v.game_id) AS game_name, ${COMMUNITY_COLS}`;
 export const REMOTE_LIST_COLS = `'remote' AS src, r.remote_id AS vid, r.instance_id AS peer_id, r.title, r.description, r.duration, r.width,
   r.height, r.views, r.created_at, NULL AS thumb, 0 AS ver, NULL AS user_id, r.uploader_username AS u_username,
   r.uploader_display_name AS u_display, NULL AS u_avatar, r.uploader_avatar_url AS u_avatar_url, r.thumbnail_url AS thumb_url,
   r.video_url, r.watch_url, r.uploader_url, p.name AS peer_name, p.url AS peer_url, r.tags, r.likes AS score,
-  r.game_slug AS game_id, r.game_name AS game_name`;
+  r.game_slug AS game_id, r.game_name AS game_name, NULL AS c_title, NULL AS c_thumb`;
 
 export function mapListRow(r) {
   if (r.src === 'local') {
@@ -192,6 +227,7 @@ export function mapListRow(r) {
       thumbnail_url: r.thumb ? `/media/thumbs/${r.thumb}` : null,
       video_url: videoUrl({ id: r.vid, edit_version: r.ver }),
       game: r.game_id ? { id: r.game_id, name: r.game_name || r.game_id } : null,
+      community: community(r),
       uploader: { id: r.user_id, username: r.u_username, display_name: r.u_display, avatar_url: r.u_avatar ? `/media/avatars/${r.u_avatar}` : null },
     };
   }
@@ -370,9 +406,10 @@ videosRouter.patch('/:id', requireAuth, (req, res) => {
   const game = resolveGame(b.game, req.user);
   const gameId = game === undefined ? v.game_id : game;
   const allowClips = b.allow_clips !== undefined ? (b.allow_clips ? 1 : 0) : v.allow_clips || 0;
-  db.prepare('UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, game_id = ?, allow_clips = ?, updated_at = ? WHERE id = ?').run(
-    title, description, visibility, federate, commentMode, gameId, allowClips, now(), v.id,
-  );
+  const allowOriginal = b.allow_original_download !== undefined ? (b.allow_original_download ? 1 : 0) : v.allow_original_download || 0;
+  db.prepare(
+    'UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, game_id = ?, allow_clips = ?, allow_original_download = ?, updated_at = ? WHERE id = ?',
+  ).run(title, description, visibility, federate, commentMode, gameId, allowClips, allowOriginal, now(), v.id);
   if (b.tags !== undefined) setTags(v.id, parseTags(b.tags));
   res.json({ video: fullVideo(v.id, req.user) });
 });
@@ -499,6 +536,7 @@ function revertEdit(v) {
     'UPDATE videos SET edit_json = NULL, edit_version = edit_version + 1, render_status = NULL, render_progress = 0, render_error = NULL, file_path = base_path, duration = COALESCE(base_duration, duration), size_bytes = ?, updated_at = ? WHERE id = ?',
   ).run(size, t, v.id);
   if (v.file_path && v.file_path !== v.base_path) try { fs.unlinkSync(path.join(DIRS.videos, v.file_path)); } catch {}
+  queueRenditions(v.id);
 }
 
 videosRouter.get('/:id/editor', requireAuth, (req, res) => {
@@ -597,7 +635,8 @@ videosRouter.post('/:id/like', requireAuth, (req, res) => {
     ).run(req.user.id, v.id, value, now());
   }
   const lk = db.prepare('SELECT COALESCE(SUM(value = 1), 0) AS likes, COALESCE(SUM(value = -1), 0) AS dislikes FROM likes WHERE video_id = ?').get(v.id);
-  res.json({ likes: lk.likes, dislikes: lk.dislikes, my_like: value });
+  const hide = getSettings().show_dislikes !== 'true' && !canEdit(v, req.user);
+  res.json({ likes: lk.likes, dislikes: hide ? null : lk.dislikes, my_like: value });
 });
 
 // ---- comments ---------------------------------------------------------------

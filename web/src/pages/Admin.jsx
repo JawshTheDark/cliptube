@@ -334,6 +334,26 @@ export default function Admin() {
                 <input type="checkbox" checked={form.delete_originals === 'true'} onChange={(e) => set({ delete_originals: e.target.checked ? 'true' : 'false' })} />
                 Delete the original file after re-encoding (saves disk, loses the lossless source)
               </label>
+              <div className="field">
+                <label>Adaptive streaming (HLS)</label>
+                <select className="select" value={form.hls_ladder} onChange={(e) => set({ hls_ladder: e.target.value })}>
+                  <option value="off">Off: play the MP4 only</option>
+                  <option value="720">720p plus source quality</option>
+                  <option value="full">1080p, 720p and 480p plus source quality</option>
+                </select>
+                <span className="hint">
+                  Viewers on slow connections get a smaller stream and can pick a quality; source quality is always offered. Uses roughly 50 to 100% more
+                  disk per video, and each video is re-encoded once in the background. Changing this rebuilds every video.
+                </span>
+              </div>
+              <label className="checkbox field">
+                <input type="checkbox" checked={form.federation_rendition === 'true'} onChange={(e) => set({ federation_rendition: e.target.checked ? 'true' : 'false' })} />
+                Keep a 720p copy of large videos for other platforms (Mastodon and others only cache small videos)
+              </label>
+              <label className="checkbox field">
+                <input type="checkbox" checked={form.show_dislikes === 'true'} onChange={(e) => set({ show_dislikes: e.target.checked ? 'true' : 'false' })} />
+                Show dislike counts (uploaders always see their own)
+              </label>
               <button className="btn btn-primary" disabled={busy}>
                 Save settings
               </button>

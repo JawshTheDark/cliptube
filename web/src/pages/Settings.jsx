@@ -5,7 +5,7 @@ import { useAuth, useTitle } from '../auth.jsx';
 import { Avatar } from '../components/Avatar.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { formatBytes, formatDate, isAnonymous, setAnonymous } from '../util.js';
+import { formatBytes, formatDate, isAnonymous, setAnonymous, usePref } from '../util.js';
 
 export default function Settings() {
   const { user, setUser } = useAuth();
@@ -172,6 +172,8 @@ function MoreSettings() {
   };
   return (
     <>
+      <ViewingSettings />
+      <SupportLinksSettings initial={s.support_links || []} />
       <CommentSettings s={s} patch={patch} setS={setS} />
       <PrivacySettings s={s} patch={patch} />
       <StorageCard storage={s.storage} />
@@ -241,6 +243,87 @@ function CommentSettings({ s, patch, setS }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function ViewingSettings() {
+  const [skip, setSkip] = usePref('skip');
+  const [community, setCommunity] = usePref('community');
+  const [captions, setCaptions] = usePref('captions');
+  return (
+    <section className="card-panel">
+      <h2>Watching</h2>
+      <p className="hint">Saved in this browser.</p>
+      <div className="field">
+        <label>Sponsor reads, intros and other marked parts</label>
+        <select className="select" value={skip} onChange={(e) => setSkip(e.target.value)}>
+          <option value="auto">Skip them automatically</option>
+          <option value="ask">Show a Skip button</option>
+          <option value="off">Don't skip</option>
+        </select>
+      </div>
+      <label className="toggle-row">
+        <span className="toggle-text">
+          <b>Community titles and thumbnails</b>
+          <span className="hint">Show the plainer titles and honest thumbnails viewers voted for, instead of the uploader's.</span>
+        </span>
+        <input type="checkbox" className="switch" checked={community === 'on'} onChange={(e) => setCommunity(e.target.checked ? 'on' : 'off')} />
+      </label>
+      <label className="toggle-row">
+        <span className="toggle-text">
+          <b>Turn captions on when a video has them</b>
+        </span>
+        <input type="checkbox" className="switch" checked={captions === 'on'} onChange={(e) => setCaptions(e.target.checked ? 'on' : 'off')} />
+      </label>
+    </section>
+  );
+}
+
+function SupportLinksSettings({ initial }) {
+  const toast = useToast();
+  const blank = { label: '', url: '' };
+  const [links, setLinks] = useState(() => [...initial, ...(initial.length < 5 ? [blank] : [])]);
+  const [busy, setBusy] = useState(false);
+  const set = (i, patch) => setLinks((list) => list.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api('/me', { method: 'PATCH', body: { support_links: links.filter((l) => l.url.trim()) } });
+      toast('Support links saved');
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card-panel">
+      <h2>Support links</h2>
+      <p className="hint">Tip jars, memberships or merch. They show on your channel and under your videos. Up to five https:// links.</p>
+      <form onSubmit={save}>
+        {links.map((l, i) => (
+          <div key={i} className="field-row">
+            <div className="field">
+              <input className="input" value={l.label} maxLength={40} placeholder="Label, like Ko-fi" onChange={(e) => set(i, { label: e.target.value })} aria-label="Label" />
+            </div>
+            <div className="field">
+              <input className="input" value={l.url} placeholder="https://" onChange={(e) => set(i, { url: e.target.value })} aria-label="Link" />
+            </div>
+          </div>
+        ))}
+        <div className="row-actions">
+          {links.length < 5 && (
+            <button type="button" className="btn btn-ghost" onClick={() => setLinks((x) => [...x, blank])}>
+              Add another
+            </button>
+          )}
+          <button className="btn btn-primary" disabled={busy}>
+            Save
+          </button>
+        </div>
+      </form>
     </section>
   );
 }

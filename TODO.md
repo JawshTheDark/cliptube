@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v0.7.0): a hub (clips.irc.so) plus direct peering between instances, with
+Planned work. Current state (v0.8.0): a hub (clips.irc.so) plus direct peering between instances, with
 cross-instance likes, comments and subscriptions signed per instance. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 
@@ -112,15 +112,15 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 ### Watching
 
 - [x] No ads.
-- [ ] Optional tip and support links on channels and videos.
+- [x] Optional tip and support links on channels and videos.
 - [x] H.264 uploads are remuxed at their original quality and keep 60fps; transcodes keep the original file.
-- [ ] "Download original" for the uploader (and optionally viewers), not just the processed MP4.
-- [ ] Adaptive streaming (HLS) with a source-quality rendition that isn't paywalled.
-- [ ] Show dislike counts, with a per-instance setting to hide them.
-- [ ] Never force AI dubbing or auto-translated titles; bring back community-written captions and subtitles.
-- [ ] Built-in skippable segments (sponsor, intro, outro) marked by creators, with optional viewer
+- [x] "Download original" for the uploader (and optionally viewers), not just the processed MP4.
+- [x] Adaptive streaming (HLS) with a source-quality rendition that isn't paywalled.
+- [x] Show dislike counts, with a per-instance setting to hide them.
+- [x] Never force AI dubbing or auto-translated titles; bring back community-written captions and subtitles.
+- [x] Built-in skippable segments (sponsor, intro, outro) marked by creators, with optional viewer
       suggestions, like SponsorBlock.
-- [ ] Optional community title and thumbnail suggestions to counter clickbait, like DeArrow.
+- [x] Optional community title and thumbnail suggestions to counter clickbait, like DeArrow.
 
 ### Comments and community
 
@@ -148,5 +148,5 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 ## 5. Smaller follow-ups
 
 - [x] Merge the `network-hub` branch into `main` (production already runs it).
-- [ ] Playback: optional HLS renditions (e.g. 1080p60, 720p60, 480p) alongside the MP4 for weak connections.
+- [x] Playback: optional HLS renditions (e.g. 1080p60, 720p60, 480p) alongside the MP4 for weak connections.
 - [x] Hairpin NAT note in docs: on a home network without NAT loopback, use the LAN address or a hosts entry.

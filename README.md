@@ -20,6 +20,7 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 - **Moderation**: reports (also across instances), a moderation queue with an audit log, comment spam holds, copyright takedowns with counter-notices and strikes, invite or approval sign-up, storage quotas
 - **Privacy**: pause history, anonymous mode, download all your data, delete your account
 - **Clip tools**: clip a moment into a new video, GIF and MP4 export, looping share links, games with their own pages, side-by-side compare
+- **Watching**: adaptive streaming with a source-quality rung, captions, skippable sponsor and intro parts, community titles and thumbnails, original downloads, support links
 - Keyboard shortcuts: `k` play/pause, `j`/`l` seek 10s, arrows seek 5s, `f` fullscreen, `t` theater, `m` mute, `0-9` jump
 
 ## Run it
@@ -55,6 +56,30 @@ Open it from Studio (scissors icon), the video details page, or the Editor butto
   shared links keep working. **Revert to original** restores the upload at any time, because edits are
   non-destructive: the first processed file is kept as the editing source (an edited video uses roughly
   twice its disk space).
+
+## Watching
+
+- **Adaptive streaming.** Admin → Overview → *Adaptive streaming (HLS)*: off, 720p plus source, or 1080p, 720p
+  and 480p plus source. The source rung is the published file cut into segments without re-encoding, so full
+  quality is always offered. The player switches quality with the connection, and the quality button picks
+  one by hand (remembered per browser). The MP4 stays for downloads, link previews and older browsers. Videos
+  are rebuilt in the background when the setting changes.
+- **720p copy for other platforms.** Large videos get a small MP4 too, for services like Mastodon that only
+  cache small remote videos (on by default; same page).
+- **Download original.** Uploaders can always download the file they uploaded (or the full-quality file when
+  the upload was remuxed). Ticking *Let viewers download the original* on a video offers it to everyone.
+- **Dislikes** are shown; admins can hide the counts (uploaders still see theirs).
+- **Support links** (Settings → *Support links*): up to five tip, membership or merch links, shown on the
+  channel and under each video.
+- **Captions.** Upload WebVTT or SRT files per language on the video's details page. Viewers can submit
+  captions from the watch page's ⋯ menu; they appear once the uploader publishes them. Nothing is generated or
+  machine-translated.
+- **Skippable parts.** Mark sponsor reads, intros, outros, recaps and self-promotion on the details page;
+  viewers can suggest them too. Each viewer picks in Settings → *Watching*: skip automatically, show a Skip
+  button, or don't skip.
+- **Community titles and thumbnails.** Viewers suggest a plainer title or pick a frame, and vote. People who
+  turn on *Community titles and thumbnails* in Settings see the most-voted version everywhere; the uploader
+  can adopt a suggestion as the real title or thumbnail.
 
 ## Gaming clip tools
 

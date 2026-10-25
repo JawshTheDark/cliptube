@@ -6,6 +6,7 @@ import { DIRS } from '../config.js';
 import { requireAdmin, userToPublic, setUserRole, setUserStatus } from '../auth.js';
 import { HttpError } from '../util.js';
 import { queueInfo, ffmpegInfo } from '../media.js';
+import { enqueueAllRenditions } from '../renditions.js';
 import { deleteAccount } from '../privacy.js';
 import { logAction } from '../reports.js';
 import { newId, now, str, clampInt } from '../util.js';
@@ -16,7 +17,10 @@ adminRouter.use(requireAdmin);
 const ENCODERS = ['libx264', 'h264_nvenc', 'h264_qsv', 'h264_amf'];
 
 // Only the general site settings; keys, tokens and network settings never go to the browser from here.
-const SITE_SETTINGS = ['site_name', 'registration_mode', 'max_upload_mb', 'default_quota_mb', 'max_height', 'encoder', 'delete_originals', 'public_url'];
+const SITE_SETTINGS = [
+  'site_name', 'registration_mode', 'max_upload_mb', 'default_quota_mb', 'max_height', 'encoder', 'delete_originals', 'public_url',
+  'hls_ladder', 'federation_rendition', 'show_dislikes',
+];
 function siteSettings() {
   const s = getSettings();
   return Object.fromEntries(SITE_SETTINGS.map((k) => [k, s[k]]));
@@ -44,6 +48,19 @@ adminRouter.patch('/settings', (req, res) => {
     setSetting('default_quota_mb', n);
   }
   if (b.delete_originals !== undefined) setSetting('delete_originals', bool(b.delete_originals));
+  if (b.show_dislikes !== undefined) setSetting('show_dislikes', bool(b.show_dislikes));
+  // Changing the streaming ladder or the federation copy rebuilds renditions in the background.
+  let rebuild = false;
+  if (b.hls_ladder !== undefined) {
+    if (!['off', '720', 'full'].includes(String(b.hls_ladder))) throw new HttpError(400, 'The streaming ladder must be off, 720 or full');
+    rebuild = rebuild || getSettings().hls_ladder !== String(b.hls_ladder);
+    setSetting('hls_ladder', String(b.hls_ladder));
+  }
+  if (b.federation_rendition !== undefined) {
+    rebuild = rebuild || getSettings().federation_rendition !== bool(b.federation_rendition);
+    setSetting('federation_rendition', bool(b.federation_rendition));
+  }
+  if (rebuild) enqueueAllRenditions();
   if (b.max_upload_mb !== undefined) {
     const n = parseInt(b.max_upload_mb, 10);
     if (!Number.isFinite(n) || n < 1 || n > 1_000_000) throw new HttpError(400, 'Upload limit must be between 1 and 1000000 MB');

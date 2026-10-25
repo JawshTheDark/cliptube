@@ -13,8 +13,8 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | M1 Trust and safety | Done | v0.5.0, 2026-10-25 |
 | M3 Gaming clip tools | Done | v0.6.0, 2026-10-25 |
 | M2 Hub-optional network | Done | v0.7.0, 2026-10-25 |
-| M4 Watching upgrades | In progress | |
-| M5 Feeds, notifications, search, analytics | Not started | |
+| M4 Watching upgrades | Done | v0.8.0, 2026-10-25 |
+| M5 Feeds, notifications, search, analytics | In progress | |
 | M6 ActivityPub and PeerTube | Not started | |
 | M7 Mastodon, moves, export and import | Not started | |
 | M8 One federation protocol | Not started | |
@@ -26,6 +26,9 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
   safety check, so if a limit stops the work it waits until you restart it.
 - Legal (M1): fill in Admin → Legal on clips.irc.so (contact email, rules, DMCA agent once you register
   one with the US Copyright Office). Until then `/legal` says no rules are published.
+- Streaming (M4): adaptive streaming is off on both servers, because it costs CPU once per video and 50 to 100%
+  more disk. Turn it on under Admin → Overview → Adaptive streaming; existing videos are rebuilt in the
+  background. I tested the ladder, quality switching and skipping in a browser, not playback on a throttled link.
 - Sign-up (M1): both servers still allow open sign-up. The plan suggested invite-only until moderation tools
   existed; they exist now, so I left it open. Switch it in Admin → Overview → Sign-up if you prefer.
 
@@ -207,19 +210,19 @@ and compare two clips side by side.
 
 ## M4: Watching upgrades (v0.8), size XL
 
-- **Adaptive streaming (HLS)**: a job builds a quality ladder (for example 1080p60, 720p60 and 480p) plus a
+- ✅ **Adaptive streaming (HLS)**: a job builds a quality ladder (for example 1080p60, 720p60 and 480p) plus a
   source-quality rendition that's never paywalled. The player uses hls.js (bundled and pinned) with a quality
   menu. MP4 stays as the fallback and for downloads and Discord previews. The ladder is an instance setting. (L)
-- **Federation rendition**: a smaller MP4, around 720p, for platforms that only cache remote video under a
+- ✅ **Federation rendition**: a smaller MP4, around 720p, for platforms that only cache remote video under a
   size limit. Mastodon does this, so M7 needs it. (S)
-- **Download original**: always for the uploader; for viewers when the uploader allows it on that video. (S)
-- **Dislike counts** shown, with an instance setting to hide them. (S)
-- **Support links** on channels, shown on watch pages. (S)
-- **Captions**: upload WebVTT or SRT per language; viewers can submit captions that the uploader approves;
+- ✅ **Download original**: always for the uploader; for viewers when the uploader allows it on that video. (S)
+- ✅ **Dislike counts** shown, with an instance setting to hide them. (S)
+- ✅ **Support links** on channels, shown on watch pages. (S)
+- ✅ **Captions**: upload WebVTT or SRT per language; viewers can submit captions that the uploader approves;
   shown in the player. No automatic dubbing or translation, ever. (M)
-- **Skippable segments**: creators mark sponsor, intro, outro and recap segments in the editor; viewers can
+- ✅ **Skippable segments**: creators mark sponsor, intro, outro and recap segments in the editor; viewers can
   suggest segments; each viewer picks auto-skip, ask, or just show them. (M)
-- **Community titles and thumbnails**: viewers suggest a plainer title or pick a frame for the thumbnail,
+- ✅ **Community titles and thumbnails**: viewers suggest a plainer title or pick a frame for the thumbnail,
   with votes. Viewers can choose to see community versions, and the uploader can adopt one. (M)
 
 **Schema:** `renditions`, `captions`, `segments`, `title_suggestions`, `thumbnail_suggestions`,

@@ -1,10 +1,135 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { getPref, setPref, usePref } from '../util.js';
+
+const rungLabel = (r) => (r.name === 'source' ? `Source (${r.height}p${r.fps > 31 ? Math.round(r.fps) : ''})` : `${r.height}p${r.fps > 31 ? Math.round(r.fps) : ''}`);
+
+/**
+ * Adaptive streaming with hls.js (loaded on demand) when the video has HLS renditions; the MP4 otherwise.
+ * Returns the quality levels and a setter (-1 = automatic).
+ */
+function useHls(video, videoRef) {
+  const [levels, setLevels] = useState(null);
+  const [level, setLevelState] = useState(-1);
+  const [active, setActive] = useState(-1);
+  const hlsRef = useRef(null);
+  useEffect(() => {
+    const el = videoRef.current;
+    setLevels(null);
+    if (!el || !video.hls_url) return;
+    let dead = false;
+    import('hls.js').then(({ default: Hls }) => {
+      if (dead) return;
+      if (!Hls.isSupported()) {
+        // Safari plays HLS itself (without a quality menu).
+        if (el.canPlayType('application/vnd.apple.mpegurl')) {
+          const t = el.currentTime;
+          el.src = video.hls_url;
+          if (t) el.currentTime = t;
+        }
+        return;
+      }
+      const hls = new Hls({ capLevelToPlayerSize: false, startLevel: -1 });
+      hlsRef.current = hls;
+      const t = el.currentTime;
+      hls.loadSource(video.hls_url);
+      hls.attachMedia(el);
+      hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+        const list = data.levels.map((l, i) => ({ index: i, name: l.name || `${l.height}p`, height: l.height, fps: l.frameRate || 0 }));
+        setLevels(list);
+        const pref = getPref('quality');
+        const want = pref === 'source' ? list.find((l) => l.name === 'source') : list.find((l) => String(l.height) === pref && l.name !== 'source');
+        if (want) {
+          hls.currentLevel = want.index;
+          setLevelState(want.index);
+        }
+        if (t) el.currentTime = t;
+      });
+      hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => setActive(data.level));
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        // Fall back to the MP4 if streaming can't recover.
+        if (data.fatal) {
+          const at = el.currentTime;
+          hls.destroy();
+          hlsRef.current = null;
+          setLevels(null);
+          el.src = video.video_url;
+          el.currentTime = at;
+          el.play().catch(() => {});
+        }
+      });
+    });
+    return () => {
+      dead = true;
+      hlsRef.current?.destroy();
+      hlsRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [video.id, video.hls_url]);
+  const setLevel = (i) => {
+    const hls = hlsRef.current;
+    if (!hls) return;
+    hls.currentLevel = i;
+    setLevelState(i);
+    const l = levels?.[i];
+    setPref('quality', i < 0 || !l ? 'auto' : l.name === 'source' ? 'source' : String(l.height));
+  };
+  return { levels, level, active, setLevel };
+}
+
+/** Skips creator-marked segments (sponsor, intro, ...) the way the viewer chose: automatically, on request, or not at all. */
+function useSegments(video, videoRef) {
+  const [mode] = usePref('skip');
+  const [current, setCurrent] = useState(null);
+  const [skipped, setSkipped] = useState(null);
+  const done = useRef(new Set());
+  useEffect(() => {
+    done.current = new Set();
+    setCurrent(null);
+    const el = videoRef.current;
+    const segs = video.segments || [];
+    if (!el || !segs.length || mode === 'off') return;
+    const tick = () => {
+      const t = el.currentTime;
+      const s = segs.find((x) => t >= x.start && t < x.end - 0.3);
+      if (!s) {
+        setCurrent(null);
+        return;
+      }
+      if (mode === 'auto' && !done.current.has(s.id)) {
+        done.current.add(s.id);
+        el.currentTime = s.end;
+        setSkipped(s);
+        setTimeout(() => setSkipped((x) => (x === s ? null : x)), 4000);
+      } else setCurrent((c) => (c?.id === s.id ? c : s));
+    };
+    el.addEventListener('timeupdate', tick);
+    return () => el.removeEventListener('timeupdate', tick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [video.id, video.segments, mode]);
+  const skip = () => {
+    const el = videoRef.current;
+    if (el && current) {
+      done.current.add(current.id);
+      el.currentTime = current.end;
+      setCurrent(null);
+    }
+  };
+  const undo = () => {
+    const el = videoRef.current;
+    if (el && skipped) el.currentTime = skipped.start;
+    setSkipped(null);
+  };
+  return { mode, current: mode === 'ask' ? current : null, skipped, skip, undo };
+}
 
 /**
  * Native <video> with YouTube-style keyboard shortcuts, resume position and progress reporting.
  * `videoRef` is owned by the parent so the description timestamps and share dialog can reach the element.
  */
 export function Player({ video, videoRef, startAt = 0, exactStart = false, loop = null, onProgress, theater, onToggleTheater }) {
+  const q = useHls(video, videoRef);
+  const seg = useSegments(video, videoRef);
+  const [menu, setMenu] = useState(false);
   // Seek to the start position once metadata is known. Resume points skip the very start and end;
   // a time from a shared link (exactStart) is used as is.
   useEffect(() => {
@@ -134,18 +259,53 @@ export function Player({ video, videoRef, startAt = 0, exactStart = false, loop 
     return () => document.removeEventListener('keydown', h);
   }, [videoRef, onToggleTheater]);
 
+  const activeLevel = q.levels && q.levels[q.active];
   return (
     <div className={`player ${theater ? 'theater' : ''}`}>
       <video
         key={video.id}
         ref={videoRef}
-        src={video.video_url}
+        src={video.hls_url ? undefined : video.video_url}
         poster={video.thumbnail_url || undefined}
         controls
         autoPlay
         playsInline
         controlsList="nodownload"
-      />
+      >
+        {/* No hls_url: the MP4 is the source. With HLS the stream is attached by hls.js. */}
+        {(video.captions || []).map((c, i) => (
+          <track key={c.id} kind="subtitles" srcLang={c.lang} label={c.label} src={c.url} default={i === 0 && getPref('captions') === 'on'} />
+        ))}
+      </video>
+      {q.levels && q.levels.length > 1 && (
+        <div className="player-quality">
+          <button className="player-chip" onClick={() => setMenu((m) => !m)} title="Quality">
+            {q.level < 0 ? `Auto${activeLevel ? ` (${rungLabel(activeLevel)})` : ''}` : rungLabel(q.levels[q.level])}
+          </button>
+          {menu && (
+            <div className="player-menu" onMouseLeave={() => setMenu(false)}>
+              <button className={q.level < 0 ? 'active' : ''} onClick={() => (q.setLevel(-1), setMenu(false))}>
+                Auto
+              </button>
+              {[...q.levels].reverse().map((l) => (
+                <button key={l.index} className={q.level === l.index ? 'active' : ''} onClick={() => (q.setLevel(l.index), setMenu(false))}>
+                  {rungLabel(l)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {seg.current && (
+        <button className="player-skip" onClick={seg.skip}>
+          Skip {seg.current.label.toLowerCase()} ⏭
+        </button>
+      )}
+      {seg.skipped && (
+        <button className="player-skip" onClick={seg.undo}>
+          Skipped {seg.skipped.label.toLowerCase()} · Undo
+        </button>
+      )}
     </div>
   );
 }

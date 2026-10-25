@@ -10,7 +10,8 @@ import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { ReportButton } from '../components/ReportDialog.jsx';
 import { ClipDialog, TimeField } from '../components/ClipDialog.jsx';
-import { compact, formatDate, formatDuration, formatPrecise, parseTimestamp, copyText, isAnonymous, timeAgo, urlSeconds } from '../util.js';
+import { ContributeMenu, DownloadMenu, SupportLinks } from '../components/WatchExtras.jsx';
+import { compact, displayed, formatDate, formatDuration, formatPrecise, parseTimestamp, copyText, isAnonymous, timeAgo, urlSeconds, usePref } from '../util.js';
 
 /** Shown to the uploader and moderators when a video is hidden or removed. */
 function ModerationBanner({ video, isOwner }) {
@@ -239,7 +240,12 @@ export default function Watch() {
   const [share, setShare] = useState(false);
   const [clipOpen, setClipOpen] = useState(false);
   const [looping, setLooping] = useState(true);
-  useEffect(() => setLooping(true), [id]);
+  const [communityPref] = usePref('community');
+  const [showOriginal, setShowOriginal] = useState(false);
+  useEffect(() => {
+    setLooping(true);
+    setShowOriginal(false);
+  }, [id]);
 
   useEffect(() => {
     let dead = false;
@@ -384,7 +390,19 @@ export default function Watch() {
 
       <div className="watch-body">
         {video.moderation_status && <ModerationBanner video={video} isOwner={isOwner} onChanged={(v) => setVideo(v)} />}
-        <h1 className="watch-title">{video.title}</h1>
+        {(() => {
+          const d = displayed(video, showOriginal ? 'off' : communityPref);
+          return (
+            <h1 className="watch-title">
+              {d.title}
+              {d.community && d.title !== video.title && (
+                <button className="link-btn community-note" onClick={() => setShowOriginal(true)} title={`Original title: ${video.title}`}>
+                  community title · show original
+                </button>
+              )}
+            </h1>
+          );
+        })()}
         {(video.game || video.source || loopRange) && (
           <div className="watch-subline">
             {video.game && (
@@ -435,6 +453,7 @@ export default function Watch() {
                 {video.subscribed ? 'Subscribed' : 'Subscribe'}
               </button>
             )}
+            <SupportLinks links={u.support_links} />
           </div>
           <div className="watch-actions">
             <div className="pill-group">
@@ -444,6 +463,7 @@ export default function Watch() {
               </button>
               <button className={`btn ${video.my_like === -1 ? 'active' : ''}`} onClick={() => like(-1)} title="I dislike this">
                 <Icon name="thumb_down" />
+                {video.dislikes !== null && video.dislikes !== undefined && compact(video.dislikes)}
               </button>
             </div>
             <button className="btn" onClick={() => setShare(true)}>
@@ -459,10 +479,9 @@ export default function Watch() {
                 <Icon name="compare" />
               </Link>
             )}
-            {video.video_url && (
-              <a className="btn" href={`${video.video_url}${video.video_url.includes('?') ? '&' : '?'}download`}>
-                <Icon name="download" /> Download
-              </a>
+            <DownloadMenu video={video} />
+            {user && video.status === 'ready' && video.video_url && (
+              <ContributeMenu video={video} videoRef={videoRef} onChanged={() => api(`/videos/${id}`).then((r) => setVideo(r.video)).catch(() => {})} />
             )}
             <button className={`btn btn-icon ${theater ? 'active' : ''}`} onClick={toggleTheater} title="Theater mode (t)">
               <Icon name="theater" />

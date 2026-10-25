@@ -7,6 +7,7 @@ import { VideoGrid, InfiniteScroll, Empty } from '../components/VideoCard.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { plural, formatDate, usePaged } from '../util.js';
 import { ReportButton } from '../components/ReportDialog.jsx';
+import { SupportLinks } from '../components/WatchExtras.jsx';
 
 const SORTS = [
   ['new', 'Latest'],
@@ -89,6 +90,7 @@ export default function Channel() {
                 <ReportButton target={{ type: 'user', id: channel.id, label: `@${channel.username}` }} className="btn btn-icon" iconOnly />
               </>
             )}
+            <SupportLinks links={channel.support_links} />
           </div>
         </div>
       </div>
@@ -130,6 +132,19 @@ export default function Channel() {
         <div className="page about">
           <h2>Description</h2>
           <p className="pre">{channel.bio || 'Nothing here yet.'}</p>
+          {channel.support_links?.length > 0 && (
+            <>
+              <h2>Support</h2>
+              {channel.support_links.map((l) => (
+                <p key={l.url}>
+                  <a href={l.url} target="_blank" rel="noopener noreferrer nofollow">
+                    {l.label}
+                  </a>{' '}
+                  <span className="muted small">{new URL(l.url).hostname}</span>
+                </p>
+              ))}
+            </>
+          )}
           <h2>Stats</h2>
           <p>Joined {formatDate(channel.created_at)}</p>
           <p>{channel.total_views.toLocaleString()} views</p>

@@ -20,6 +20,7 @@ import './spam.js'; // registers the comment spam checks with the intake pipelin
 import { HttpError, escapeHtml } from './util.js';
 import { gamesRouter } from './games.js';
 import { clipsRouter } from './clips.js';
+import { watchingRouter, watchingMediaRouter } from './watching.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -46,6 +47,7 @@ app.get('/api/site', (req, res) => {
     site_name: s.site_name,
     registration_mode: mode,
     allow_registration: mode !== 'closed',
+    show_dislikes: s.show_dislikes === 'true',
     has_terms: !!s.legal_terms.trim(),
     has_legal: !!(s.legal_contact_email || s.legal_dmca_agent || s.legal_rules || s.legal_terms),
     transparency: s.legal_transparency_public === 'true',
@@ -62,6 +64,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/videos', videosRouter);
 app.use('/api/games', gamesRouter);
 app.use('/api', clipsRouter); // /api/videos/:id/clip, /api/videos/:id/exports, /api/exports/:id
+app.use('/api', watchingRouter); // captions, segments, community suggestions
 app.use('/api/users', usersRouter);
 app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);
@@ -71,6 +74,7 @@ app.use('/api/network', networkRouter);
 app.use('/api/admin/network', networkAdminRouter);
 app.use('/api/admin/legal', legalAdminRouter);
 app.use('/api/admin', adminRouter);
+app.use('/media', watchingMediaRouter); // HLS, federation MP4, captions, originals
 app.use('/media', mediaRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 

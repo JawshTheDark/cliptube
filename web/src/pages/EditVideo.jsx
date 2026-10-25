@@ -5,6 +5,7 @@ import { useAuth, useTitle } from '../auth.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { GameField } from '../components/GameField.jsx';
+import { CaptionsManager, SegmentsManager, SuggestionsManager } from '../components/VideoManage.jsx';
 import { Empty } from '../components/VideoCard.jsx';
 import { StatusBadge } from './Studio.jsx';
 import { copyText, formatBytes, formatDuration, VISIBILITY_HELP } from '../util.js';
@@ -18,6 +19,7 @@ export default function EditVideo() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const thumbRef = useRef(null);
+  const previewRef = useRef(null);
   const { site } = useAuth();
 
   const toForm = (v) => ({
@@ -29,6 +31,7 @@ export default function EditVideo() {
     comment_mode: v.comment_mode || 'inherit',
     game: v.game?.name || '',
     allow_clips: !!v.allow_clips,
+    allow_original_download: !!v.allow_original_download,
   });
   const load = useCallback(
     () =>
@@ -66,7 +69,8 @@ export default function EditVideo() {
     form.federate !== video.federate ||
     form.comment_mode !== (video.comment_mode || 'inherit') ||
     form.game !== (video.game?.name || '') ||
-    form.allow_clips !== !!video.allow_clips;
+    form.allow_clips !== !!video.allow_clips ||
+    form.allow_original_download !== !!video.allow_original_download;
 
   const save = async (e) => {
     e?.preventDefault();
@@ -177,6 +181,14 @@ export default function EditVideo() {
               <span className="hint">Signed-in viewers can cut their own clips from it, and every clip links back here.</span>
             </span>
           </label>
+          <label className="checkbox field">
+            <input type="checkbox" checked={form.allow_original_download} onChange={(e) => set({ allow_original_download: e.target.checked })} />
+            <span>
+              Let viewers download the original
+              <br />
+              <span className="hint">You can always download it yourself from the watch page.</span>
+            </span>
+          </label>
           {video.source && (
             <p className="hint">
               <Icon name="cut" size={14} /> Clipped from <Link to={`/watch/${video.source.id}`}>{video.source.title || 'another video'}</Link>.
@@ -202,7 +214,7 @@ export default function EditVideo() {
         <aside className="edit-side">
           <div className="edit-preview">
             {video.status === 'ready' ? (
-              <video src={video.video_url} poster={video.thumbnail_url || undefined} controls preload="metadata" />
+              <video ref={previewRef} src={video.video_url} poster={video.thumbnail_url || undefined} controls preload="metadata" />
             ) : (
               <div className="processing-panel small">
                 <StatusBadge video={video} />
@@ -259,6 +271,13 @@ export default function EditVideo() {
           </div>
         </aside>
       </div>
+      {video.status === 'ready' && (
+        <div className="edit-extras">
+          <SegmentsManager video={video} videoRef={previewRef} />
+          <CaptionsManager video={video} />
+          <SuggestionsManager video={video} onChanged={() => api(`/videos/${id}`).then((r) => setVideo(r.video)).catch(() => {})} />
+        </div>
+      )}
     </div>
   );
 }
