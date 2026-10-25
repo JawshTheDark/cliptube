@@ -14,6 +14,7 @@ export default defineConfig({
     proxy: {
       '/api': { target: 'http://localhost:3000', changeOrigin: false },
       '/media': { target: 'http://localhost:3000', changeOrigin: false },
+      '/.well-known': { target: 'http://localhost:3000', changeOrigin: false },
     },
   },
   build: {

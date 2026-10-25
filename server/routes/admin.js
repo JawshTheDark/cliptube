@@ -13,7 +13,14 @@ adminRouter.use(requireAdmin);
 
 const ENCODERS = ['libx264', 'h264_nvenc', 'h264_qsv', 'h264_amf'];
 
-adminRouter.get('/settings', (req, res) => res.json({ settings: getSettings(), encoders: ENCODERS }));
+// Only the general site settings; keys, tokens and network settings never go to the browser from here.
+const SITE_SETTINGS = ['site_name', 'allow_registration', 'max_upload_mb', 'max_height', 'encoder', 'delete_originals', 'public_url'];
+function siteSettings() {
+  const s = getSettings();
+  return Object.fromEntries(SITE_SETTINGS.map((k) => [k, s[k]]));
+}
+
+adminRouter.get('/settings', (req, res) => res.json({ settings: siteSettings(), encoders: ENCODERS }));
 
 adminRouter.patch('/settings', (req, res) => {
   const b = req.body || {};
@@ -44,13 +51,13 @@ adminRouter.patch('/settings', (req, res) => {
     if (url && !/^https?:\/\/[^\s/]+/.test(url)) throw new HttpError(400, 'Public URL must start with http:// or https://');
     setSetting('public_url', url);
   }
-  res.json({ settings: getSettings(), encoders: ENCODERS });
+  res.json({ settings: siteSettings(), encoders: ENCODERS });
 });
 
 adminRouter.get('/users', (req, res) => {
   const rows = db
     .prepare(
-      'SELECT u.*, (SELECT COUNT(*) FROM videos v WHERE v.user_id = u.id) AS video_count, (SELECT COALESCE(SUM(size_bytes), 0) FROM videos v WHERE v.user_id = u.id) AS bytes FROM users u ORDER BY u.created_at ASC',
+      'SELECT u.*, (SELECT COUNT(*) FROM videos v WHERE v.user_id = u.id) AS video_count, (SELECT COALESCE(SUM(size_bytes), 0) FROM videos v WHERE v.user_id = u.id) AS bytes FROM users u WHERE u.remote_instance_id IS NULL ORDER BY u.created_at ASC',
     )
     .all();
   res.json({ users: rows.map((u) => ({ ...userToPublic(u), video_count: u.video_count, bytes: u.bytes })) });
@@ -89,7 +96,7 @@ function dirSize(dir) {
 
 adminRouter.get('/stats', (req, res) => {
   res.json({
-    users: db.prepare('SELECT COUNT(*) AS n FROM users').get().n,
+    users: db.prepare('SELECT COUNT(*) AS n FROM users WHERE remote_instance_id IS NULL').get().n,
     videos: db.prepare('SELECT COUNT(*) AS n FROM videos').get().n,
     ready: db.prepare("SELECT COUNT(*) AS n FROM videos WHERE status = 'ready'").get().n,
     failed: db.prepare("SELECT COUNT(*) AS n FROM videos WHERE status = 'failed'").get().n,

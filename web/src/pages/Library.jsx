@@ -24,12 +24,20 @@ export function Subscriptions() {
       <h1 className="page-title">Subscriptions</h1>
       {channels && channels.length > 0 && (
         <div className="channel-row">
-          {channels.map((c) => (
-            <Link key={c.id} to={`/c/${c.username}`}>
-              <Avatar user={c} size={56} />
-              <span className="ellipsis">{c.display_name}</span>
-            </Link>
-          ))}
+          {channels.map((c) =>
+            c.remote ? (
+              <a key={c.id} href={c.remote.profile_url} target="_blank" rel="noopener noreferrer" title={`On ${c.remote.peer_name}`}>
+                <Avatar user={c} size={56} />
+                <span className="ellipsis">{c.display_name}</span>
+                <span className="channel-row-host">{c.remote.peer_name}</span>
+              </a>
+            ) : (
+              <Link key={c.id} to={`/c/${c.username}`}>
+                <Avatar user={c} size={56} />
+                <span className="ellipsis">{c.display_name}</span>
+              </Link>
+            ),
+          )}
         </div>
       )}
       {!loading && items.length === 0 ? (

@@ -328,7 +328,7 @@ export default function Watch() {
           </button>
         </div>
 
-        <Comments videoId={video.id} initialCount={video.comment_count} />
+        <Comments base={`/videos/${video.id}`} initialCount={video.comment_count} />
       </div>
 
       <aside className="watch-secondary">

@@ -150,9 +150,9 @@ export default function EditVideo() {
             <label className="checkbox field">
               <input type="checkbox" checked={form.federate} onChange={(e) => set({ federate: e.target.checked })} disabled={form.visibility !== 'public'} />
               <span>
-                Share with followed instances
+                Share with the network
                 <br />
-                <span className="hint">Only public videos are shared. Turn this off to keep a public clip on this site only.</span>
+                <span className="hint">Only public videos are shared with other instances. Turn this off to keep a public clip on this site only.</span>
               </span>
             </label>
           )}

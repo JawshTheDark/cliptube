@@ -12,7 +12,7 @@ export default function Home({ trending = false }) {
   const sort = trending ? 'views' : params.get('sort') || 'new';
   const { user, site } = useAuth();
   const networked = site.federation && (site.network_peers || []).length > 0;
-  // With federation on, Home mixes in clips from followed instances unless "This site" is picked.
+  // In a network, Home mixes in clips from other instances unless "This site" is picked.
   const scope = networked ? params.get('scope') || 'all' : 'local';
   const [tags, setTags] = useState([]);
 

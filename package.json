@@ -1,6 +1,6 @@
 {
   "name": "cliptube",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Self-hosted YouTube-style video site for sharing gaming clips",

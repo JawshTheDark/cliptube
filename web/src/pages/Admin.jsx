@@ -20,8 +20,8 @@ export function AdminTabs() {
       <NavLink to="/admin" end className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
         Overview
       </NavLink>
-      <NavLink to="/admin/federation" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
-        Federation
+      <NavLink to="/admin/network" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
+        Network
       </NavLink>
     </div>
   );

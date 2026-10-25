@@ -10,12 +10,14 @@ const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
 export function userToPublic(u) {
   if (!u) return null;
+  const remote = !!u.remote_instance_id;
   return {
     id: u.id,
     username: u.username,
     display_name: u.display_name,
     bio: u.bio,
-    avatar_url: u.avatar ? `/media/avatars/${u.avatar}` : null,
+    avatar_url: remote ? u.remote_avatar_url || null : u.avatar ? `/media/avatars/${u.avatar}` : null,
+    ...(remote ? { remote: true, profile_url: u.remote_profile_url || null } : {}),
     banner_url: u.banner ? `/media/avatars/${u.banner}` : null,
     is_admin: !!u.is_admin,
     created_at: u.created_at,
@@ -27,7 +29,7 @@ export function attachUser(req, res, next) {
   const token = req.cookies?.[COOKIE];
   if (token) {
     const row = db
-      .prepare('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?')
+      .prepare('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ? AND u.remote_instance_id IS NULL')
       .get(token, now());
     if (row) req.user = userToPublic(row);
   }
@@ -98,7 +100,7 @@ authRouter.post('/register', async (req, res) => {
 
 authRouter.post('/login', async (req, res) => {
   const { username, password } = req.body || {};
-  const u = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username || ''));
+  const u = db.prepare('SELECT * FROM users WHERE username = ? AND remote_instance_id IS NULL').get(String(username || ''));
   if (!u || !(await bcrypt.compare(String(password || ''), u.password_hash))) throw new HttpError(401, 'Wrong username or password');
   startSession(req, res, u.id);
   res.json({ user: userToPublic(u) });

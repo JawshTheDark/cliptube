@@ -71,12 +71,20 @@ export function Sidebar({ mini = false, drawer = false, onClose }) {
         <>
           <div className="nav-divider" />
           <div className="nav-heading">Subscriptions</div>
-          {subs.map((c) => (
-            <NavLink key={c.id} to={`/c/${c.username}`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-              <Avatar user={c} size={24} />
-              <span className="ellipsis">{c.display_name}</span>
-            </NavLink>
-          ))}
+          {subs.map((c) =>
+            c.remote ? (
+              <a key={c.id} href={c.remote.profile_url} target="_blank" rel="noopener noreferrer" className="nav-item" title={`On ${c.remote.peer_name}`}>
+                <Avatar user={c} size={24} />
+                <span className="ellipsis">{c.display_name}</span>
+                <Icon name="public" className="inline-icon nav-remote" />
+              </a>
+            ) : (
+              <NavLink key={c.id} to={`/c/${c.username}`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <Avatar user={c} size={24} />
+                <span className="ellipsis">{c.display_name}</span>
+              </NavLink>
+            ),
+          )}
         </>
       )}
 

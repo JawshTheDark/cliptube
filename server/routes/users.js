@@ -8,10 +8,12 @@ import { requireAuth, userToPublic } from '../auth.js';
 import { imageUpload, discard } from '../uploads.js';
 import { HttpError, now, str, clampInt } from '../util.js';
 import { convertImage } from '../media.js';
-import { videoSelect, serializeVideo } from './videos.js';
+import { videoSelect, serializeVideo, LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapListRow } from './videos.js';
+import { NETWORK_VISIBLE, serializeRemote, networkActive } from '../network.js';
 
+/** Local channels only; people from other instances have placeholder accounts with no channel page here. */
 function channelByUsername(username) {
-  return db.prepare('SELECT * FROM users WHERE username = ?').get(String(username));
+  return db.prepare('SELECT * FROM users WHERE username = ? AND remote_instance_id IS NULL').get(String(username));
 }
 
 export function channelInfo(u, viewer) {
@@ -81,31 +83,70 @@ meRouter.get('/videos', (req, res) => {
   res.json({ videos: rows.map(serializeVideo) });
 });
 
+/** New uploads from subscribed channels, on this instance and on others in the network. */
 meRouter.get('/feed', (req, res) => {
   const limit = clampInt(req.query.limit, 1, 100, 24);
   const offset = clampInt(req.query.offset, 0, 1_000_000, 0);
-  const rows = db
-    .prepare(
-      `${videoSelect()} WHERE v.status = 'ready' AND v.visibility = 'public' AND v.user_id IN (SELECT channel_id FROM subscriptions WHERE subscriber_id = ?) ORDER BY v.created_at DESC LIMIT ? OFFSET ?`,
-    )
-    .all(req.user.id, limit, offset);
-  res.json({ videos: rows.map(serializeVideo), has_more: rows.length === limit });
+  const parts = [
+    `SELECT ${LOCAL_LIST_COLS} FROM videos v JOIN users u ON u.id = v.user_id
+     WHERE v.status = 'ready' AND v.visibility = 'public' AND v.user_id IN (SELECT channel_id FROM subscriptions WHERE subscriber_id = ?)`,
+  ];
+  const params = [req.user.id];
+  if (networkActive()) {
+    parts.push(`SELECT ${REMOTE_LIST_COLS} FROM network_videos r JOIN instances p ON p.id = r.instance_id
+      JOIN network_subscriptions s ON s.instance_id = r.instance_id AND s.username = r.uploader_username AND s.user_id = ?
+      WHERE ${NETWORK_VISIBLE}`);
+    params.push(req.user.id);
+  }
+  const rows = db.prepare(`SELECT * FROM (${parts.join(' UNION ALL ')}) ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+  res.json({ videos: rows.map(mapListRow), has_more: rows.length === limit });
 });
 
 meRouter.get('/subscriptions', (req, res) => {
   const rows = db
     .prepare('SELECT u.* FROM subscriptions s JOIN users u ON u.id = s.channel_id WHERE s.subscriber_id = ? ORDER BY u.display_name COLLATE NOCASE')
     .all(req.user.id);
-  res.json({ channels: rows.map((u) => channelInfo(u, req.user)) });
+  const channels = rows.map((u) => channelInfo(u, req.user));
+  if (networkActive()) {
+    const remote = db
+      .prepare(
+        `SELECT s.*, p.name AS peer_name, p.url AS peer_url FROM network_subscriptions s JOIN instances p ON p.id = s.instance_id
+         WHERE s.user_id = ? AND p.blocked = 0 ORDER BY s.display_name COLLATE NOCASE`,
+      )
+      .all(req.user.id);
+    for (const r of remote) {
+      channels.push({
+        id: `r-${r.instance_id}-${r.username}`,
+        username: r.username,
+        display_name: r.display_name,
+        avatar_url: r.avatar_url,
+        remote: { instance_id: r.instance_id, peer_name: r.peer_name || r.peer_url, profile_url: r.profile_url },
+      });
+    }
+  }
+  res.json({ channels });
 });
 
 meRouter.get('/liked', (req, res) => {
   const rows = db
     .prepare(
-      `${videoSelect()} JOIN likes l ON l.video_id = v.id AND l.user_id = ? WHERE l.value = 1 AND v.status = 'ready' AND (v.visibility != 'private' OR v.user_id = ?) ORDER BY l.created_at DESC LIMIT 200`,
+      `${videoSelect('l.created_at AS liked_at')} JOIN likes l ON l.video_id = v.id AND l.user_id = ? WHERE l.value = 1 AND v.status = 'ready' AND (v.visibility != 'private' OR v.user_id = ?) ORDER BY l.created_at DESC LIMIT 200`,
     )
     .all(req.user.id, req.user.id);
-  res.json({ videos: rows.map(serializeVideo) });
+  const videos = rows.map((r) => ({ ...serializeVideo(r), _at: r.liked_at }));
+  if (networkActive()) {
+    const remote = db
+      .prepare(
+        `SELECT r.*, p.name AS peer_name, p.url AS peer_url, l.created_at AS liked_at FROM network_likes l
+         JOIN network_videos r ON r.instance_id = l.instance_id AND r.remote_id = l.remote_id
+         JOIN instances p ON p.id = r.instance_id
+         WHERE l.user_id = ? AND l.value = 1 AND ${NETWORK_VISIBLE} ORDER BY l.created_at DESC LIMIT 200`,
+      )
+      .all(req.user.id);
+    for (const r of remote) videos.push({ ...serializeRemote(r), _at: r.liked_at });
+    videos.sort((a, b) => b._at - a._at);
+  }
+  res.json({ videos: videos.slice(0, 200).map(({ _at, ...v }) => v) });
 });
 
 meRouter.get('/history', (req, res) => {

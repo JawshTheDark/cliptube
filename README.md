@@ -16,7 +16,7 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 - Discord/Slack link previews (Open Graph tags with inline player)
 - Studio page to manage your videos, admin page for site settings and users
 - **Timeline editor**: trim, split, cut out sections, volume boost or mute, fade in/out, pick a thumbnail from any frame
-- **Opt-in federation**: follow friends' ClipTube instances to browse and search their clips here while they keep hosting them
+- **Network**: instances join one hub to browse and search each other's clips, with likes, comments and subscriptions across instances
 - Keyboard shortcuts: `k` play/pause, `j`/`l` seek 10s, arrows seek 5s, `f` fullscreen, `t` theater, `m` mute, `0-9` jump
 
 ## Run it
@@ -53,29 +53,47 @@ Open it from Studio (scissors icon), the video details page, or the Editor butto
   non-destructive: the first processed file is kept as the editing source (an edited video uses roughly
   twice its disk space).
 
-## Federation (opt-in)
+## Network (one hub, many instances)
 
-Each person runs their own instance and hosts their own clips. Instances that follow each other show each
-other's public clips in **Network**, on the home feed and in search. The video files are never copied:
-viewers stream straight from the instance that hosts the clip, and views count there.
+Each person runs their own instance and hosts their own clips. Every instance joins one **hub**, and the hub
+shares an index of the whole network, so everyone's public clips show up in **Network**, on the home feed and
+in search everywhere. Video files are never copied: viewers stream from the instance that hosts the clip.
 
-1. Admin → **Federation** → tick **Take part in federation**. It is off by default; while off the instance
-   is invisible to others and contacts nobody.
-2. Choose who may follow you: **only instances you approve** (default) or **any instance**.
-3. To see a friend's clips, enter their address (e.g. `clips.example.com`) under **Follow an instance**.
-   Their admin approves you under **Followers**, and they can **Follow back** with one click.
-4. Clips sync every 10 minutes (or press sync). Making a clip private or unlisted, unticking
-   **Share with followed instances** on it, or blocking a follower removes it from the other side on the
-   next sync.
+People can like, comment on and subscribe to videos on other instances. The action is sent to the instance
+hosting the video, signed by the sender's instance, so counts and comment threads are the same everywhere.
+People from elsewhere appear as `name@their.host` and link back to their home instance.
 
-Only public, ready videos with sharing on are ever listed. Both instances need to be reachable over HTTPS
-for visitors to play each other's clips. Federation refuses to contact private-network addresses; to test
-two instances on one machine, start both with `--allow-private-federation`.
+**Running the hub** (Admin → Network → *This instance is the hub*):
 
-Protocol summary (v1, JSON over HTTPS): `GET /.well-known/cliptube` describes an instance;
-`POST /api/federation/follow` starts a follow, which the target confirms by calling back the follower's
-`/api/federation/verify`; approved followers get a bearer token for `GET /api/federation/videos`
-(incremental by `updated_since`), `GET /api/federation/ids` (for pruning) and `GET /api/federation/status`.
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Accept new instances | on | Turn off to lock the network to its current members |
+| Require my approval | off | New instances wait until the hub admin approves them |
+| HTTPS only | on | Refuse instances not served over HTTPS |
+| Comments / likes / subscriptions between instances | on | Network-wide switches for each kind of interaction |
+| Include this instance's videos | on | Share the hub's own public clips with the network |
+| Max videos per instance | 5000 | Cap on how many clips one instance can put in the index |
+| Sync every | 10 min | How often the hub and members refresh (changes are also pushed within seconds) |
+| Announcement | empty | Banner shown on the Network page of every instance |
+
+Per instance, the hub admin can approve, suspend (temporarily drop from the network), ban (can't rejoin),
+stop its likes and comments, hide its videos, or remove it. Any single network video can be hidden too.
+
+**Joining** (Admin → Network → *Join network*): enter the hub's address (`https://clips.irc.so` by default).
+The site needs a public HTTPS address set as its Public URL. Each instance can also:
+
+- block any other instance, which hides its videos and refuses likes, comments and subscriptions from it;
+- turn off accepting comments, likes or subscriptions from other instances;
+- untick **Share with the network** on a public video to keep it local, or leave the network at any time.
+
+Only public, ready videos with sharing on are ever listed. Networking refuses to contact private-network
+addresses; to test several instances on one machine, start them with `--allow-private-federation`.
+
+Protocol summary (v2, JSON over HTTPS): `GET /.well-known/cliptube` describes an instance and its Ed25519 key.
+Members register with `POST /api/hub/join` and prove they own their address through a nonce callback to
+`/api/network/verify`. The hub pulls each member's `/api/network/feed` and serves `/api/hub/index`,
+`/api/hub/index/ids` and `/api/hub/directory` (members and their public keys). Interactions go to the target
+instance's `/api/network/inbox`, signed with an `X-ClipTube-Signature` header.
 
 ## Configuration
 

@@ -7,9 +7,20 @@ import { requireAuth } from '../auth.js';
 import { videoUpload, imageUpload, discard } from '../uploads.js';
 import { HttpError, newId, now, parseTags, str, clampInt, sha256 } from '../util.js';
 import { enqueue, enqueueRender, convertImage, grabFrame, editorAssets, editorDir } from '../media.js';
-import { fedEnabled, serializeRemote } from '../federation.js';
+import { networkActive, serializeRemote, NETWORK_VISIBLE, acceptsFromNetwork, publicComment, onLocalVideosChanged } from '../network.js';
 
 export const videosRouter = Router();
+
+// After any successful change to a video (details, thumbnail, delete, edit revert), let the
+// network hub know so other instances pick it up quickly. Debounced, and a no-op when not a member.
+videosRouter.use((req, res, next) => {
+  if (req.method !== 'GET' && !/\/(view|progress|like|comments)(\/|$)/.test(req.path)) {
+    res.on('finish', () => {
+      if (res.statusCode < 400) onLocalVideosChanged();
+    });
+  }
+  next();
+});
 
 const VISIBILITIES = ['public', 'unlisted', 'private'];
 
@@ -122,20 +133,56 @@ export { removeFiles as removeVideoFiles };
 
 // ---- listing & search -------------------------------------------------------
 
+/** Columns for mixed local + network listings (UNION ALL of these two, then mapListRow). */
+export const LOCAL_LIST_COLS = `'local' AS src, v.id AS vid, NULL AS peer_id, v.title, v.description, v.duration, v.width, v.height, v.views,
+  v.created_at, v.thumb_path AS thumb, v.edit_version AS ver, v.user_id, u.username AS u_username, u.display_name AS u_display,
+  u.avatar AS u_avatar, NULL AS u_avatar_url, NULL AS thumb_url, NULL AS video_url, NULL AS watch_url, NULL AS uploader_url,
+  NULL AS peer_name, NULL AS peer_url, '' AS tags, (SELECT COALESCE(SUM(value), 0) FROM likes l WHERE l.video_id = v.id) AS score`;
+export const REMOTE_LIST_COLS = `'remote' AS src, r.remote_id AS vid, r.instance_id AS peer_id, r.title, r.description, r.duration, r.width,
+  r.height, r.views, r.created_at, NULL AS thumb, 0 AS ver, NULL AS user_id, r.uploader_username AS u_username,
+  r.uploader_display_name AS u_display, NULL AS u_avatar, r.uploader_avatar_url AS u_avatar_url, r.thumbnail_url AS thumb_url,
+  r.video_url, r.watch_url, r.uploader_url, p.name AS peer_name, p.url AS peer_url, r.tags, r.likes AS score`;
+
+export function mapListRow(r) {
+  if (r.src === 'local') {
+    return {
+      id: r.vid,
+      title: r.title,
+      description: r.description,
+      visibility: 'public',
+      status: 'ready',
+      duration: r.duration,
+      width: r.width,
+      height: r.height,
+      views: r.views,
+      created_at: r.created_at,
+      thumbnail_url: r.thumb ? `/media/thumbs/${r.thumb}` : null,
+      video_url: videoUrl({ id: r.vid, edit_version: r.ver }),
+      uploader: { id: r.user_id, username: r.u_username, display_name: r.u_display, avatar_url: r.u_avatar ? `/media/avatars/${r.u_avatar}` : null },
+    };
+  }
+  return serializeRemote({
+    instance_id: r.peer_id, remote_id: r.vid, title: r.title, description: r.description, duration: r.duration, width: r.width,
+    height: r.height, views: r.views, likes: r.score, created_at: r.created_at, tags: r.tags, thumbnail_url: r.thumb_url,
+    video_url: r.video_url, watch_url: r.watch_url, uploader_username: r.u_username, uploader_display_name: r.u_display,
+    uploader_avatar_url: r.u_avatar_url, uploader_url: r.uploader_url, peer_name: r.peer_name, peer_url: r.peer_url,
+  });
+}
+
 function likeParam(q) {
   return `%${String(q).trim().replace(/[%_\\]/g, (c) => '\\' + c)}%`;
 }
 
 /**
  * Lists public videos. `scope` = local (this instance), network (federated peers) or all (both,
- * merged into one ordering). Network results only appear when federation is turned on.
+ * merged into one ordering). Network results only appear while this instance is in a network.
  */
 videosRouter.get('/', (req, res) => {
   const { q, tag, sort = 'new', user } = req.query;
   const limit = clampInt(req.query.limit, 1, 100, 24);
   const offset = clampInt(req.query.offset, 0, 1_000_000, 0);
   let scope = ['local', 'network', 'all'].includes(req.query.scope) ? req.query.scope : 'local';
-  if (!fedEnabled() || user) scope = 'local';
+  if (!networkActive() || user) scope = 'local';
   const peer = req.query.peer ? Number(req.query.peer) : null;
 
   const parts = [];
@@ -158,18 +205,13 @@ videosRouter.get('/', (req, res) => {
       where.push('u.username = ?');
       params.push(String(user));
     }
-    parts.push(`SELECT 'local' AS src, v.id AS vid, NULL AS peer_id, v.title, v.description, v.duration, v.width, v.height, v.views,
-        v.created_at, v.thumb_path AS thumb, v.edit_version AS ver, v.user_id, u.username AS u_username, u.display_name AS u_display,
-        u.avatar AS u_avatar, NULL AS u_avatar_url, NULL AS thumb_url, NULL AS video_url, NULL AS watch_url, NULL AS uploader_url,
-        NULL AS peer_name, NULL AS peer_url, '' AS tags,
-        (SELECT COALESCE(SUM(value), 0) FROM likes l WHERE l.video_id = v.id) AS score
-      FROM videos v JOIN users u ON u.id = v.user_id WHERE ${where.join(' AND ')}`);
+    parts.push(`SELECT ${LOCAL_LIST_COLS} FROM videos v JOIN users u ON u.id = v.user_id WHERE ${where.join(' AND ')}`);
   }
 
   if (scope !== 'local') {
-    const where = ["p.status = 'approved'", 'p.paused = 0'];
+    const where = [NETWORK_VISIBLE];
     if (peer) {
-      where.push('r.peer_id = ?');
+      where.push('r.instance_id = ?');
       params.push(peer);
     }
     if (q && String(q).trim()) {
@@ -183,11 +225,7 @@ videosRouter.get('/', (req, res) => {
       where.push("(',' || r.tags || ',') LIKE ?");
       params.push(`%,${String(tag).toLowerCase()},%`);
     }
-    parts.push(`SELECT 'remote' AS src, r.remote_id AS vid, r.peer_id, r.title, r.description, r.duration, r.width, r.height, r.views,
-        r.created_at, NULL AS thumb, 0 AS ver, NULL AS user_id, r.uploader_username AS u_username, r.uploader_display_name AS u_display,
-        NULL AS u_avatar, r.uploader_avatar_url AS u_avatar_url, r.thumbnail_url AS thumb_url, r.video_url, r.watch_url, r.uploader_url,
-        p.name AS peer_name, p.url AS peer_url, r.tags, r.likes AS score
-      FROM remote_videos r JOIN peers p ON p.id = r.peer_id WHERE ${where.join(' AND ')}`);
+    parts.push(`SELECT ${REMOTE_LIST_COLS} FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE ${where.join(' AND ')}`);
   }
 
   const order = {
@@ -198,31 +236,7 @@ videosRouter.get('/', (req, res) => {
   }[sort] || 'created_at DESC';
 
   const rows = db.prepare(`SELECT * FROM (${parts.join(' UNION ALL ')}) ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, limit, offset);
-  const videos = rows.map((r) =>
-    r.src === 'local'
-      ? {
-          id: r.vid,
-          title: r.title,
-          description: r.description,
-          visibility: 'public',
-          status: 'ready',
-          duration: r.duration,
-          width: r.width,
-          height: r.height,
-          views: r.views,
-          created_at: r.created_at,
-          thumbnail_url: r.thumb ? `/media/thumbs/${r.thumb}` : null,
-          video_url: videoUrl({ id: r.vid, edit_version: r.ver }),
-          uploader: { id: r.user_id, username: r.u_username, display_name: r.u_display, avatar_url: r.u_avatar ? `/media/avatars/${r.u_avatar}` : null },
-        }
-      : serializeRemote({
-          peer_id: r.peer_id, remote_id: r.vid, title: r.title, description: r.description, duration: r.duration, width: r.width,
-          height: r.height, views: r.views, likes: r.score, created_at: r.created_at, tags: r.tags, thumbnail_url: r.thumb_url,
-          video_url: r.video_url, watch_url: r.watch_url, uploader_username: r.u_username, uploader_display_name: r.u_display,
-          uploader_avatar_url: r.u_avatar_url, uploader_url: r.uploader_url, peer_name: r.peer_name, peer_url: r.peer_url,
-        }),
-  );
-  res.json({ videos, has_more: rows.length === limit, scope });
+  res.json({ videos: rows.map(mapListRow), has_more: rows.length === limit, scope });
 });
 
 videosRouter.get('/tags', (req, res) => {
@@ -504,21 +518,12 @@ videosRouter.post('/:id/like', requireAuth, (req, res) => {
 
 // ---- comments ---------------------------------------------------------------
 
-const COMMENT_SELECT = 'SELECT c.*, u.username, u.display_name, u.avatar FROM comments c JOIN users u ON u.id = c.user_id';
+const COMMENT_SELECT =
+  'SELECT c.*, u.username, u.display_name, u.avatar, u.remote_instance_id, u.remote_avatar_url, u.remote_profile_url FROM comments c JOIN users u ON u.id = c.user_id';
 
 function serializeComment(c, viewer, v) {
   return {
-    id: c.id,
-    parent_id: c.parent_id,
-    body: c.body,
-    created_at: c.created_at,
-    author: {
-      id: c.user_id,
-      username: c.username,
-      display_name: c.display_name,
-      avatar_url: c.avatar ? `/media/avatars/${c.avatar}` : null,
-    },
-    is_uploader: c.user_id === v.user_id,
+    ...publicComment(c, v.user_id),
     can_delete: !!viewer && (viewer.id === c.user_id || viewer.is_admin || viewer.id === v.user_id),
   };
 }
@@ -526,7 +531,11 @@ function serializeComment(c, viewer, v) {
 videosRouter.get('/:id/comments', (req, res) => {
   const v = getViewable(req.params.id, req.user);
   const rows = db.prepare(`${COMMENT_SELECT} WHERE c.video_id = ? ORDER BY c.created_at ASC`).all(v.id);
-  res.json({ comments: rows.map((c) => serializeComment(c, req.user, v)) });
+  res.json({
+    comments: rows.map((c) => serializeComment(c, req.user, v)),
+    // Lets other instances know whether their people can comment here.
+    network_accepts: networkActive() ? acceptsFromNetwork() : null,
+  });
 });
 
 videosRouter.post('/:id/comments', requireAuth, (req, res) => {
@@ -554,5 +563,4 @@ videosRouter.delete('/:id/comments/:cid', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// Keep the touchVideo import used by other modules discoverable here.
 export { touchVideo };

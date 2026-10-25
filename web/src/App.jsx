@@ -16,7 +16,7 @@ import { Login, Register } from './pages/Auth.jsx';
 import Settings from './pages/Settings.jsx';
 import { Subscriptions, Liked, History } from './pages/Library.jsx';
 import Admin from './pages/Admin.jsx';
-import AdminFederation from './pages/AdminFederation.jsx';
+import AdminNetwork from './pages/AdminNetwork.jsx';
 import Editor from './pages/Editor.jsx';
 import Network from './pages/Network.jsx';
 import RemoteWatch from './pages/RemoteWatch.jsx';
@@ -102,10 +102,10 @@ export default function App() {
                 }
               />
               <Route
-                path="/admin/federation"
+                path="/admin/network"
                 element={
                   <RequireAuth admin>
-                    <AdminFederation />
+                    <AdminNetwork />
                   </RequireAuth>
                 }
               />

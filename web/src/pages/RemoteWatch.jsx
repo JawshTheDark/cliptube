@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
-import { useTitle } from '../auth.jsx';
+import { useAuth, useTitle } from '../auth.jsx';
 import { Player } from '../components/Player.jsx';
+import { Comments } from '../components/Comments.jsx';
 import { VideoCard, Empty } from '../components/VideoCard.jsx';
 import { Avatar } from '../components/Avatar.jsx';
 import { Icon } from '../components/Icons.jsx';
@@ -10,30 +11,38 @@ import { useToast } from '../components/Toast.jsx';
 import { Description } from './Watch.jsx';
 import { compact, formatDate, copyText } from '../util.js';
 
-/** Watch page for a video hosted on a federated instance. The file streams straight from its origin. */
+/**
+ * Watch page for a video hosted on another instance in the network. The file streams straight
+ * from its origin; likes, comments and subscriptions are sent to (and stored on) that instance.
+ */
 export default function RemoteWatch() {
   const { peerId, remoteId } = useParams();
+  const { user } = useAuth();
   const toast = useToast();
+  const nav = useNavigate();
   const videoRef = useRef(null);
-  const [video, setVideo] = useState(null);
-  const [related, setRelated] = useState([]);
+  const [data, setData] = useState(null);
+  const [channel, setChannel] = useState({ subscriber_count: null });
   const [error, setError] = useState(null);
   const [theater, setTheater] = useState(() => localStorage.getItem('theater') === '1');
   const [expanded, setExpanded] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let dead = false;
-    setVideo(null);
+    setData(null);
     setError(null);
     setExpanded(false);
     window.scrollTo(0, 0);
     api(`/network/videos/${peerId}/${encodeURIComponent(remoteId)}`)
       .then((r) => {
         if (dead) return;
-        setVideo(r.video);
-        setRelated(r.related);
+        setData(r);
         // Count the view on the instance that hosts it (anonymous, like an embed).
         fetch(`${r.video.remote.peer_url}/api/videos/${encodeURIComponent(r.video.remote.remote_id)}/view`, { method: 'POST', mode: 'no-cors' }).catch(() => {});
+        api(`/network/channels/${peerId}/${encodeURIComponent(r.video.uploader.username)}`)
+          .then((c) => !dead && setChannel(c))
+          .catch(() => {});
       })
       .catch((e) => !dead && setError(e));
     return () => {
@@ -41,7 +50,7 @@ export default function RemoteWatch() {
     };
   }, [peerId, remoteId]);
 
-  useTitle(video?.title);
+  useTitle(data?.video.title);
 
   const toggleTheater = useCallback(() => {
     setTheater((t) => {
@@ -53,17 +62,74 @@ export default function RemoteWatch() {
   if (error) {
     return (
       <Empty icon="warning" title="This video isn't available">
-        <p>It may have been removed from its instance, or this site stopped following that instance.</p>
+        <p>It may have been removed from its instance, or that instance is no longer in the network.</p>
         <Link to="/network" className="btn">
           Back to the network
         </Link>
       </Empty>
     );
   }
-  if (!video) return <div className="spinner" />;
+  if (!data) return <div className="spinner" />;
 
+  const video = data.video;
   const u = video.uploader;
   const r = video.remote;
+  const can = data.interactions;
+  const requireLogin = () => nav('/login', { state: { from: `/n/${peerId}/${remoteId}` } });
+
+  const like = async (value) => {
+    if (!user) return requireLogin();
+    const next = data.my_like === value ? 0 : value;
+    setBusy(true);
+    try {
+      const res = await api(`/network/videos/${peerId}/${encodeURIComponent(remoteId)}/like`, { method: 'POST', body: { value: next } });
+      setData((d) => ({ ...d, my_like: res.my_like, video: { ...d.video, likes: res.likes } }));
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleSub = async () => {
+    if (!user) return requireLogin();
+    setBusy(true);
+    try {
+      const res = await api(`/network/channels/${peerId}/${encodeURIComponent(u.username)}/subscribe`, { method: data.subscribed ? 'DELETE' : 'POST' });
+      setData((d) => ({ ...d, subscribed: res.subscribed }));
+      if (res.subscriber_count !== null && res.subscriber_count !== undefined) setChannel((c) => ({ ...c, subscriber_count: res.subscriber_count }));
+      toast(res.subscribed ? `Subscribed to ${u.display_name}` : 'Subscription removed');
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const hide = async () => {
+    const where = data.role === 'hub' ? 'from the whole network' : 'on this site';
+    if (!window.confirm(`Hide "${video.title}" ${where}?`)) return;
+    try {
+      await api(`/admin/network/videos/${peerId}/${encodeURIComponent(remoteId)}`, { method: 'PATCH', body: { hidden: true } });
+      toast('Video hidden');
+      nav('/network');
+    } catch (e) {
+      toast(e.message);
+    }
+  };
+
+  const block = async () => {
+    const reason = window.prompt(`Block ${r.peer_name}? Its videos disappear from this site and its people can't like or comment here. Reason (optional):`, '');
+    if (reason === null) return;
+    try {
+      await api(`/admin/network/instances/${peerId}`, { method: 'PATCH', body: { blocked: true, reason } });
+      toast(`Blocked ${r.peer_name}`);
+      nav('/network');
+    } catch (e) {
+      toast(e.message);
+    }
+  };
+
   const seek = (secs) => {
     const el = videoRef.current;
     if (!el || secs == null) return;
@@ -75,7 +141,7 @@ export default function RemoteWatch() {
   return (
     <div className={`watch ${theater ? 'theater' : ''}`}>
       <div className="player-wrap">
-        <Player video={{ ...video, id: video.id }} videoRef={videoRef} theater={theater} onToggleTheater={toggleTheater} />
+        <Player video={video} videoRef={videoRef} theater={theater} onToggleTheater={toggleTheater} />
       </div>
 
       <div className="watch-body">
@@ -91,18 +157,32 @@ export default function RemoteWatch() {
               </a>
               <div className="subs">
                 <Icon name="public" className="inline-icon" /> {r.peer_name}
+                {channel.subscriber_count !== null && ` · ${compact(channel.subscriber_count)} subscriber${channel.subscriber_count === 1 ? '' : 's'}`}
               </div>
             </div>
+            {can.subscriptions && (
+              <button className={`btn ${data.subscribed ? '' : 'btn-primary'}`} onClick={toggleSub} disabled={busy}>
+                {data.subscribed ? 'Subscribed' : 'Subscribe'}
+              </button>
+            )}
           </div>
           <div className="watch-actions">
-            <a className="btn" href={r.watch_url} target="_blank" rel="noopener noreferrer" title="Like, comment and subscribe on the instance that hosts this video">
-              <Icon name="thumb_up" /> {compact(video.likes)} · Like or comment on {r.peer_name}
-            </a>
-            <button
-              className="btn"
-              onClick={async () => toast((await copyText(r.watch_url)) ? 'Link copied' : 'Could not copy the link')}
-              title="Copy the link to the original video"
-            >
+            {can.likes ? (
+              <div className="pill-group">
+                <button className={`btn ${data.my_like === 1 ? 'active' : ''}`} onClick={() => like(1)} disabled={busy} title="I like this">
+                  <Icon name="thumb_up" />
+                  {compact(video.likes)}
+                </button>
+                <button className={`btn ${data.my_like === -1 ? 'active' : ''}`} onClick={() => like(-1)} disabled={busy} title="I dislike this">
+                  <Icon name="thumb_down" />
+                </button>
+              </div>
+            ) : (
+              <span className="btn" title="Likes between instances are turned off">
+                <Icon name="thumb_up" /> {compact(video.likes)}
+              </span>
+            )}
+            <button className="btn" onClick={async () => toast((await copyText(r.watch_url)) ? 'Link copied' : 'Could not copy the link')} title="Copy the link to the original video">
               <Icon name="share" /> Share
             </button>
             <a className="btn btn-icon" href={r.watch_url} target="_blank" rel="noopener noreferrer" title={`Open on ${r.peer_url}`}>
@@ -111,6 +191,21 @@ export default function RemoteWatch() {
             <button className={`btn btn-icon ${theater ? 'active' : ''}`} onClick={toggleTheater} title="Theater mode (t)">
               <Icon name="theater" />
             </button>
+            {data.can_moderate && (
+              <details className="more-menu">
+                <summary className="btn btn-icon" title="Admin">
+                  <Icon name="shield" />
+                </summary>
+                <div className="menu">
+                  <button className="menu-item" onClick={hide}>
+                    <Icon name="close" /> {data.role === 'hub' ? 'Hide from the network' : 'Hide on this site'}
+                  </button>
+                  <button className="menu-item" onClick={block}>
+                    <Icon name="lock" /> Block {r.peer_name}
+                  </button>
+                </div>
+              </details>
+            )}
           </div>
         </div>
 
@@ -141,22 +236,28 @@ export default function RemoteWatch() {
         <div className="remote-note">
           <Icon name="public" />
           <div>
-            This clip is hosted on{' '}
+            Hosted on{' '}
             <a href={r.peer_url} target="_blank" rel="noopener noreferrer">
               {r.peer_name}
-            </a>{' '}
-            and streams from there. Comments, likes and subscriptions live on that instance.{' '}
+            </a>
+            . Your likes, comments and subscriptions go to that instance, and its people see them too.{' '}
             <a href={r.watch_url} target="_blank" rel="noopener noreferrer">
               Open the original
             </a>
             .
           </div>
         </div>
+
+        {can.comments ? (
+          <Comments base={`/network/videos/${peerId}/${encodeURIComponent(remoteId)}`} />
+        ) : (
+          <p className="muted top-gap">Comments between instances are turned off on this network.</p>
+        )}
       </div>
 
       <aside className="watch-secondary">
-        {related.length > 0 && <div className="side-heading">More from {r.peer_name}</div>}
-        {related.map((v) => (
+        {data.related.length > 0 && <div className="side-heading">More from {r.peer_name}</div>}
+        {data.related.map((v) => (
           <VideoCard key={v.id} video={v} variant="compact" />
         ))}
       </aside>

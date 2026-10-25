@@ -11,14 +11,15 @@ import { usersRouter, meRouter } from './routes/users.js';
 import { adminRouter } from './routes/admin.js';
 import { mediaRouter } from './routes/media.js';
 import { resumePending } from './media.js';
-import { federationRouter, federationAdminRouter, networkRouter, fedEnabled, networkPeers, startFederation } from './federation.js';
+import { networkProtocolRouter, networkAdminRouter, networkRouter, networkActive, networkPeers, networkInfo, startNetwork } from './network.js';
 import { HttpError, escapeHtml } from './util.js';
 
 const app = express();
 app.disable('x-powered-by');
 if (process.env.TRUST_PROXY) app.set('trust proxy', true);
 
-app.use(express.json({ limit: '1mb' }));
+// Keep the raw bytes: network inbox requests are verified against a signature over the exact body.
+app.use(express.json({ limit: '1mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(cookieParser());
 app.use(attachUser);
 if (LOG_REQUESTS) {
@@ -38,17 +39,18 @@ app.get('/api/site', (req, res) => {
     allow_registration: s.allow_registration === 'true',
     max_upload_mb: Number(s.max_upload_mb),
     needs_setup: userCount() === 0,
-    federation: fedEnabled(),
+    federation: networkActive(),
     network_peers: networkPeers(),
+    network: networkInfo(),
   });
 });
-app.use(federationRouter); // /.well-known/cliptube and /api/federation/*
+app.use(networkProtocolRouter); // /.well-known/cliptube, /api/hub/*, /api/network/{verify,feed,inbox}
 app.use('/api/auth', authRouter);
 app.use('/api/videos', videosRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/me', meRouter);
 app.use('/api/network', networkRouter);
-app.use('/api/admin/federation', federationAdminRouter);
+app.use('/api/admin/network', networkAdminRouter);
 app.use('/api/admin', adminRouter);
 app.use('/media', mediaRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
@@ -132,7 +134,7 @@ for (const f of fs.readdirSync(DIRS.tmp)) {
   try { fs.unlinkSync(path.join(DIRS.tmp, f)); } catch {}
 }
 resumePending();
-startFederation();
+startNetwork();
 
 const server = app.listen(PORT, HOST, () => {
   const s = getSettings();

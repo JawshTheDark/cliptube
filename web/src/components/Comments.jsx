@@ -13,6 +13,22 @@ function autoGrow(el) {
   el.style.height = `${el.scrollHeight}px`;
 }
 
+/** Links to a local channel, or out to a person's home instance for people from elsewhere. */
+function AuthorLink({ author, className, children }) {
+  if (author.profile_url) {
+    return (
+      <a href={author.profile_url} className={className} target="_blank" rel="noopener noreferrer" title={`Profile on ${new URL(author.profile_url).host}`}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link to={`/c/${author.username}`} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel, submitLabel = 'Comment' }) {
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(autoFocus);
@@ -83,24 +99,25 @@ function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel,
   );
 }
 
-function CommentItem({ c, replies = [], user, onReply, onDelete, isReply = false }) {
+function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, isReply = false }) {
   const [replying, setReplying] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   return (
     <div className={`comment ${isReply ? 'reply' : ''}`}>
-      <Link to={`/c/${c.author.username}`}>
+      <AuthorLink author={c.author}>
         <Avatar user={c.author} size={isReply ? 24 : 40} />
-      </Link>
+      </AuthorLink>
       <div className="cbody">
         <div className="chead">
-          <Link to={`/c/${c.author.username}`} className={`cauthor ${c.is_uploader ? 'uploader' : ''}`}>
+          <AuthorLink author={c.author} className={`cauthor ${c.is_uploader ? 'uploader' : ''}`}>
             @{c.author.username}
-          </Link>
+          </AuthorLink>
+          {c.author.remote && <Icon name="public" className="inline-icon muted" title="From another instance" />}
           <span className="ctime">{timeAgo(c.created_at)}</span>
         </div>
         <div className="ctext">{c.body}</div>
         <div className="cfoot">
-          {user && (
+          {user && canPost && (
             <button className="btn" onClick={() => setReplying((r) => !r)}>
               Reply
             </button>
@@ -132,7 +149,7 @@ function CommentItem({ c, replies = [], user, onReply, onDelete, isReply = false
             {showReplies && (
               <div className="replies">
                 {replies.map((r) => (
-                  <CommentItem key={r.id} c={r} user={user} onReply={onReply} onDelete={onDelete} isReply />
+                  <CommentItem key={r.id} c={r} user={user} canPost={canPost} onReply={onReply} onDelete={onDelete} isReply />
                 ))}
               </div>
             )}
@@ -143,31 +160,44 @@ function CommentItem({ c, replies = [], user, onReply, onDelete, isReply = false
   );
 }
 
-export function Comments({ videoId, initialCount = 0 }) {
+/**
+ * Comment thread. `base` is the API path that owns the comments: `/videos/<id>` for local videos,
+ * `/network/videos/<instance>/<id>` for videos on other instances (comments are stored there).
+ */
+export function Comments({ base, initialCount = 0 }) {
   const { user } = useAuth();
   const toast = useToast();
   const [comments, setComments] = useState(null);
+  const [meta, setMeta] = useState({ can_post: true, host_name: null, error: null });
 
   useEffect(() => {
     setComments(null);
     let dead = false;
-    api(`/videos/${videoId}/comments`)
-      .then((r) => !dead && setComments(r.comments))
-      .catch(() => !dead && setComments([]));
+    api(`${base}/comments`)
+      .then((r) => {
+        if (dead) return;
+        setComments(r.comments);
+        setMeta({ can_post: r.can_post !== false, host_name: r.host_name || null, error: null });
+      })
+      .catch((e) => {
+        if (dead) return;
+        setComments([]);
+        setMeta((m) => ({ ...m, error: e.message }));
+      });
     return () => {
       dead = true;
     };
-  }, [videoId]);
+  }, [base]);
 
   const add = async (body, parentId) => {
-    const { comment } = await api(`/videos/${videoId}/comments`, { method: 'POST', body: { body, parent_id: parentId } });
+    const { comment } = await api(`${base}/comments`, { method: 'POST', body: { body, parent_id: parentId } });
     setComments((cs) => [...(cs || []), comment]);
   };
 
   const remove = async (c) => {
     if (!window.confirm('Delete this comment?')) return;
     try {
-      await api(`/videos/${videoId}/comments/${c.id}`, { method: 'DELETE' });
+      await api(`${base}/comments/${c.id}`, { method: 'DELETE' });
       setComments((cs) => cs.filter((x) => x.id !== c.id && x.parent_id !== c.id));
       toast('Comment deleted');
     } catch (e) {
@@ -184,8 +214,12 @@ export function Comments({ videoId, initialCount = 0 }) {
     <section className="comments">
       <div className="comments-head">
         {count} {count === 1 ? 'Comment' : 'Comments'}
+        {meta.host_name && <span className="comments-host">on {meta.host_name}</span>}
       </div>
-      {user ? (
+      {meta.error && <div className="error">{meta.error}</div>}
+      {!meta.can_post ? (
+        <p className="comment-login">Comments from other instances are turned off for this video.</p>
+      ) : user ? (
         <CommentForm user={user} placeholder="Add a comment..." onSubmit={(body) => add(body, null)} />
       ) : (
         <p className="comment-login">
@@ -196,7 +230,15 @@ export function Comments({ videoId, initialCount = 0 }) {
         <div className="spinner" />
       ) : (
         roots.map((c) => (
-          <CommentItem key={c.id} c={c} replies={repliesOf(c.id)} user={user} onDelete={remove} onReply={(body) => add(body, c.id)} />
+          <CommentItem
+            key={c.id}
+            c={c}
+            replies={repliesOf(c.id)}
+            user={user}
+            canPost={meta.can_post}
+            onDelete={remove}
+            onReply={(body) => add(body, c.id)}
+          />
         ))
       )}
     </section>

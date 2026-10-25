@@ -5,6 +5,7 @@ import ffmpegPath from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
 import { db, getSettings } from './db.js';
 import { DIRS } from './config.js';
+import { onLocalVideosChanged } from './network.js';
 
 // Bundled binaries by default; set FFMPEG_PATH / FFPROBE_PATH to use a system build (e.g. one with NVENC).
 const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
@@ -263,6 +264,7 @@ async function renderEdit(id) {
     try { fs.unlinkSync(path.join(DIRS.videos, cur.file_path)); } catch {}
   }
   console.log(`[media] ${id}: edit v${version} rendered (${encoder}, ${edit.segments.length} part(s), ${duration.toFixed(1)}s)`);
+  onLocalVideosChanged();
 }
 
 // ---- processing queue -----------------------------------------------------------
@@ -368,6 +370,7 @@ async function processVideo(id) {
     } catch {}
   }
   console.log(`[media] ${id}: ready (${result.encoder}, ${(size / 1048576).toFixed(1)} MB)`);
+  onLocalVideosChanged();
 }
 
 /** Re-queue anything that was mid-flight when the server last stopped. */
