@@ -113,11 +113,23 @@ export type Comment = {
   pinned: boolean;
   author: { id?: string; username: string; display_name: string; avatar_url: string | null; profile_url?: string | null; remote: boolean };
   is_uploader: boolean;
+  linked_uploader?: boolean; // the uploader, writing from a linked account elsewhere
   held_reason?: string | null;
   status_reason?: string | null;
   can_delete?: boolean;
   can_moderate?: boolean;
   can_pin?: boolean;
+};
+
+/** One of a channel's verified linked accounts elsewhere (ClipTube 1.6). */
+export type LinkedAccount = {
+  handle: string;
+  url: string;
+  name: string | null;
+  avatar_url: string | null;
+  host: string;
+  channel: boolean; // has videos to follow (not a plain Mastodon account)
+  following: boolean; // the viewer follows it already
 };
 
 export type Channel = User & {
@@ -128,6 +140,30 @@ export type Channel = User & {
   is_self: boolean;
   support_links: { label: string; url: string }[];
   moved?: { url: string; handle: string | null; at: number };
+  linked_accounts?: LinkedAccount[];
+};
+
+/** Your own linked accounts, from /api/me/links. */
+export type OwnLink = {
+  id: number;
+  handle: string;
+  url: string;
+  name: string | null;
+  avatar_url: string | null;
+  channel: boolean;
+  verified: boolean;
+  verified_at: number | null;
+  checked_at: number | null;
+  error: string | null;
+};
+
+export type LinksState = {
+  enabled: boolean;
+  handle: string;
+  max: number;
+  links: OwnLink[];
+  suggestions: { actor: string; handle: string; name: string | null; url: string }[];
+  added?: OwnLink;
 };
 
 export type SubscriptionChannel = {

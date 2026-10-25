@@ -60,6 +60,7 @@ export default function You() {
             <Row icon="history" label="History" onPress={() => router.push('/library/history')} />
             <Row icon="thumb-up-off-alt" label="Liked clips" onPress={() => router.push('/library/liked')} />
             <Row icon="subscriptions" label="Subscriptions" onPress={() => router.push('/library/subscriptions')} />
+            <Row icon="link" label="Linked accounts" hint="Your accounts on other servers, shown as one person" onPress={() => router.push('/links')} />
           </View>
         )}
 

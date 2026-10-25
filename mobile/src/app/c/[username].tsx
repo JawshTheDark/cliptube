@@ -3,7 +3,8 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { VideoList } from '@/components/VideoList';
-import { Avatar, Button, Chip, Empty, ErrorBox, toast } from '@/components/ui';
+import { Avatar, Button, Chip, Empty, ErrorBox, Icon, toast } from '@/components/ui';
+import { knownServers, openProfile } from '@/lib/profiles';
 import { ApiScope, useLinkedApi } from '@/lib/scope';
 import { useSession } from '@/lib/session';
 import { usePaged } from '@/lib/usePaged';
@@ -21,12 +22,15 @@ export default function ChannelScreen() {
   const { username, server } = useLocalSearchParams<{ username: string; server?: string }>();
   const scope = useLinkedApi(server);
   const { api, foreign } = scope;
-  const { user } = useSession();
+  const { user, servers, site } = useSession();
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState('new');
+  const [withLinked, setWithLinked] = useState(false);
   const [busy, setBusy] = useState(false);
-  const paged = usePaged<Video>(api, `/users/${encodeURIComponent(username)}/videos?sort=${sort}`);
+  // "All accounts" adds the videos of the channel's linked accounts on other servers.
+  const paged = usePaged<Video>(api, `/users/${encodeURIComponent(username)}/videos?sort=${sort}${withLinked ? '&linked=1' : ''}`);
+  const known = knownServers(servers, site);
 
   const load = useCallback(() => {
     setError(null);
@@ -52,6 +56,26 @@ export default function ChannelScreen() {
     }
   };
 
+  const linked = channel?.linked_accounts || [];
+  // Linked accounts with a channel can be followed; a plain Mastodon account has no videos.
+  const linkedChannels = linked.filter((l) => l.channel);
+
+  const subscribeAll = async () => {
+    if (!channel) return;
+    if (foreign) return toast(`Switch to ${hostOf(foreign)} to subscribe`);
+    if (!user) return router.push('/login');
+    setBusy(true);
+    try {
+      const r = await api.post<{ channel: Channel; followed: string[] }>(`/users/${encodeURIComponent(username)}/subscribe-all`);
+      setChannel(r.channel);
+      toast(r.followed.length ? `Subscribed here and followed ${r.followed.join(', ')}` : `Subscribed to ${r.channel.display_name}`);
+    } catch (e: any) {
+      toast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const header = channel ? (
     <View>
       {!!channel.banner_url && <Image source={{ uri: api.abs(channel.banner_url)! }} style={s.banner} contentFit="cover" />}
@@ -68,14 +92,28 @@ export default function ChannelScreen() {
         </View>
       </View>
       {!!channel.bio && <Text style={s.bio}>{channel.bio}</Text>}
+      {linked.length > 0 && (
+        <View style={s.alsoOn}>
+          <Text style={s.meta}>Also on</Text>
+          {linked.map((l) => (
+            <Pressable key={l.handle} style={s.alsoChip} onPress={() => openProfile(l.url, known)} accessibilityRole="link" accessibilityLabel={`${l.handle}, linked both ways`}>
+              <Icon name="check" size={14} color={colors.ok} />
+              <Text style={{ color: colors.text, fontSize: 13 }}>{l.host}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {channel.moved ? (
         <Pressable onPress={() => Linking.openURL(channel.moved!.url)} style={s.moved}>
           <Text style={{ color: colors.text }}>This channel moved to {channel.moved.handle || channel.moved.url}</Text>
         </Pressable>
       ) : (
         !channel.is_self && (
-          <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+          <View style={{ paddingHorizontal: 12, paddingBottom: 8, gap: 8 }}>
             <Button title={channel.subscribed ? 'Subscribed' : 'Subscribe'} kind={channel.subscribed ? 'secondary' : 'primary'} onPress={toggle} busy={busy} />
+            {linkedChannels.length > 0 && (!channel.subscribed || linkedChannels.some((l) => !l.following)) && (
+              <Button title={`Subscribe to all ${linkedChannels.length + 1}`} icon="link" onPress={subscribeAll} disabled={busy} />
+            )}
           </View>
         )
       )}
@@ -90,6 +128,7 @@ export default function ChannelScreen() {
         {SORTS.map((x) => (
           <Chip key={x.key} label={x.label} active={sort === x.key} onPress={() => setSort(x.key)} />
         ))}
+        {linkedChannels.length > 0 && <Chip label="All accounts" active={withLinked} onPress={() => setWithLinked((x) => !x)} />}
       </View>
     </View>
   ) : null;
@@ -114,5 +153,7 @@ const s = StyleSheet.create({
   bio: { color: colors.text, fontSize: 14, lineHeight: 20, paddingHorizontal: 12, paddingBottom: 10 },
   moved: { margin: 12, padding: 12, borderRadius: 10, backgroundColor: colors.surface2 },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
-  sorts: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairline },
+  sorts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairline },
+  alsoOn: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 10 },
+  alsoChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
 });

@@ -19,7 +19,6 @@ beyond running ClipTube 1.5 or newer.
 2. Download the `.apk` file and open it. Android asks once to allow installs from your browser or file manager.
 3. Open **ClipTube**. It starts on [clips.irc.so](https://clips.irc.so), the network's hub.
 
-The repository is private, so the phone's browser has to be signed in to a GitHub account that can see it.
 Newer releases install over older ones and keep your servers and sign-ins. The app needs Android 7 or newer.
 
 ## Servers and signing in
@@ -50,6 +49,12 @@ Servers older than 1.5 can be browsed and watched, but signing in says the serve
 | Upload | Pick a video and fill in the title, description, game, tags, visibility and clipping |
 | Inbox | Your notifications, with an unread count on the tab, checked every minute while the app is open |
 | You | Your clips (edit details, publish drafts, delete), history, liked clips, subscriptions, servers, sign out |
+| Linked accounts | Under You: link your accounts on other servers or Mastodon, link back, check again, unlink |
+
+Channel pages show the channel's [linked accounts](Fediverse.md#linked-accounts) under **Also on**, with
+**Subscribe to all** and an **All accounts** filter for its videos from the other servers. An Also on account on
+a server in your network opens in the app; anything else opens in the browser. Comments the uploader writes from
+a linked account carry the uploader's mark. Linked accounts need ClipTube 1.6 or newer on the server.
 
 Clips from other servers in the network stream straight from the server that hosts them, like on the website.
 Likes, comments and subscriptions on them go through your server.
@@ -73,6 +78,10 @@ in the app. A link from a server other than the one you're using opens from that
 **Switch** button to move over and sign in there.
 
 ## Troubleshooting
+
+**"Too many failed sign-ins. Try again in a few minutes."**
+ClipTube 1.6.1 slows down password guessing: after several wrong passwords for an account, or from one address,
+signing in waits for up to 15 minutes. Wait, then sign in with the right password.
 
 **"This server runs an older ClipTube that the app can't sign in to"**
 The server is older than 1.5. Update it ([Upgrading and Backups](Upgrading-and-Backups.md)); browsing works

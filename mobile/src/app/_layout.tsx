@@ -42,6 +42,7 @@ function Root() {
       <Stack.Screen name="servers" options={{ title: 'Servers', presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="library/[kind]" options={{ title: '' }} />
       <Stack.Screen name="edit/[id]" options={{ title: 'Edit clip' }} />
+      <Stack.Screen name="links" options={{ title: 'Linked accounts' }} />
     </Stack>
   );
 }

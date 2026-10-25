@@ -108,7 +108,7 @@ export default function Comments() {
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={s.author} numberOfLines={1}>
             {c.author.remote ? c.author.username : `@${c.author.username}`}
-            {c.is_uploader ? <Text style={s.badge}>  uploader</Text> : null}
+            {c.is_uploader ? <Text style={s.badge}>{c.linked_uploader ? '  uploader · linked account' : '  uploader'}</Text> : null}
             <Text style={s.when}>{`  ${ago(c.created_at)}`}</Text>
           </Text>
           {c.pinned && (

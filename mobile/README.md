@@ -22,6 +22,7 @@ Watching and browsing work on any version.
 | Explore | Search with sorting, and the game catalog with SteamGridDB artwork; game and channel pages |
 | Upload | Pick a video, set title, description, game, tags, visibility and clipping, watch progress and processing |
 | You | Your clips (edit, publish drafts, delete), history, liked clips, subscriptions, sign out |
+| Linked accounts | Link your accounts on other servers or Mastodon (ClipTube 1.6+); channels show Also on, Subscribe to all and an All accounts filter |
 | Inbox | Notifications with an unread badge on the tab, checked every minute while the app is open |
 | Servers | Keep several ClipTube servers with a sign-in for each, and switch between them |
 | Links | `https://<server>/watch/…`, `/c/…` and `/n/…` links for the three known servers can open in the app |
