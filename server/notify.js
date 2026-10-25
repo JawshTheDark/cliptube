@@ -13,6 +13,7 @@ import { HttpError, newId, now, str, sha256 } from './util.js';
 import { defineJob, enqueueJob } from './jobs.js';
 import { sendPush, vapidKeys } from './webpush.js';
 import { mailConfigured, sendMail } from './mail.js';
+import { fireWebhooks, videoEvent } from './webhooks.js';
 
 export const KINDS = {
   upload: 'New uploads from channels you subscribe to',
@@ -78,6 +79,7 @@ defineJob('notify.upload', {
         dedupe: `upload:${v.id}`,
       });
     }
+    fireWebhooks('video.published', videoEvent(v.id));
   },
 });
 

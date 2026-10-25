@@ -908,6 +908,27 @@ CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id);
 `);
     },
   },
+  {
+    version: 17,
+    name: 'outgoing webhooks',
+    up(db) {
+      db.exec(`
+CREATE TABLE IF NOT EXISTS webhooks (
+  id TEXT PRIMARY KEY,
+  url TEXT NOT NULL,
+  format TEXT NOT NULL DEFAULT 'json',   -- json | discord | slack
+  events TEXT NOT NULL,                  -- comma separated: video.published, live.started
+  secret TEXT,                           -- signs each delivery (HMAC-SHA256) when set
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  last_attempt_at INTEGER,
+  last_status INTEGER,
+  last_error TEXT,
+  last_ok_at INTEGER
+);
+`);
+    },
+  },
 ];
 
 export function currentVersion(db) {

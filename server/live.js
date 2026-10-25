@@ -30,6 +30,7 @@ import { networkPeers } from './network.js';
 import { apBase, apEnabled, CONTEXT, PUBLIC, urls } from './ap/common.js';
 import { deliver, followersOf } from './ap/deliver.js';
 import { inboxesOf } from './ap/actors.js';
+import { fireWebhooks, streamEvent } from './webhooks.js';
 import {
   REACTIONS, addGuest, ban, broadcast, chat, deleteMessage, isBanned, memberOf, membersOf, messagesOf, openStream, react, viewerCount,
 } from './rooms.js';
@@ -191,6 +192,7 @@ defineJob('live.announce', {
     for (const sub of db.prepare('SELECT subscriber_id FROM subscriptions WHERE channel_id = ?').all(s.user_id)) {
       notify(sub.subscriber_id, { kind: 'live', title: `${s.display_name} is live: ${s.title}`, url: `/live/${s.username}`, actor_label: s.username, dedupe: `live:${s.id}` });
     }
+    fireWebhooks('live.started', streamEvent(s, s));
     const base = apBase();
     if (!apEnabled() || !base) return;
     const x = urls(base);

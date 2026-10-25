@@ -14,8 +14,18 @@ let inst, alice, bob, fake, viewer;
 const streams = [];
 
 function fakeMediaMTX() {
-  const F = { ready: [], seenAuth: [] };
+  const F = { ready: [], seenAuth: [], hooks: [] };
   F.server = http.createServer((req, res) => {
+    // It also takes the site's webhooks, as any bot would.
+    if (req.method === 'POST' && req.url === '/hook') {
+      let raw = '';
+      req.on('data', (c) => (raw += c));
+      req.on('end', () => {
+        F.hooks.push(JSON.parse(raw));
+        res.writeHead(204).end();
+      });
+      return;
+    }
     F.seenAuth.push(req.headers.authorization || '');
     if (req.headers.authorization !== internal) return res.writeHead(401).end();
     if (req.url === '/v3/paths/list') {
@@ -106,6 +116,7 @@ test('MediaMTX asks ClipTube who may publish, and only ClipTube may read', async
   assert.equal(await auth({ action: 'read', path: 'live/alice', user: 'cliptube', password: SECRET }), 200);
   assert.equal(await auth({ action: 'api', user: 'cliptube', password: SECRET }), 200);
 
+  assert.equal((await alice.post('/api/admin/webhooks', { url: `${fake.url}/hook`, events: ['live.started'] })).status, 201);
   fake.ready = ['live/alice'];
   assert.equal(await auth({ action: 'publish', path: 'live/alice', query: `key=${key}`, protocol: 'rtmp' }), 200);
   const page = (await new Client(inst.url).get('/api/live/alice')).data;
@@ -115,6 +126,11 @@ test('MediaMTX asks ClipTube who may publish, and only ClipTube may read', async
   assert.ok((await bob.get('/api/live/now')).data.live.some((s) => s.channel.username === 'alice'));
   const n = await waitFor(async () => (await bob.get('/api/notifications')).data.notifications.find((x) => x.kind === 'live'), { what: 'the live notification' });
   assert.equal(n.url, '/live/alice');
+  // Webhooks hear about it too.
+  const hook = await waitFor(() => fake.hooks.find((h) => h.event === 'live.started'), { what: 'the live.started webhook' });
+  assert.equal(hook.stream.url, `${inst.url}/live/alice`);
+  assert.equal(hook.stream.title, 'alice is live');
+  assert.equal(hook.stream.channel.username, 'alice');
   // A key can be changed; the old one stops working.
   assert.equal((await alice.post('/api/live/me/key')).status, 200);
   assert.equal(await auth({ action: 'publish', path: 'live/alice', query: `key=${key}` }), 401);
