@@ -164,8 +164,49 @@ Update later with:
 git pull && docker compose up -d --build
 ```
 
+Or, from a checkout on another machine, deploy over SSH (backs up the database, tags the old image as
+`cliptube:rollback`, rebuilds and waits for the health check):
+
+```bash
+scripts/deploy.sh user@your-server
+```
+
+## Admin command line
+
+For server operators, without needing a web login (inside Docker prefix with `docker exec cliptube`):
+
+```bash
+node server/cli.js network status
+node server/cli.js network hub-enable https://clips.example.com
+node server/cli.js network join https://clips.irc.so
+node server/cli.js user list
+node server/cli.js user role alice moderator
+node server/cli.js user status spammer banned "posting spam"
+```
+
+Run `node server/cli.js` with no arguments for the full list.
+
+## Development
+
+```bash
+npm run dev     # API on :3000, frontend with hot reload on :5173
+npm test        # unit tests plus real multi-instance integration tests (about 10 seconds)
+```
+
+Database changes go in `server/migrations.js` as a new numbered migration; the server applies pending
+migrations at startup and writes a backup to `data/backups` first.
+
 ## Sharing outside your network without Docker
 
 Any reverse proxy with HTTPS works (Caddy, nginx, Cloudflare Tunnel, Tailscale Funnel). Set
 `TRUST_PROXY=1` so the app sees real client addresses and the HTTPS scheme, and raise the proxy's
 request body limit for uploads.
+
+## Hosting at home
+
+Forward ports 80 and 443 on your router to the machine running ClipTube, point a (dynamic) DNS name at
+your home IP (for example with ddclient), and put nginx or Caddy with a Let's Encrypt certificate in front.
+Many home routers don't support "NAT loopback" (hairpin NAT): from inside your own network the public name
+then won't connect, even though it works for everyone else. Turn on NAT loopback if your router has it,
+add a hosts-file entry pointing the name at the machine's LAN address, or use the LAN address directly
+(for example `http://192.168.1.97:3100`).

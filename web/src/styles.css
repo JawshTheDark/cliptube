@@ -2454,3 +2454,11 @@ kbd {
     bottom: 12px;
   }
 }
+
+/* ---- admin: account status ---------------------------------------------- */
+.select.status-suspended {
+  color: var(--warn);
+}
+.select.status-banned {
+  color: var(--err);
+}

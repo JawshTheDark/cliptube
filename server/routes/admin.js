@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { db, getSettings, setSetting } from '../db.js';
 import { DIRS } from '../config.js';
-import { requireAdmin, userToPublic } from '../auth.js';
+import { requireAdmin, userToPublic, setUserRole, setUserStatus } from '../auth.js';
 import { HttpError } from '../util.js';
 import { queueInfo, ffmpegInfo } from '../media.js';
 import { removeVideoFiles } from './videos.js';
@@ -60,15 +60,23 @@ adminRouter.get('/users', (req, res) => {
       'SELECT u.*, (SELECT COUNT(*) FROM videos v WHERE v.user_id = u.id) AS video_count, (SELECT COALESCE(SUM(size_bytes), 0) FROM videos v WHERE v.user_id = u.id) AS bytes FROM users u WHERE u.remote_instance_id IS NULL ORDER BY u.created_at ASC',
     )
     .all();
-  res.json({ users: rows.map((u) => ({ ...userToPublic(u), video_count: u.video_count, bytes: u.bytes })) });
+  res.json({ users: rows.map((u) => ({ ...userToPublic(u), status_reason: u.status_reason || null, video_count: u.video_count, bytes: u.bytes })) });
 });
 
 adminRouter.patch('/users/:id', (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(String(req.params.id));
   if (!u) throw new HttpError(404, 'User not found');
-  if (req.body?.is_admin !== undefined) {
-    if (u.id === req.user.id && !req.body.is_admin) throw new HttpError(400, 'You cannot remove your own admin role');
-    db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(req.body.is_admin ? 1 : 0, u.id);
+  const b = req.body || {};
+  if (u.remote_instance_id) throw new HttpError(400, 'People from other instances are managed by blocking their instance');
+  // Legacy toggle kept for older clients.
+  const role = b.role !== undefined ? b.role : b.is_admin !== undefined ? (b.is_admin ? 'admin' : 'user') : undefined;
+  if (role !== undefined) {
+    if (u.id === req.user.id && role !== 'admin') throw new HttpError(400, 'You cannot remove your own admin role');
+    setUserRole(u.id, role);
+  }
+  if (b.status !== undefined) {
+    if (u.id === req.user.id) throw new HttpError(400, 'You cannot change your own account status');
+    setUserStatus(u.id, b.status, b.reason);
   }
   res.json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
 });

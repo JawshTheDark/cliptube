@@ -8,8 +8,8 @@ Work order follows the suggested order below. Updated as each milestone lands.
 
 | Milestone | Status | Released |
 | --- | --- | --- |
-| M0 Foundations | In progress | |
-| M1 Trust and safety | Not started | |
+| M0 Foundations | Done | v0.4.0, 2026-10-25 |
+| M1 Trust and safety | In progress | |
 | M3 Gaming clip tools | Not started | |
 | M2 Hub-optional network | Not started | |
 | M4 Watching upgrades | Not started | |
@@ -85,24 +85,24 @@ Each has a recommendation. None blocks anything before the milestone named.
 
 Everything later depends on these.
 
-- Merge `network-hub` into `main` and tag v0.3.0. (S)
-- **Test suite** (`npm test`) on Node's built-in test runner. Unit tests for parsers, signing and edit
+- ✅ Merge `network-hub` into `main` and tag v0.3.0. (S)
+- ✅ **Test suite** (`npm test`) on Node's built-in test runner. Unit tests for parsers, signing and edit
   validation. Integration tests that start several instances on random ports with temporary data folders,
   replacing the hand-run scratchpad scripts. Today's hub-network checks become the first suite. (M)
-- **CI** on GitHub Actions running the suite on every push. (S)
-- **Numbered migrations** with a `schema_version` table instead of ad-hoc `addColumn` calls, with an
+- ✅ **CI** on GitHub Actions running the suite on every push. (S)
+- ✅ **Numbered migrations** with a `schema_version` table instead of ad-hoc `addColumn` calls, with an
   automatic database backup before migrating. (S)
-- **Persistent job queue**: a `jobs` table with type, payload, run time, attempts and last error; retries
+- ✅ **Persistent job queue**: a `jobs` table with type, payload, run time, attempts and last error; retries
   with exponential backoff; survives restarts. Video processing and edit renders move onto it, and
   federation delivery, notifications, exports and streaming renditions will use it. Separate lanes so a long
   encode never holds up deliveries. (M)
-- **Content intake pipeline**: one code path that every new comment, like and report passes through,
+- ✅ **Content intake pipeline**: one code path that every new comment, like and report passes through,
   whether local or from another instance, so spam filters (M1), moderation (M1) and ActivityPub (M6) all
   plug in at one place. (S)
-- **Roles and account status**: a `moderator` role alongside admin, and account status (active, suspended,
+- ✅ **Roles and account status**: a `moderator` role alongside admin, and account status (active, suspended,
   banned). (S)
-- **Deploy script** (`scripts/deploy.sh <host>`): backup, rollback tag, ship, build, health check. (S)
-- Docs: the hairpin NAT note for home hosting. (S)
+- ✅ **Deploy script** (`scripts/deploy.sh <host>`): backup, rollback tag, ship, build, health check. (S)
+- ✅ Docs: the hairpin NAT note for home hosting. (S)
 
 **Schema:** `schema_version`, `jobs`, `users.role`, `users.status`.
 **Done when:** CI is green, v0.4 ships with the deploy script, and the hub network still works between

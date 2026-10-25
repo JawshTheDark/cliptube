@@ -11,6 +11,7 @@ import { usersRouter, meRouter } from './routes/users.js';
 import { adminRouter } from './routes/admin.js';
 import { mediaRouter } from './routes/media.js';
 import { resumePending } from './media.js';
+import { startJobs } from './jobs.js';
 import { networkProtocolRouter, networkAdminRouter, networkRouter, networkActive, networkPeers, networkInfo, startNetwork } from './network.js';
 import { HttpError, escapeHtml } from './util.js';
 
@@ -133,6 +134,7 @@ app.use((err, req, res, next) => {
 for (const f of fs.readdirSync(DIRS.tmp)) {
   try { fs.unlinkSync(path.join(DIRS.tmp, f)); } catch {}
 }
+startJobs();
 resumePending();
 startNetwork();
 

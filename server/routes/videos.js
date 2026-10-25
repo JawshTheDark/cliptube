@@ -7,6 +7,7 @@ import { requireAuth } from '../auth.js';
 import { videoUpload, imageUpload, discard } from '../uploads.js';
 import { HttpError, newId, now, parseTags, str, clampInt, sha256 } from '../util.js';
 import { enqueue, enqueueRender, convertImage, grabFrame, editorAssets, editorDir } from '../media.js';
+import { intakeComment, intakeLike } from '../intake.js';
 import { networkActive, serializeRemote, NETWORK_VISIBLE, acceptsFromNetwork, publicComment, onLocalVideosChanged } from '../network.js';
 
 export const videosRouter = Router();
@@ -373,7 +374,7 @@ videosRouter.post('/:id/retry', requireAuth, (req, res) => {
 const MIN_PART = 0.05;
 
 /** Validates and normalises an edit decision list against the source duration. */
-function normalizeEdit(body, duration) {
+export function normalizeEdit(body, duration) {
   const input = Array.isArray(body?.segments) ? body.segments : [];
   if (!input.length) throw new HttpError(400, 'Keep at least one part of the video');
   if (input.length > 200) throw new HttpError(400, 'Too many parts (200 max)');
@@ -505,6 +506,10 @@ videosRouter.post('/:id/like', requireAuth, (req, res) => {
   const value = Number(req.body?.value);
   if (![1, -1, 0].includes(value)) throw new HttpError(400, 'value must be 1, -1 or 0');
   const v = getViewable(req.params.id, req.user);
+  if (value !== 0) {
+    const verdict = intakeLike({ video: v, author: req.user, value, remote: false, instance: null });
+    if (verdict.status === 'rejected') throw new HttpError(403, verdict.reason || 'Not allowed');
+  }
   if (value === 0) {
     db.prepare('DELETE FROM likes WHERE user_id = ? AND video_id = ?').run(req.user.id, v.id);
   } else {
@@ -524,7 +529,7 @@ const COMMENT_SELECT =
 function serializeComment(c, viewer, v) {
   return {
     ...publicComment(c, v.user_id),
-    can_delete: !!viewer && (viewer.id === c.user_id || viewer.is_admin || viewer.id === v.user_id),
+    can_delete: !!viewer && (viewer.id === c.user_id || viewer.is_moderator || viewer.id === v.user_id),
   };
 }
 
@@ -548,6 +553,8 @@ videosRouter.post('/:id/comments', requireAuth, (req, res) => {
     if (!p) throw new HttpError(400, 'That comment no longer exists');
     if (p.parent_id) parentId = p.parent_id; // keep threads one level deep
   }
+  const verdict = intakeComment({ video: v, author: req.user, body, parentId, remote: false, instance: null });
+  if (verdict.status === 'rejected') throw new HttpError(400, verdict.reason || 'Comment not accepted');
   const id = newId();
   db.prepare('INSERT INTO comments (id, video_id, user_id, parent_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, v.id, req.user.id, parentId, body, now());
   const c = db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(id);
@@ -558,7 +565,7 @@ videosRouter.delete('/:id/comments/:cid', requireAuth, (req, res) => {
   const v = getViewable(req.params.id, req.user);
   const c = db.prepare('SELECT * FROM comments WHERE id = ? AND video_id = ?').get(String(req.params.cid), v.id);
   if (!c) throw new HttpError(404, 'Comment not found');
-  if (!(req.user.id === c.user_id || req.user.is_admin || req.user.id === v.user_id)) throw new HttpError(403, 'You cannot delete that comment');
+  if (!(req.user.id === c.user_id || req.user.is_moderator || req.user.id === v.user_id)) throw new HttpError(403, 'You cannot delete that comment');
   db.prepare('DELETE FROM comments WHERE id = ?').run(c.id);
   res.json({ ok: true });
 });

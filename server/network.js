@@ -17,10 +17,11 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import net from 'node:net';
-import { db, getSettings, setSetting } from './db.js';
+import { db, getSettings, setSetting, transaction } from './db.js';
 import { ALLOW_PRIVATE_FEDERATION, VERSION } from './config.js';
 import { HttpError, now, str, sha256, clampInt, parseTags, newId } from './util.js';
 import { requireAuth, requireAdmin } from './auth.js';
+import { intakeComment, intakeLike } from './intake.js';
 
 export const PROTOCOL = 2;
 const FULL_SYNC_MS = 6 * 3600 * 1000;
@@ -104,6 +105,7 @@ const hostOf = (url) => {
 export function normalizeInstanceUrl(input) {
   let s = String(input || '').trim();
   if (!s) throw new HttpError(400, 'Enter an instance address');
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s) && !/^https?:\/\//i.test(s)) throw new HttpError(400, 'Only http and https addresses are supported');
   if (!/^https?:\/\//i.test(s)) s = `https://${s}`;
   let u;
   try {
@@ -134,7 +136,7 @@ function sameOrigin(u, origin) {
 
 // ---- outbound requests (with SSRF protection) -------------------------------------
 
-function isPrivateIp(ip) {
+export function isPrivateIp(ip) {
   if (net.isIPv4(ip)) {
     const [a, b] = ip.split('.').map(Number);
     return (
@@ -346,7 +348,7 @@ export function serializeRemote(r) {
 /** SQL filter for network videos this instance shows. */
 export const NETWORK_VISIBLE = "p.is_self = 0 AND p.blocked = 0 AND p.hub_status = 'approved' AND p.listed = 1 AND r.hidden = 0";
 
-function cleanItem(it, origin) {
+export function cleanItem(it, origin) {
   if (!it || typeof it !== 'object') return null;
   const id = String(it.id || '');
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
@@ -397,17 +399,6 @@ function upsertVideo(instanceId, c, t) {
     c.uploader_avatar_url, c.uploader_url, t);
 }
 
-function transaction(fn) {
-  db.exec('BEGIN');
-  try {
-    const r = fn();
-    db.exec('COMMIT');
-    return r;
-  } catch (e) {
-    db.exec('ROLLBACK');
-    throw e;
-  }
-}
 
 // ---- protocol endpoints (mounted at the app root) -----------------------------------------
 
@@ -758,7 +749,7 @@ async function pullMember(inst, { full = false } = {}) {
   }
 }
 
-async function pullAllMembers() {
+export async function pullAllMembers() {
   const rows = db.prepare("SELECT * FROM instances WHERE is_self = 0 AND hub_status = 'approved' AND feed_token IS NOT NULL").all();
   for (const inst of rows) await pullMember(inst);
 }
@@ -769,11 +760,12 @@ function clearNetworkMirror() {
   db.exec('DELETE FROM network_videos');
 }
 
-export async function joinHub(req, hubInput) {
+/** Joins a hub. `meInput` is this instance's public address (the admin request's, or given on the CLI). */
+export async function joinHub(meInput, hubInput) {
   const s = S();
   if (isHub()) throw new HttpError(400, 'This instance is the hub. Turn off hub mode to join a different network.');
   const hubUrl = normalizeInstanceUrl(hubInput || s.network_hub_url);
-  const me = selfUrl(req);
+  const me = normalizeInstanceUrl(meInput);
   if (hubUrl === me) throw new HttpError(400, 'To run the network from this instance, turn on hub mode instead');
   if (!ALLOW_PRIVATE_FEDERATION && !me.startsWith('https://')) {
     throw new HttpError(400, `Other instances need to reach this site over HTTPS, but its address is ${me}. Set the Public URL under Overview first.`);
@@ -1074,6 +1066,10 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
       const v = inboxVideo(b.video_id);
       const value = Number(b.value);
       if (![1, -1, 0].includes(value)) throw new HttpError(400, 'value must be 1, -1 or 0');
+      if (value !== 0) {
+        const verdict = intakeLike({ video: v, author: actor, value, remote: true, instance: inst });
+        if (verdict.status === 'rejected') throw new HttpError(403, verdict.reason || 'Not allowed');
+      }
       if (value === 0) db.prepare('DELETE FROM likes WHERE user_id = ? AND video_id = ?').run(actor.id, v.id);
       else {
         db.prepare(
@@ -1092,6 +1088,8 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
         if (!p) throw new HttpError(400, 'That comment no longer exists');
         if (p.parent_id) parentId = p.parent_id;
       }
+      const verdict = intakeComment({ video: v, author: actor, body, parentId, remote: true, instance: inst });
+      if (verdict.status === 'rejected') throw new HttpError(400, verdict.reason || 'Comment not accepted');
       const id = newId();
       db.prepare('INSERT INTO comments (id, video_id, user_id, parent_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, v.id, actor.id, parentId, body, t);
       return res.status(201).json({ comment: publicComment(db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(id), v.user_id) });
@@ -1376,7 +1374,7 @@ networkAdminRouter.patch('/member', (req, res) => {
 });
 
 networkAdminRouter.post('/join', async (req, res) => {
-  await joinHub(req, req.body?.hub_url);
+  await joinHub(selfUrl(req), req.body?.hub_url);
   res.json(adminState(req));
 });
 
@@ -1413,22 +1411,28 @@ networkAdminRouter.post('/instances/block', (req, res) => {
   res.json(adminState(req));
 });
 
+/** Turns hub mode on. `meInput` is this instance's public address. */
+export function enableHub(meInput) {
+  if (S().network_enabled === 'true') throw new HttpError(400, 'Leave your current network before turning on hub mode');
+  const me = normalizeInstanceUrl(meInput);
+  if (!ALLOW_PRIVATE_FEDERATION && !me.startsWith('https://')) {
+    throw new HttpError(400, `Instances need to reach the hub over HTTPS, but this site's address is ${me}. Set the Public URL under Overview first.`);
+  }
+  ensureKeys();
+  setSetting('network_self_url', me);
+  ensureSelfInstance(me);
+  setSetting('hub_enabled', 'true');
+}
+
+export function disableHub() {
+  setSetting('hub_enabled', 'false');
+}
+
 networkAdminRouter.patch('/hub', (req, res) => {
   const b = req.body || {};
   if (b.enabled !== undefined) {
-    if (yes(b.enabled)) {
-      if (S().network_enabled === 'true') throw new HttpError(400, 'Leave your current network before turning on hub mode');
-      const me = selfUrl(req);
-      if (!ALLOW_PRIVATE_FEDERATION && !me.startsWith('https://')) {
-        throw new HttpError(400, `Instances need to reach the hub over HTTPS, but this site's address is ${me}. Set the Public URL under Overview first.`);
-      }
-      ensureKeys();
-      setSetting('network_self_url', me);
-      ensureSelfInstance(me);
-      setSetting('hub_enabled', 'true');
-    } else {
-      setSetting('hub_enabled', 'false');
-    }
+    if (yes(b.enabled)) enableHub(selfUrl(req));
+    else disableHub();
   }
   for (const [field, [key, conv]] of Object.entries(HUB_FIELDS)) if (b[field] !== undefined) setSetting(key, conv(b[field]));
   if (isHub()) ensureSelfInstance(storedSelf() || selfUrl(req));

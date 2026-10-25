@@ -69,13 +69,20 @@ export default function Admin() {
     }
   };
 
-  const toggleAdmin = async (u) => {
+  const updateUser = async (u, body, message) => {
     try {
-      const r = await api(`/admin/users/${u.id}`, { method: 'PATCH', body: { is_admin: !u.is_admin } });
-      setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, ...r.user } : x)));
+      const r = await api(`/admin/users/${u.id}`, { method: 'PATCH', body });
+      setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, ...r.user, status_reason: body.reason ?? x.status_reason } : x)));
+      if (message) toast(message);
     } catch (err) {
       toast(err.message);
     }
+  };
+
+  const changeStatus = (u, status) => {
+    if (status === 'active') return updateUser(u, { status }, `@${u.username} is active again`);
+    const reason = window.prompt(`${status === 'banned' ? 'Ban' : 'Suspend'} @${u.username}? They are signed out and can't sign in. Reason (shown to them):`, '');
+    if (reason !== null) updateUser(u, { status, reason }, `@${u.username} is ${status}`);
   };
 
   const deleteUser = async (u) => {
@@ -202,6 +209,7 @@ export default function Admin() {
                   <th>Videos</th>
                   <th>Storage</th>
                   <th>Role</th>
+                  <th>Status</th>
                   <th />
                 </tr>
               </thead>
@@ -221,9 +229,33 @@ export default function Admin() {
                     <td>{u.video_count}</td>
                     <td>{formatBytes(u.bytes)}</td>
                     <td>
-                      <button className={`badge ${u.is_admin ? 'ok' : ''}`} onClick={() => toggleAdmin(u)} disabled={u.id === user.id} title={u.id === user.id ? 'You cannot change your own role' : 'Toggle admin'}>
-                        {u.is_admin ? 'Admin' : 'Member'}
-                      </button>
+                      <select
+                        className="select select-inline"
+                        value={u.role}
+                        disabled={u.id === user.id}
+                        title={u.id === user.id ? 'You cannot change your own role' : 'Role'}
+                        onChange={(e) => updateUser(u, { role: e.target.value }, `@${u.username} is now ${e.target.value}`)}
+                      >
+                        <option value="user">Member</option>
+                        <option value="moderator">Moderator</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                    <td>
+                      {u.id === user.id ? (
+                        <span className="badge ok">Active</span>
+                      ) : (
+                        <select
+                          className={`select select-inline status-${u.status}`}
+                          value={u.status}
+                          title={u.status_reason || 'Account status'}
+                          onChange={(e) => changeStatus(u, e.target.value)}
+                        >
+                          <option value="active">Active</option>
+                          <option value="suspended">Suspended</option>
+                          <option value="banned">Banned</option>
+                        </select>
+                      )}
                     </td>
                     <td>
                       {u.id !== user.id && (

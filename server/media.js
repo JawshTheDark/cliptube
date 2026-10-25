@@ -6,6 +6,7 @@ import ffprobeStatic from 'ffprobe-static';
 import { db, getSettings } from './db.js';
 import { DIRS } from './config.js';
 import { onLocalVideosChanged } from './network.js';
+import { defineJob, enqueueJob, jobStats, jobPending } from './jobs.js';
 
 // Bundled binaries by default; set FFMPEG_PATH / FFPROBE_PATH to use a system build (e.g. one with NVENC).
 const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
@@ -267,48 +268,36 @@ async function renderEdit(id) {
   onLocalVideosChanged();
 }
 
-// ---- processing queue -----------------------------------------------------------
+// ---- processing jobs (persistent, see jobs.js) ---------------------------------------
 
-const queue = [];
-let running = false;
-let current = null;
+defineJob('video.process', {
+  lane: 'media',
+  maxAttempts: 1, // a failed encode needs a person to look at it; the Retry button re-queues
+  handler: ({ id }) => processVideo(id),
+  onFail: ({ id }, e) => {
+    console.error(`[media] processing ${id} failed: ${e.message}`);
+    db.prepare("UPDATE videos SET status = 'failed', error = ? WHERE id = ?").run(String(e.message).slice(0, 1000), id);
+  },
+});
+
+defineJob('video.render', {
+  lane: 'media',
+  maxAttempts: 1,
+  handler: ({ id }) => renderEdit(id),
+  onFail: ({ id }, e) => {
+    console.error(`[media] render ${id} failed: ${e.message}`);
+    db.prepare("UPDATE videos SET render_status = 'failed', render_error = ? WHERE id = ?").run(String(e.message).slice(0, 1000), id);
+  },
+});
+
+export const enqueue = (id) => enqueueJob('video.process', { id }, { dedupe: `process:${id}` });
+// A running render may be stale (renderEdit discards it by version), so only waiting renders are deduplicated.
+export const enqueueRender = (id) => enqueueJob('video.render', { id }, { dedupe: `render:${id}` });
 
 export function queueInfo() {
-  return { waiting: queue.length, current: current?.id || null, current_type: current?.type || null };
-}
-
-function push(type, id) {
-  const key = `${type}:${id}`;
-  if (queue.some((j) => j.key === key)) return;
-  // A running render may be stale (the version check discards it), so a new render is always queued.
-  if (type === 'process' && current?.key === key) return;
-  queue.push({ key, type, id });
-  pump();
-}
-
-export const enqueue = (id) => push('process', id);
-export const enqueueRender = (id) => push('render', id);
-
-async function pump() {
-  if (running) return;
-  running = true;
-  while (queue.length) {
-    const job = queue.shift();
-    current = job;
-    try {
-      if (job.type === 'render') await renderEdit(job.id);
-      else await processVideo(job.id);
-    } catch (e) {
-      console.error(`[media] ${job.type} ${job.id} failed: ${e.message}`);
-      if (job.type === 'render') {
-        db.prepare("UPDATE videos SET render_status = 'failed', render_error = ? WHERE id = ?").run(String(e.message).slice(0, 1000), job.id);
-      } else {
-        db.prepare("UPDATE videos SET status = 'failed', error = ? WHERE id = ?").run(String(e.message).slice(0, 1000), job.id);
-      }
-    }
-    current = null;
-  }
-  running = false;
+  const s = jobStats();
+  const media = s.running.find((j) => j.lane === 'media');
+  return { waiting: s.lanes.media.queued, current: media ? `${media.type} #${media.id}` : null, jobs: s };
 }
 
 async function processVideo(id) {
@@ -373,13 +362,25 @@ async function processVideo(id) {
   onLocalVideosChanged();
 }
 
-/** Re-queue anything that was mid-flight when the server last stopped. */
+/**
+ * Jobs are persistent now, so this only catches videos left waiting without a job (for example
+ * from a version before the job queue existed).
+ */
 export function resumePending() {
-  const rows = db.prepare("SELECT id FROM videos WHERE status IN ('queued', 'processing') ORDER BY created_at").all();
-  for (const r of rows) enqueue(r.id);
-  const renders = db.prepare("SELECT id FROM videos WHERE render_status IN ('queued', 'rendering') ORDER BY updated_at").all();
-  for (const r of renders) enqueueRender(r.id);
-  if (rows.length + renders.length) console.log(`[media] resumed ${rows.length} processing and ${renders.length} render job(s)`);
+  let n = 0;
+  for (const r of db.prepare("SELECT id FROM videos WHERE status IN ('queued', 'processing') ORDER BY created_at").all()) {
+    if (!jobPending(`process:${r.id}`)) {
+      enqueue(r.id);
+      n++;
+    }
+  }
+  for (const r of db.prepare("SELECT id FROM videos WHERE render_status IN ('queued', 'rendering') ORDER BY updated_at").all()) {
+    if (!jobPending(`render:${r.id}`)) {
+      enqueueRender(r.id);
+      n++;
+    }
+  }
+  if (n) console.log(`[media] queued ${n} video job(s) that had no job`);
 }
 
 export function ffmpegInfo() {

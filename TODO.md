@@ -147,6 +147,6 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 
 ## 5. Smaller follow-ups
 
-- [ ] Merge the `network-hub` branch into `main` (production already runs it).
+- [x] Merge the `network-hub` branch into `main` (production already runs it).
 - [ ] Playback: optional HLS renditions (e.g. 1080p60, 720p60, 480p) alongside the MP4 for weak connections.
-- [ ] Hairpin NAT note in docs: on a home network without NAT loopback, use the LAN address or a hosts entry.
+- [x] Hairpin NAT note in docs: on a home network without NAT loopback, use the LAN address or a hosts entry.

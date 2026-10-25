@@ -19,17 +19,26 @@ export function userToPublic(u) {
     avatar_url: remote ? u.remote_avatar_url || null : u.avatar ? `/media/avatars/${u.avatar}` : null,
     ...(remote ? { remote: true, profile_url: u.remote_profile_url || null } : {}),
     banner_url: u.banner ? `/media/avatars/${u.banner}` : null,
-    is_admin: !!u.is_admin,
+    is_admin: u.role === 'admin' || !!u.is_admin,
+    is_moderator: u.role === 'admin' || u.role === 'moderator' || !!u.is_admin,
+    role: u.role || (u.is_admin ? 'admin' : 'user'),
+    status: u.status || 'active',
     created_at: u.created_at,
   };
 }
+
+export const ROLES = ['user', 'moderator', 'admin'];
+export const STATUSES = ['active', 'suspended', 'banned'];
 
 export function attachUser(req, res, next) {
   req.user = null;
   const token = req.cookies?.[COOKIE];
   if (token) {
+    // Suspended and banned accounts lose their sessions immediately.
     const row = db
-      .prepare('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ? AND u.remote_instance_id IS NULL')
+      .prepare(
+        "SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ? AND u.remote_instance_id IS NULL AND u.status = 'active'",
+      )
       .get(token, now());
     if (row) req.user = userToPublic(row);
   }
@@ -41,10 +50,28 @@ export function requireAuth(req, res, next) {
   next();
 }
 
+export function requireModerator(req, res, next) {
+  if (!req.user) throw new HttpError(401, 'You need to be logged in to do that');
+  if (!req.user.is_moderator) throw new HttpError(403, 'Moderators only');
+  next();
+}
+
 export function requireAdmin(req, res, next) {
   if (!req.user) throw new HttpError(401, 'You need to be logged in to do that');
   if (!req.user.is_admin) throw new HttpError(403, 'Admins only');
   next();
+}
+
+/** Changes a local account's role or status, keeping the legacy is_admin flag in sync. */
+export function setUserRole(userId, role) {
+  if (!ROLES.includes(role)) throw new HttpError(400, `Role must be one of ${ROLES.join(', ')}`);
+  db.prepare('UPDATE users SET role = ?, is_admin = ? WHERE id = ?').run(role, role === 'admin' ? 1 : 0, userId);
+}
+
+export function setUserStatus(userId, status, reason = null) {
+  if (!STATUSES.includes(status)) throw new HttpError(400, `Status must be one of ${STATUSES.join(', ')}`);
+  db.prepare('UPDATE users SET status = ?, status_reason = ? WHERE id = ?').run(status, status === 'active' ? null : str(reason, 300) || null, userId);
+  if (status !== 'active') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
 }
 
 function startSession(req, res, userId) {
@@ -91,8 +118,8 @@ authRouter.post('/register', async (req, res) => {
 
   const id = newId();
   const hash = await bcrypt.hash(password, 10);
-  db.prepare('INSERT INTO users (id, username, display_name, password_hash, is_admin, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-    id, username, str(display_name, 50).trim() || username, hash, first ? 1 : 0, now(),
+  db.prepare('INSERT INTO users (id, username, display_name, password_hash, is_admin, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    id, username, str(display_name, 50).trim() || username, hash, first ? 1 : 0, first ? 'admin' : 'user', now(),
   );
   startSession(req, res, id);
   res.status(201).json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(id)) });
@@ -102,6 +129,9 @@ authRouter.post('/login', async (req, res) => {
   const { username, password } = req.body || {};
   const u = db.prepare('SELECT * FROM users WHERE username = ? AND remote_instance_id IS NULL').get(String(username || ''));
   if (!u || !(await bcrypt.compare(String(password || ''), u.password_hash))) throw new HttpError(401, 'Wrong username or password');
+  if (u.status && u.status !== 'active') {
+    throw new HttpError(403, `This account is ${u.status}${u.status_reason ? `: ${u.status_reason}` : ''}`);
+  }
   startSession(req, res, u.id);
   res.json({ user: userToPublic(u) });
 });

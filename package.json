@@ -1,6 +1,6 @@
 {
   "name": "cliptube",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Self-hosted YouTube-style video site for sharing gaming clips",
@@ -12,7 +12,9 @@
     "dev:server": "node --watch-path=server server/index.js --port 3000 --log --allow-private-federation",
     "dev:web": "vite --config web/vite.config.js",
     "build": "vite build --config web/vite.config.js",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "test": "node --test --test-concurrency=1 --test-timeout=300000 \"test/*.test.js\"",
+    "test:unit": "node --test test/unit.test.js test/jobs.test.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
