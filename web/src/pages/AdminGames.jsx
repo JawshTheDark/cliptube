@@ -105,7 +105,7 @@ function SteamGridSettings({ sgdb, onChanged }) {
   );
 }
 
-function GameRow({ game, onChange, onDelete, hubName, sgdb }) {
+function GameRow({ game, others, onChange, onDelete, onMerge, hubName, sgdb }) {
   const toast = useToast();
   const [picking, setPicking] = useState(false);
   // Games from the hub's catalog are kept up to date by the hub and changed there.
@@ -192,6 +192,22 @@ function GameRow({ game, onChange, onDelete, hubName, sgdb }) {
               <button className="btn btn-sm btn-primary" disabled={!dirty}>
                 Save
               </button>
+              {others.length > 0 && (
+                <select
+                  className="select select-sm"
+                  value=""
+                  aria-label={`Merge ${game.name} into another game`}
+                  title="The same game twice? Move this one's clips to the other and drop this one"
+                  onChange={(e) => e.target.value && onMerge(game, e.target.value)}
+                >
+                  <option value="">Merge into…</option>
+                  {others.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} ({o.id})
+                    </option>
+                  ))}
+                </select>
+              )}
               <button type="button" className="btn btn-sm" onClick={() => onDelete(game)}>
                 Delete
               </button>
@@ -231,6 +247,19 @@ export default function AdminGames() {
       setDraft({ name: '', short_name: '', aliases: '' });
       reloadGames();
       load();
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+  const merge = async (g, intoId) => {
+    const into = games.find((x) => x.id === intoId);
+    const everywhere = catalog.is_hub ? " Members' copies of it merge too, at their next sync." : '';
+    if (!window.confirm(`Merge ${g.name} into ${into.name}? Its ${g.video_count} clip(s) move to ${into.name}, and ${g.name} goes.${everywhere}`)) return;
+    try {
+      const { game } = await api(`/games/${g.id}/merge`, { method: 'POST', body: { into: intoId } });
+      setGames((list) => list.filter((x) => x.id !== g.id).map((x) => (x.id === game.id ? game : x)));
+      reloadGames();
+      toast(`Merged into ${game.name}`);
     } catch (err) {
       toast(err.message);
     }
@@ -286,8 +315,11 @@ export default function AdminGames() {
         <div className="game-rows">
           {games.map((g) => (
             <GameRow
-              key={g.id}
+              // A merge adds aliases from outside the row: start its form again from the saved game.
+              key={`${g.id}|${g.aliases.join(',')}`}
               game={g}
+              others={games.filter((x) => x.id !== g.id)}
+              onMerge={merge}
               onChange={(n) => {
                 setGames((list) => list.map((x) => (x.id === n.id ? n : x)));
                 reloadGames();

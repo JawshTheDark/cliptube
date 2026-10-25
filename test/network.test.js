@@ -58,6 +58,19 @@ test("the hub shows each member's current version, not the one it joined with", 
   assert.equal(await shown(), version);
 });
 
+test("a member's new name reaches the hub at its next sync", async () => {
+  const onHub = async () => (await A.get('/api/admin/network')).data.hub.members.find((m) => m.url === member.url)?.name;
+  assert.equal(await onHub(), 'Member B');
+  await B.patch('/api/admin/settings', { site_name: 'Bob’s Clips' });
+  await B.post('/api/admin/network/sync');
+  assert.equal(await onHub(), 'Bob’s Clips');
+  // Its clips on the hub say where they're from under the new name.
+  assert.ok((await net(A)).every((v) => v.remote.peer_name === 'Bob’s Clips'), JSON.stringify((await net(A)).map((v) => v.remote)));
+  await B.patch('/api/admin/settings', { site_name: 'Member B' });
+  await B.post('/api/admin/network/sync');
+  assert.equal(await onHub(), 'Member B');
+});
+
 test('likes, comments and subscriptions across instances', async () => {
   const remoteA = (await net(B))[0];
   const iidOnB = remoteA.remote.peer_id;
@@ -175,6 +188,54 @@ test("games travel with videos, and the hub's game catalog syncs to members", as
   assert.equal((await B.post('/api/games', { name: 'Rust' })).status, 201);
   await B.post('/api/admin/network/sync');
   assert.ok((await B.get('/api/games')).data.games.some((x) => x.id === 'rust' && !x.from_hub));
+});
+
+test("a game a member made before the hub had it becomes the hub's", async () => {
+  // B files a clip under its own Umamusume (short name "uma"), then the hub adds the same game.
+  assert.equal((await B.post('/api/games', { name: 'Umamusume: Pretty Derby', short_name: 'uma' })).status, 201);
+  await B.patch(`/api/videos/${bVideo.id}`, { game: 'uma' });
+  assert.equal((await A.post('/api/games', { name: 'Umamusume: Pretty Derby' })).status, 201);
+  await B.post('/api/admin/network/sync');
+  const games = (await B.get('/api/games')).data.games;
+  assert.ok(!games.some((g) => g.id === 'uma'), 'the copy is gone');
+  assert.equal(games.find((g) => g.id === 'umamusume-pretty-derby')?.from_hub, true);
+  assert.equal((await B.get(`/api/videos/${bVideo.id}`)).data.video.game?.id, 'umamusume-pretty-derby');
+  // The clip goes out again under the hub's id, so the hub files it with its own Umamusume clips.
+  await waitFor(async () => {
+    await A.post('/api/admin/network/sync');
+    return (await net(A)).find((v) => v.title === 'Bob on the member')?.game?.id === 'umamusume-pretty-derby';
+  }, { what: "the hub to get the clip's new game" });
+  // And a second one by the same name isn't made again.
+  const again = await B.post('/api/games', { name: 'Umamusume - Pretty Derby' });
+  assert.equal(again.status, 409);
+  assert.match(again.data.error, /already in the list/);
+});
+
+test('games merged on the hub merge on members, and members merge their own', async () => {
+  await A.post('/api/games', { name: 'Apex' });
+  await A.post('/api/games', { name: 'Apex Legends' });
+  await B.post('/api/admin/network/sync');
+  await B.patch(`/api/videos/${bVideo.id}`, { game: 'apex' });
+  const merged = await A.post('/api/games/apex/merge', { into: 'apex-legends' });
+  assert.equal(merged.status, 200, JSON.stringify(merged.data));
+  assert.ok(merged.data.game.aliases.includes('apex'), 'the old id lives on as an alias');
+  assert.equal((await A.get('/api/games/apex')).status, 200, 'and still finds the game');
+  await B.post('/api/admin/network/sync');
+  assert.ok(!(await B.get('/api/games')).data.games.some((g) => g.id === 'apex'));
+  assert.equal((await B.get(`/api/videos/${bVideo.id}`)).data.video.game?.id, 'apex-legends');
+  // The hub's games are merged on the hub, not here.
+  assert.equal((await B.post('/api/games/apex-legends/merge', { into: 'rust' })).status, 403);
+
+  // A member's own games merge here.
+  await B.post('/api/games', { name: 'Testgame One' });
+  await B.post('/api/games', { name: 'Testgame Two' });
+  await B.patch(`/api/videos/${bVideo.id}`, { game: 'testgame-one' });
+  assert.equal((await B.post('/api/games/testgame-one/merge', { into: 'testgame-one' })).status, 400);
+  assert.equal((await B.post('/api/games/testgame-one/merge', { into: 'nope' })).status, 404);
+  const own = await B.post('/api/games/testgame-one/merge', { into: 'testgame-two' });
+  assert.equal(own.status, 200);
+  assert.equal((await B.get(`/api/videos/${bVideo.id}`)).data.video.game?.id, 'testgame-two');
+  assert.ok(!(await B.get('/api/games')).data.games.some((g) => g.id === 'testgame-one'));
 });
 
 test('blocking, network switches and hub moderation', async () => {

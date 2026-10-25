@@ -95,6 +95,32 @@ function deleteGame(g) {
 }
 
 /**
+ * Files everything under `from` under `into` instead (clips, live channels and streams) and deletes `from`.
+ * Where `into` is changed here (this site's own game, or any game on a hub), `from`'s id and aliases become
+ * aliases of it, so links and other sites' clips under the old id still find it; on a hub that also
+ * tells members to merge their copy at their next sync.
+ */
+export function mergeGame(from, into, user = null) {
+  if (from.id === into.id) throw new HttpError(400, 'Pick another game to merge into');
+  db.prepare('UPDATE videos SET game_id = ? WHERE game_id = ?').run(into.id, from.id);
+  db.prepare('UPDATE live_channels SET game_id = ? WHERE game_id = ?').run(into.id, from.id);
+  db.prepare('UPDATE live_streams SET game_id = ? WHERE game_id = ?').run(into.id, from.id);
+  if (into.source !== 'hub' || isHub()) {
+    const aliases = cleanAliases([...aliasList(into), from.id, ...aliasList(from)], into.id);
+    db.prepare('UPDATE games SET aliases = ? WHERE id = ?').run(aliases, into.id);
+  }
+  db.prepare('DELETE FROM games WHERE id = ?').run(from.id);
+  for (const f of [from.artwork, from.logo, from.hero]) if (f) try { fs.unlinkSync(path.join(DIRS.thumbs, f)); } catch {}
+  // Changed clips go out again, so other sites file them under the game's new id too.
+  for (const vid of touchGameVideos(into.id)) indexVideo(vid);
+  logAction(user, 'game.merge', { targetType: 'game', targetId: into.id, targetLabel: into.name, details: `${from.name} (${from.id}) merged in` });
+  return db.prepare('SELECT * FROM games WHERE id = ?').get(into.id);
+}
+
+/** A name with case, accents and punctuation set aside, in full (ids stop at 30 characters, names don't). */
+const nameKey = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
  * The hub's catalog, applied on a member: its games are added or updated (the hub's version wins), and
  * games that came from it but are gone there are deleted here as well. Games made here stay.
  */
@@ -142,11 +168,24 @@ onHubGames((list, hubUrl) => {
       changed++;
     }
   }
-  for (const g of db.prepare("SELECT * FROM games WHERE source = 'hub'").all()) {
-    if (!seen.has(g.id)) {
-      deleteGame(g);
-      changed++;
-    }
+  const hubGames = db.prepare("SELECT * FROM games WHERE source = 'hub'").all();
+  for (const g of hubGames) {
+    if (seen.has(g.id)) continue;
+    // Merged into another game on the hub, which then lists it as an alias: its clips go there too.
+    const into = hubGames.find((h) => seen.has(h.id) && aliasList(h).includes(g.id));
+    if (into) mergeGame(g, into);
+    else deleteGame(g);
+    changed++;
+  }
+  // A game made here that the hub has too, under the same name or one the hub's game is known by, becomes
+  // the hub's (two of one game would split its clips here and across the network).
+  const current = db.prepare("SELECT * FROM games WHERE source = 'hub'").all();
+  for (const g of db.prepare("SELECT * FROM games WHERE COALESCE(source, '') != 'hub'").all()) {
+    const into = current.find((h) => nameKey(h.name) === nameKey(g.name)) || current.find((h) => aliasList(h).includes(g.id) || aliasList(g).includes(h.id));
+    if (!into) continue;
+    mergeGame(g, into);
+    console.log(`[games] ${g.name} (${g.id}) merged into the hub's ${into.name} (${into.id})`);
+    changed++;
   }
   if (changed) console.log(`[games] ${changed} change(s) from the hub's catalog`);
 });
@@ -187,6 +226,8 @@ export function createGame(b, user) {
   const id = slugify(b.id || b.short_name || name);
   if (!id) throw new HttpError(400, 'The name needs at least one letter or number');
   if (db.prepare('SELECT 1 FROM games WHERE id = ?').get(id)) throw new HttpError(409, 'That game is already in the list');
+  const same = db.prepare('SELECT * FROM games').all().find((g) => nameKey(g.name) === nameKey(name));
+  if (same) throw new HttpError(409, `${same.name} is already in the list (${same.id})`);
   db.prepare('INSERT INTO games (id, name, short_name, aliases, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
     id, name, str(b.short_name, 30).trim() || null, cleanAliases(b.aliases, id), user?.id || null, now(),
   );
@@ -343,6 +384,16 @@ gamesRouter.delete('/:id/artwork', requireModerator, (req, res) => {
   if (g.artwork) try { fs.unlinkSync(path.join(DIRS.thumbs, g.artwork)); } catch {}
   db.prepare('UPDATE games SET artwork = NULL WHERE id = ?').run(g.id);
   res.json({ game: serializeGame(db.prepare('SELECT * FROM games WHERE id = ?').get(g.id), true) });
+});
+
+// Two entries for one game: the first one's clips move to the second, and the first goes.
+gamesRouter.post('/:id/merge', requireModerator, (req, res) => {
+  const g = db.prepare('SELECT * FROM games WHERE id = ?').get(String(req.params.id));
+  if (!g) throw new HttpError(404, 'Game not found');
+  ownGame(g);
+  const into = db.prepare('SELECT * FROM games WHERE id = ?').get(String(req.body?.into || ''));
+  if (!into) throw new HttpError(404, 'The game to merge into was not found');
+  res.json({ game: serializeGame(mergeGame(g, into, req.user), true) });
 });
 
 gamesRouter.delete('/:id', requireModerator, (req, res) => {

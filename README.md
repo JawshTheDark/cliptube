@@ -297,7 +297,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 ## Status
 
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.10.1**); smaller ideas are tracked in
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.10.2**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/cliptube/releases).
 

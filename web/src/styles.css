@@ -1229,6 +1229,13 @@ h3 {
   font-size: 14px;
   width: 100%;
 }
+/* A select that sits among small buttons, like Merge into… in Admin, Games. */
+.select.select-sm {
+  width: auto;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 13px;
+}
 .input:focus,
 .textarea:focus,
 .select:focus {

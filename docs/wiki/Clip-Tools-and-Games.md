@@ -54,6 +54,10 @@ Uploads and video details have a **Game** field. Each game has a page at `/g/<id
 viewed or top rated) and its own feed (`/feeds/game/<id>.atom`), and **Games** in the sidebar lists them all.
 The game travels with the video across the network.
 
+**The same game twice?** Pick the other one under **Merge into…** on its row: its clips move there, it goes,
+and its id and names become the remaining game's aliases, so old links and other servers' clips still find it.
+A game can't be added twice under the same name.
+
 ## The network's game catalog
 
 In a network, the **hub keeps the catalog**:
@@ -62,6 +66,9 @@ In a network, the **hub keeps the catalog**:
 - when the hub changes a game, members follow; when it deletes one, it disappears from every member's list
   (the clips stay, without a game);
 - members can still add games of their own;
+- a game a member made before the hub had it (the same name, or a name the hub's game is also known by) becomes
+  the hub's at the member's next sync: its clips move to the hub's game and the member's copy goes;
+- when the hub merges two games, members merge theirs too;
 - the hub's games are locked on members (*The hub keeps this game up to date; it is changed or deleted there*).
 
 ## Game artwork from SteamGridDB

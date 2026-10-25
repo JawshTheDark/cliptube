@@ -1047,6 +1047,12 @@ networkProtocolRouter.post('/api/hub/join', requireHub, async (req, res) => {
 
 networkProtocolRouter.get('/api/hub/status', requireHub, (req, res) => {
   const inst = memberAuth(req);
+  // Members say their current name each round, so a renamed site shows under its clips on every site soon after.
+  const name = str(req.query.name, 60).trim();
+  const description = req.query.description !== undefined ? str(req.query.description, 500) : inst.description;
+  if (name && (name !== inst.name || description !== inst.description)) {
+    db.prepare('UPDATE instances SET name = ?, description = ? WHERE id = ?').run(name, description, inst.id);
+  }
   res.json({ status: inst.hub_status, note: inst.hub_note || null, ...hubSummary() });
 });
 
@@ -1614,7 +1620,8 @@ export async function syncFromHub({ full = false } = {}) {
   try {
     let st;
     try {
-      st = await fetchJson(`${s.network_hub_url}/api/hub/status`, { token: s.network_hub_token });
+      const me = new URLSearchParams({ name: s.site_name || '', description: s.instance_description || '' });
+      st = await fetchJson(`${s.network_hub_url}/api/hub/status?${me}`, { token: s.network_hub_token });
     } catch (e) {
       if (e.status === 401 || e.status === 404) {
         setSetting('network_status', 'removed');
