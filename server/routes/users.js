@@ -10,6 +10,7 @@ import { HttpError, now, str, clampInt } from '../util.js';
 import { convertImage } from '../media.js';
 import { videoSelect, serializeVideo, LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapListRow, storageFor, parseSupportLinks } from './videos.js';
 import { NETWORK_VISIBLE, serializeRemote, networkActive } from '../network.js';
+import { indexVideosOf } from '../search.js';
 
 /** Local channels only; people from other instances have placeholder accounts with no channel page here. */
 function channelByUsername(username) {
@@ -191,6 +192,7 @@ meRouter.patch('/', async (req, res) => {
   if (!display_name) throw new HttpError(400, 'Display name cannot be empty');
   const bio = b.bio !== undefined ? str(b.bio, 1000) : u.bio;
   db.prepare('UPDATE users SET display_name = ?, bio = ? WHERE id = ?').run(display_name, bio, u.id);
+  if (display_name !== u.display_name) indexVideosOf(u.id);
   if (b.history_paused !== undefined) db.prepare('UPDATE users SET history_paused = ? WHERE id = ?').run(b.history_paused ? 1 : 0, u.id);
   if (b.comment_mode !== undefined) {
     if (!['open', 'hold_all'].includes(b.comment_mode)) throw new HttpError(400, 'Comment mode must be open or hold_all');

@@ -7,7 +7,7 @@ import { compact, displayed, formatDuration, timeAgo, usePref } from '../util.js
 /**
  * variant: 'grid' (home / channel), 'compact' (watch sidebar), 'list' (search results)
  */
-export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
+export function VideoCard({ video: v, variant = 'grid', showChannel = true, extra = null }) {
   const [communityPref] = usePref('community');
   const shown = displayed(v, communityPref);
   const [preview, setPreview] = useState(false);
@@ -108,17 +108,23 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
             </div>
           )}
           {variant === 'list' && v.description && <div className="card-desc">{v.description}</div>}
+          {v.reason && (
+            <div className="card-reason" title="Why you're seeing this">
+              <Icon name="info" /> {v.reason}
+            </div>
+          )}
         </div>
+        {extra}
       </div>
     </article>
   );
 }
 
-export function VideoGrid({ videos, showChannel = true }) {
+export function VideoGrid({ videos, showChannel = true, renderExtra = null }) {
   return (
     <div className="video-grid">
       {videos.map((v) => (
-        <VideoCard key={v.id} video={v} showChannel={showChannel} />
+        <VideoCard key={v.id} video={v} showChannel={showChannel} extra={renderExtra ? renderExtra(v) : null} />
       ))}
     </div>
   );

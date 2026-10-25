@@ -7,6 +7,7 @@ import { db, getSettings } from './db.js';
 import { DIRS } from './config.js';
 import { onLocalVideosChanged } from './network.js';
 import { defineJob, enqueueJob, jobStats, jobPending } from './jobs.js';
+import { maybeNotifyUpload } from './notify.js';
 
 // Bundled binaries by default; set FFMPEG_PATH / FFPROBE_PATH to use a system build (e.g. one with NVENC).
 export const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
@@ -367,6 +368,7 @@ export async function processVideo(id) {
   console.log(`[media] ${id}: ready (${result.encoder}, ${(size / 1048576).toFixed(1)} MB)`);
   onLocalVideosChanged();
   queueRenditions(id);
+  maybeNotifyUpload(id);
 }
 
 /**

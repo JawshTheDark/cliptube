@@ -11,7 +11,63 @@ import { useToast } from '../components/Toast.jsx';
 import { ReportButton } from '../components/ReportDialog.jsx';
 import { ClipDialog, TimeField } from '../components/ClipDialog.jsx';
 import { ContributeMenu, DownloadMenu, SupportLinks } from '../components/WatchExtras.jsx';
-import { compact, displayed, formatDate, formatDuration, formatPrecise, parseTimestamp, copyText, isAnonymous, timeAgo, urlSeconds, usePref } from '../util.js';
+import { cameFrom, compact, displayed, formatDate, formatDuration, formatPrecise, parseTimestamp, copyText, isAnonymous, timeAgo, urlSeconds, usePref } from '../util.js';
+
+/**
+ * Reports how much of the video was played (seconds, and which 2% parts) for the creator's analytics.
+ * Only counts; nothing about the viewer. Off in anonymous mode.
+ */
+function useWatchReport(id, videoRef, enabled) {
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!enabled || !el || isAnonymous()) return;
+    let seconds = 0;
+    let last = null;
+    const buckets = new Set();
+    const sent = new Set();
+    const tick = () => {
+      const t = el.currentTime;
+      if (last !== null && !el.paused) {
+        const dt = t - last;
+        if (dt > 0 && dt < 2) seconds += dt;
+      }
+      last = t;
+      if (el.duration > 0) {
+        const b = Math.min(49, Math.floor((t / el.duration) * 50));
+        if (!sent.has(b)) buckets.add(b);
+      }
+    };
+    const reset = () => {
+      last = null;
+    };
+    const send = () => {
+      if (seconds < 1 && !buckets.size) return;
+      const body = JSON.stringify({ seconds, buckets: [...buckets] });
+      for (const b of buckets) sent.add(b);
+      seconds = 0;
+      buckets.clear();
+      const url = `/api/videos/${id}/watch`;
+      if (!navigator.sendBeacon?.(url, new Blob([body], { type: 'application/json' }))) {
+        fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/json' }, keepalive: true }).catch(() => {});
+      }
+    };
+    const onVis = () => document.visibilityState === 'hidden' && send();
+    el.addEventListener('timeupdate', tick);
+    el.addEventListener('seeking', reset);
+    el.addEventListener('ended', send);
+    window.addEventListener('pagehide', send);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      send();
+      el.removeEventListener('timeupdate', tick);
+      el.removeEventListener('seeking', reset);
+      el.removeEventListener('ended', send);
+      window.removeEventListener('pagehide', send);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, enabled]);
+}
 
 /** Shown to the uploader and moderators when a video is hidden or removed. */
 function ModerationBanner({ video, isOwner }) {
@@ -258,7 +314,9 @@ export default function Watch() {
       .then((r) => {
         if (dead) return;
         setVideo(r.video);
-        return api(`/videos/${id}/view`, { method: 'POST', body: { anonymous: isAnonymous() } }).then((v) => !dead && setVideo((x) => (x ? { ...x, views: v.views } : x)));
+        return api(`/videos/${id}/view`, { method: 'POST', body: { anonymous: isAnonymous(), from: cameFrom(), ref: document.referrer || '' } }).then(
+          (v) => !dead && setVideo((x) => (x ? { ...x, views: v.views } : x)),
+        );
       })
       .catch((e) => !dead && setError(e));
     api(`/videos/${id}/related`)
@@ -302,6 +360,8 @@ export default function Watch() {
       toast(e.message);
     }
   };
+
+  useWatchReport(id, videoRef, video?.status === 'ready' && !!video?.video_url);
 
   const onProgress = useCallback(
     (pos) => {

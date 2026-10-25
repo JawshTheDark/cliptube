@@ -21,6 +21,15 @@ import { HttpError, escapeHtml } from './util.js';
 import { gamesRouter } from './games.js';
 import { clipsRouter } from './clips.js';
 import { watchingRouter, watchingMediaRouter } from './watching.js';
+import { emailPublicRouter, mailAdminRouter, notificationsRouter, startNotifyCleanup } from './notify.js';
+import { mailConfigured } from './mail.js';
+import { feedsRouter } from './feeds.js';
+import { searchRouter, startSearchSync } from './search.js';
+import { recommendRouter } from './recommend.js';
+import { analyticsRouter } from './stats.js';
+import { LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapListRow } from './routes/videos.js';
+import { NETWORK_VISIBLE } from './network.js';
+import { findGame, gameSlugs, networkGameWhere } from './games.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -48,6 +57,7 @@ app.get('/api/site', (req, res) => {
     registration_mode: mode,
     allow_registration: mode !== 'closed',
     show_dislikes: s.show_dislikes === 'true',
+    email: mailConfigured(s),
     has_terms: !!s.legal_terms.trim(),
     has_legal: !!(s.legal_contact_email || s.legal_dmca_agent || s.legal_rules || s.legal_terms),
     transparency: s.legal_transparency_public === 'true',
@@ -61,6 +71,11 @@ app.get('/api/site', (req, res) => {
 app.use(networkProtocolRouter); // /.well-known/cliptube, /api/hub/*, /api/network/{verify,feed,inbox}
 app.use('/api', legalPublicRouter); // /api/legal, /api/transparency
 app.use('/api/auth', authRouter);
+app.use('/api/auth', emailPublicRouter); // verify-email, forgot-password, reset-password
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/search', searchRouter({ LOCAL_LIST_COLS, REMOTE_LIST_COLS, NETWORK_VISIBLE, mapListRow, networkActive, findGame, gameSlugs, networkGameWhere }));
+app.use('/api/feed', recommendRouter({ LOCAL_LIST_COLS, REMOTE_LIST_COLS, NETWORK_VISIBLE, mapListRow, networkActive }));
+app.use('/api/studio/analytics', analyticsRouter);
 app.use('/api/videos', videosRouter);
 app.use('/api/games', gamesRouter);
 app.use('/api', clipsRouter); // /api/videos/:id/clip, /api/videos/:id/exports, /api/exports/:id
@@ -73,10 +88,12 @@ app.use('/api/mod', modRouter);
 app.use('/api/network', networkRouter);
 app.use('/api/admin/network', networkAdminRouter);
 app.use('/api/admin/legal', legalAdminRouter);
+app.use('/api/admin/mail', mailAdminRouter);
 app.use('/api/admin', adminRouter);
 app.use('/media', watchingMediaRouter); // HLS, federation MP4, captions, originals
 app.use('/media', mediaRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
+app.use('/feeds', feedsRouter); // RSS and Atom
 
 // ---- frontend ---------------------------------------------------------------
 
@@ -114,6 +131,8 @@ function ogTags(v, settings, req) {
 }
 
 if (fs.existsSync(indexFile)) {
+  // The service worker (web push) must always be fetched fresh.
+  app.get('/sw.js', (req, res) => res.sendFile(path.join(dist, 'sw.js'), { headers: { 'Cache-Control': 'no-cache', 'Content-Type': 'text/javascript; charset=utf-8' } }));
   app.use(express.static(dist, { index: false, maxAge: '1y', immutable: true }));
   app.get('/{*splat}', (req, res) => {
     const settings = getSettings();
@@ -157,6 +176,8 @@ for (const f of fs.readdirSync(DIRS.tmp)) {
   try { fs.unlinkSync(path.join(DIRS.tmp, f)); } catch {}
 }
 startJobs();
+startNotifyCleanup();
+startSearchSync();
 resumePending();
 startNetwork();
 

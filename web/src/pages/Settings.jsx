@@ -172,6 +172,7 @@ function MoreSettings() {
   };
   return (
     <>
+      <NotificationSettings />
       <ViewingSettings />
       <SupportLinksSettings initial={s.support_links || []} />
       <CommentSettings s={s} patch={patch} setS={setS} />
@@ -242,6 +243,161 @@ function CommentSettings({ s, patch, setS }) {
             </span>
           ))}
         </div>
+      )}
+    </section>
+  );
+}
+
+const urlB64ToUint8 = (s) => {
+  const raw = atob((s + '='.repeat((4 - (s.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+};
+
+function NotificationSettings() {
+  const toast = useToast();
+  const [n, setN] = useState(null);
+  const [email, setEmail] = useState('');
+  const [pushOn, setPushOn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const pushSupported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && window.isSecureContext;
+  useEffect(() => {
+    api('/notifications/settings')
+      .then((r) => {
+        setN(r);
+        setEmail(r.email || '');
+      })
+      .catch(() => {});
+    if (pushSupported) {
+      navigator.serviceWorker
+        .getRegistration('/')
+        .then((reg) => reg?.pushManager.getSubscription())
+        .then((sub) => setPushOn(!!sub))
+        .catch(() => {});
+    }
+  }, [pushSupported]);
+  if (!n) return null;
+  const toggle = async (channel, kind, on) => {
+    const list = on ? [...new Set([...n.prefs[channel], kind])] : n.prefs[channel].filter((k) => k !== kind);
+    try {
+      const r = await api('/notifications/settings', { method: 'PATCH', body: { [channel]: list } });
+      setN((x) => ({ ...x, prefs: r.prefs }));
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+  const enablePush = async () => {
+    setBusy(true);
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') throw new Error('Notifications are blocked for this site in your browser');
+      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(n.push_key) });
+      await api('/notifications/push', { method: 'POST', body: sub.toJSON() });
+      setPushOn(true);
+      toast('Push notifications are on for this device');
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const disablePush = async () => {
+    setBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.getRegistration('/');
+      const sub = await reg?.pushManager.getSubscription();
+      if (sub) {
+        await api('/notifications/push', { method: 'DELETE', body: { endpoint: sub.endpoint } }).catch(() => {});
+        await sub.unsubscribe();
+      }
+      setPushOn(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveEmail = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const r = await api('/notifications/email', { method: 'PUT', body: { email } });
+      setN((x) => ({ ...x, email: r.email, email_verified: r.email_verified }));
+      toast(r.sent ? 'Check your inbox for a confirmation link' : 'Email address removed');
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card-panel" id="notifications">
+      <h2>Notifications</h2>
+      <p className="hint">Everything shows up under the bell. Pick what else reaches you as a push notification or an email.</p>
+      <div className="table-wrap">
+        <table className="table notif-prefs">
+          <thead>
+            <tr>
+              <th />
+              <th>Push</th>
+              <th>Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(n.kinds).map(([k, label]) => (
+              <tr key={k}>
+                <td>{label}</td>
+                <td>
+                  <input type="checkbox" checked={n.prefs.push.includes(k)} onChange={(e) => toggle('push', k, e.target.checked)} aria-label={`${label} by push`} />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={n.prefs.email.includes(k)}
+                    disabled={!n.email_available}
+                    onChange={(e) => toggle('email', k, e.target.checked)}
+                    aria-label={`${label} by email`}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <h3 className="sub-h">Push on this device</h3>
+      {!pushSupported ? (
+        <p className="hint">This browser can't receive push notifications here (they need HTTPS and a browser that supports them).</p>
+      ) : pushOn ? (
+        <div className="row-actions">
+          <span className="badge ok">On</span>
+          <button className="btn btn-sm" onClick={disablePush} disabled={busy}>
+            Turn off
+          </button>
+          <button className="btn btn-sm btn-ghost" onClick={() => api('/notifications/test', { method: 'POST' }).then(() => toast('Sent a test notification'))}>
+            Send a test
+          </button>
+        </div>
+      ) : (
+        <button className="btn" onClick={enablePush} disabled={busy}>
+          <Icon name="bell" /> Turn on push notifications
+        </button>
+      )}
+      <h3 className="sub-h">Email</h3>
+      {n.email_available ? (
+        <form onSubmit={saveEmail} className="field-row align-end">
+          <div className="field grow">
+            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address" />
+            <span className="hint">
+              {n.email ? (n.email_verified ? 'Confirmed. Also used for password resets.' : 'Not confirmed yet: open the link we emailed you.') : 'Optional. Used for the emails you pick above and for password resets.'}
+            </span>
+          </div>
+          <div className="field">
+            <button className="btn" disabled={busy || email === (n.email || '')}>
+              {email ? 'Save' : 'Remove'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p className="hint">This site has no email set up, so notifications stay in the app and push.</p>
       )}
     </section>
   );

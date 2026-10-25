@@ -34,6 +34,8 @@ import { HttpError, now, str, sha256, clampInt, parseTags, newId } from './util.
 import { requireAuth, requireAdmin } from './auth.js';
 import { intakeComment, intakeLike } from './intake.js';
 import { createReport } from './reports.js';
+import { notifyComment, notifyRemoteUpload } from './notify.js';
+import { indexNetworkVideo } from './search.js';
 
 export const PROTOCOL = 3;
 const KEY_TTL = 24 * 3600_000;
@@ -556,9 +558,15 @@ const UPSERT_VIDEO = `INSERT INTO network_videos (instance_id, remote_id, title,
     uploader_avatar_url = excluded.uploader_avatar_url, uploader_url = excluded.uploader_url, fetched_at = excluded.fetched_at`;
 
 function upsertVideo(instanceId, c, t, instanceUrl = null) {
+  const isNew = !db.prepare('SELECT 1 FROM network_videos WHERE instance_id = ? AND remote_id = ?').get(instanceId, c.remote_id);
   db.prepare(UPSERT_VIDEO).run(instanceId, c.remote_id, c.title, c.description, c.tags, c.duration, c.width, c.height, c.views, c.likes,
     c.created_at, c.updated_at, c.thumbnail_url, c.video_url, c.watch_url, c.uploader_username, c.uploader_display_name,
     c.uploader_avatar_url, c.uploader_url, t, c.game_slug, c.game_name);
+  indexNetworkVideo(instanceId, c.remote_id);
+  // People here subscribed to that channel hear about new uploads.
+  if (isNew && db.prepare('SELECT 1 FROM network_subscriptions WHERE instance_id = ? AND username = ? LIMIT 1').get(instanceId, c.uploader_username)) {
+    notifyRemoteUpload(instanceId, c.remote_id);
+  }
   // A video a followed block list hides stays hidden when it comes back.
   const url = instanceUrl || instById(instanceId)?.url;
   const hide = db
@@ -1715,6 +1723,7 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
       db.prepare('INSERT INTO comments (id, video_id, user_id, parent_id, body, status, held_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
         id, v.id, actor.id, parentId, body, verdict.status, verdict.status === 'held' ? verdict.reason : null, t,
       );
+      if (verdict.status === 'visible') notifyComment(id);
       return res.status(201).json({
         comment: publicComment(db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(id), v.user_id),
         held: verdict.status === 'held',

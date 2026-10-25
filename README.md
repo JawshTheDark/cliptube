@@ -21,6 +21,7 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 - **Privacy**: pause history, anonymous mode, download all your data, delete your account
 - **Clip tools**: clip a moment into a new video, GIF and MP4 export, looping share links, games with their own pages, side-by-side compare
 - **Watching**: adaptive streaming with a source-quality rung, captions, skippable sponsor and intro parts, community titles and thumbnails, original downloads, support links
+- **Discovery**: RSS/Atom feeds, notifications (in-app, web push, optional email), a "For you" feed that explains itself, a vertical clips tab, full-text search with filters, creator analytics
 - Keyboard shortcuts: `k` play/pause, `j`/`l` seek 10s, arrows seek 5s, `f` fullscreen, `t` theater, `m` mute, `0-9` jump
 
 ## Run it
@@ -80,6 +81,25 @@ Open it from Studio (scissors icon), the video details page, or the Editor butto
 - **Community titles and thumbnails.** Viewers suggest a plainer title or pick a frame, and vote. People who
   turn on *Community titles and thumbnails* in Settings see the most-voted version everywhere; the uploader
   can adopt a suggestion as the real title or thumbnail.
+
+## Finding clips and staying up to date
+
+- **Feeds.** Atom and RSS for the whole site (`/feeds/videos.atom`), each channel (`/feeds/channel/<name>.atom`)
+  and each game (`/feeds/game/<id>.atom`); swap `.atom` for `.rss`. Pages link them for feed readers, and
+  entries carry the thumbnail and the MP4.
+- **Notifications.** The bell shows new uploads from channels you subscribe to (also on other instances),
+  replies, @mentions, comments on your videos and moderation decisions. Settings → *Notifications* picks which
+  of those also arrive as web push on a device or by email.
+- **Email (optional).** Admin → Overview → *Email*: an SMTP server (STARTTLS, TLS or a local relay) with a test
+  button. With it, people can confirm an address, receive the emails they chose and reset a forgotten password.
+- **Home.** *All* stays newest first. *For you* (signed in) picks from channels you follow and games and tags
+  you like, says why on every card, and has *Not interested*, *More/Less of this game* and *More/Less from this
+  channel*, plus *Hide watched*. *Vertical* collects clips that are taller than wide, and *Keep vertical clips in
+  their own tab* leaves them out of the main feed.
+- **Search** ranks by relevance (title, tags, game, channel, description) with filters for length, upload date,
+  shape, game and where a clip is hosted. Put words in quotes for an exact phrase.
+- **Analytics** (Studio → *Analytics*): views and watch time per day, where views came from, top videos, and a
+  retention curve per video. Only counts are stored, never who watched; anonymous mode sends nothing.
 
 ## Gaming clip tools
 

@@ -167,7 +167,19 @@ export function setAnonymous(on) {
 }
 
 /** Per-browser viewing preferences (skip mode, community titles, quality). */
-const PREF_DEFAULTS = { skip: 'ask', community: 'off', quality: 'auto', captions: 'off' };
+const PREF_DEFAULTS = { skip: 'ask', community: 'off', quality: 'auto', captions: 'off', hide_vertical: 'off', hide_watched: 'off' };
+
+/** Which page of this site the viewer came from (for creator analytics), or null on a fresh page load. */
+export function cameFrom() {
+  const p = window.__ctPrevPath;
+  if (!p) return null;
+  const rules = [
+    [/^\/$/, 'home'], [/^\/trending/, 'trending'], [/^\/results/, 'search'], [/^\/c\//, 'channel'], [/^\/watch\//, 'watch'],
+    [/^\/subscriptions/, 'subscriptions'], [/^\/network/, 'network'], [/^\/g\//, 'game'], [/^\/history/, 'history'], [/^\/liked/, 'liked'],
+    [/^\/notifications/, 'notifications'], [/^\/studio/, 'studio'], [/^\/compare/, 'compare'],
+  ];
+  return rules.find(([re]) => re.test(p))?.[1] || null;
+}
 export function getPref(key) {
   try {
     return localStorage.getItem(`ct_pref_${key}`) || PREF_DEFAULTS[key];

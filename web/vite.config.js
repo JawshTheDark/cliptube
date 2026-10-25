@@ -15,6 +15,7 @@ export default defineConfig({
       '/api': { target: 'http://localhost:3000', changeOrigin: false },
       '/media': { target: 'http://localhost:3000', changeOrigin: false },
       '/.well-known': { target: 'http://localhost:3000', changeOrigin: false },
+      '/feeds': { target: 'http://localhost:3000', changeOrigin: false },
     },
   },
   build: {

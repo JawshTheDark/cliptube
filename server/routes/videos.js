@@ -14,6 +14,9 @@ import { networkActive, serializeRemote, NETWORK_VISIBLE, acceptsFromNetwork, pu
 import { findGame, gameSlugs, networkGameWhere, resolveGame } from '../games.js';
 import { removeRenditionFiles, renditionUrls } from '../renditions.js';
 import { canDownloadOriginal, communityFor, originalFile, publishedCaptions, publishedSegments, removeWatchingFiles } from '../watching.js';
+import { maybeNotifyUpload, notifyComment } from '../notify.js';
+import { indexVideo } from '../search.js';
+import { recordView, recordWatch, viewSource } from '../stats.js';
 
 export const videosRouter = Router();
 
@@ -194,6 +197,7 @@ function removeFiles(v) {
   try { fs.rmSync(editorDir(v.id), { recursive: true, force: true }); } catch {}
   removeRenditionFiles(v.id);
   removeWatchingFiles(v.id);
+  indexVideo(v.id); // the row is gone, so this drops it from search
 }
 export { removeFiles as removeVideoFiles };
 
@@ -251,6 +255,8 @@ function likeParam(q) {
 videosRouter.get('/', (req, res) => {
   const { q, tag, sort = 'new', user } = req.query;
   const game = req.query.game ? findGame(req.query.game) || { id: String(req.query.game), aliases: '' } : null;
+  // Vertical clips (taller than wide) get their own tab; the main feed can leave them out.
+  const shape = req.query.shape === 'vertical' ? '>' : req.query.shape === 'landscape' ? '<=' : null;
   const limit = clampInt(req.query.limit, 1, 100, 24);
   const offset = clampInt(req.query.offset, 0, 1_000_000, 0);
   let scope = ['local', 'network', 'all'].includes(req.query.scope) ? req.query.scope : 'local';
@@ -281,6 +287,7 @@ videosRouter.get('/', (req, res) => {
       where.push('v.game_id = ?');
       params.push(game.id);
     }
+    if (shape) where.push(`v.height ${shape} v.width`);
     parts.push(`SELECT ${LOCAL_LIST_COLS} FROM videos v JOIN users u ON u.id = v.user_id WHERE ${where.join(' AND ')}`);
   }
 
@@ -306,6 +313,7 @@ videosRouter.get('/', (req, res) => {
       where.push(w.sql);
       params.push(...w.params);
     }
+    if (shape) where.push(`r.height ${shape} r.width`);
     parts.push(`SELECT ${REMOTE_LIST_COLS} FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE ${where.join(' AND ')}`);
   }
 
@@ -369,6 +377,7 @@ videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
     "INSERT INTO videos (id, user_id, title, description, visibility, status, original_name, original_path, size_bytes, created_at, updated_at, game_id, allow_clips) VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?)",
   ).run(id, req.user.id, title, str(req.body.description), visibility, req.file.originalname.slice(0, 255), originalName, req.file.size, t, t, gameId, allowClips);
   setTags(id, parseTags(req.body.tags));
+  indexVideo(id);
   enqueue(id);
   res.status(201).json({ video: fullVideo(id, req.user) });
 });
@@ -410,7 +419,9 @@ videosRouter.patch('/:id', requireAuth, (req, res) => {
   db.prepare(
     'UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, game_id = ?, allow_clips = ?, allow_original_download = ?, updated_at = ? WHERE id = ?',
   ).run(title, description, visibility, federate, commentMode, gameId, allowClips, allowOriginal, now(), v.id);
+  if (visibility === 'public') maybeNotifyUpload(v.id);
   if (b.tags !== undefined) setTags(v.id, parseTags(b.tags));
+  indexVideo(v.id);
   res.json({ video: fullVideo(v.id, req.user) });
 });
 
@@ -599,6 +610,11 @@ videosRouter.post('/:id/view', (req, res) => {
   if (!prev || t - prev.viewed_at > 6 * 3600 * 1000) {
     db.prepare('INSERT INTO views (video_id, viewer_key, viewed_at) VALUES (?, ?, ?) ON CONFLICT(video_id, viewer_key) DO UPDATE SET viewed_at = excluded.viewed_at').run(v.id, key, t);
     db.prepare('UPDATE videos SET views = views + 1 WHERE id = ?').run(v.id);
+    let selfHost = req.get('host') || '';
+    try {
+      if (getSettings().public_url) selfHost = new URL(getSettings().public_url).hostname;
+    } catch {}
+    recordView(v.id, viewSource({ from: req.body?.from, ref: req.body?.ref }, selfHost.replace(/:\d+$/, '')));
   }
   if (recordsHistory(req)) {
     db.prepare(
@@ -606,6 +622,13 @@ videosRouter.post('/:id/view', (req, res) => {
     ).run(req.user.id, v.id, t);
   }
   res.json({ views: db.prepare('SELECT views FROM videos WHERE id = ?').get(v.id).views });
+});
+
+// Playback report for analytics (watch time and retention), sent by the player as a beacon.
+videosRouter.post('/:id/watch', (req, res) => {
+  const v = getViewable(req.params.id, req.user);
+  recordWatch(v, req.body, req.ip || '');
+  res.status(204).end();
 });
 
 videosRouter.post('/:id/progress', requireAuth, (req, res) => {
@@ -687,6 +710,7 @@ videosRouter.patch('/:id/comments/:cid', requireAuth, (req, res) => {
     if (!canModerateComments(v, req.user)) throw new HttpError(403, 'Only the uploader and moderators can approve comments');
     if (b.status !== 'visible') throw new HttpError(400, 'Comments can only be approved; delete them to remove');
     db.prepare("UPDATE comments SET status = 'visible', held_reason = NULL WHERE id = ?").run(c.id);
+    notifyComment(c.id);
     if (req.user.id !== v.user_id) logAction(req.user, 'comment.approve', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });
   }
   if (b.pinned !== undefined || b.hearted !== undefined) {
@@ -715,6 +739,7 @@ videosRouter.post('/:id/comments', requireAuth, (req, res) => {
     id, v.id, req.user.id, parentId, body, verdict.status, verdict.status === 'held' ? verdict.reason : null, now(),
   );
   const c = db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(id);
+  if (verdict.status === 'visible') notifyComment(id);
   res.status(201).json({ comment: serializeComment(c, req.user, v), held: verdict.status === 'held', held_reason: verdict.status === 'held' ? verdict.reason : null });
 });
 

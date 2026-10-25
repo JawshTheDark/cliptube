@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v0.8.0): a hub (clips.irc.so) plus direct peering between instances, with
+Planned work. Current state (v0.9.0): a hub (clips.irc.so) plus direct peering between instances, with
 cross-instance likes, comments and subscriptions signed per instance. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 
@@ -92,12 +92,12 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 ### Feeds and discovery
 
 - [x] Subscriptions feed shows every upload, newest first, including channels on other instances.
-- [ ] RSS/Atom feed per channel and per instance.
-- [ ] Notifications that always fire for subscribed channels (in-app, plus optional email or web push).
-- [ ] Home feed stays chronological or tag-based; "why am I seeing this" on every recommendation; viewer
+- [x] RSS/Atom feed per channel and per instance.
+- [x] Notifications that always fire for subscribed channels (in-app, plus optional email or web push).
+- [x] Home feed stays chronological or tag-based; "why am I seeing this" on every recommendation; viewer
       controls (more of this game, less of this channel, hide watched).
-- [ ] Vertical short clips get their own optional tab that viewers can turn off. Never forced into the feed.
-- [ ] Search filters: game, length, upload date, instance, exact phrase; sort by relevance, date, views.
+- [x] Vertical short clips get their own optional tab that viewers can turn off. Never forced into the feed.
+- [x] Search filters: game, length, upload date, instance, exact phrase; sort by relevance, date, views.
 
 ### Creators and copyright
 
@@ -107,7 +107,7 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
       appeals go to a human.
 - [ ] Full channel export (videos, metadata, comments, subscribers list) and import on another instance;
       account moves between instances keep subscribers (ActivityPub `Move`, see section 3).
-- [ ] Creator analytics that are honest and simple: views over time, where viewers came from, retention graph.
+- [x] Creator analytics that are honest and simple: views over time, where viewers came from, retention graph.
 
 ### Watching
 

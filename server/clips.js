@@ -15,6 +15,7 @@ import { HttpError, clampInt, newId, now, str } from './util.js';
 import { defineJob, enqueueJob, PermanentError } from './jobs.js';
 import { encodeWithFallback, ffmpegBin, ffprobeBin, processVideo, progressReader, run, throttledWriter } from './media.js';
 import { canEdit, canPlay, fullVideo, loadVideo, storageFor } from './routes/videos.js';
+import { indexVideo } from './search.js';
 
 export const CLIP_MAX_SECONDS = 600;
 export const GIF_MAX_SECONDS = 15;
@@ -211,6 +212,7 @@ clipsRouter.post('/videos/:id/clip', requireAuth, (req, res) => {
   ).run(id, req.user.id, title, str(b.description), visibility, `${title}.mp4`.slice(0, 255), t, t, v.id, start, end, v.game_id || null);
   const ins = db.prepare('INSERT OR IGNORE INTO tags (video_id, tag) VALUES (?, ?)');
   for (const r of db.prepare('SELECT tag FROM tags WHERE video_id = ?').all(v.id)) ins.run(id, r.tag);
+  indexVideo(id);
   enqueueJob('video.clip', { id, source: v.id, from: fromBase ? 'base' : 'published', start, end, mode: b.mode === 'fast' ? 'fast' : 'exact' }, { dedupe: `clip:${id}` });
   res.status(201).json({ video: fullVideo(id, req.user) });
 });

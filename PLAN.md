@@ -14,8 +14,8 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | M3 Gaming clip tools | Done | v0.6.0, 2026-10-25 |
 | M2 Hub-optional network | Done | v0.7.0, 2026-10-25 |
 | M4 Watching upgrades | Done | v0.8.0, 2026-10-25 |
-| M5 Feeds, notifications, search, analytics | In progress | |
-| M6 ActivityPub and PeerTube | Not started | |
+| M5 Feeds, notifications, search, analytics | Done | v0.9.0, 2026-10-25 |
+| M6 ActivityPub and PeerTube | In progress | |
 | M7 Mastodon, moves, export and import | Not started | |
 | M8 One federation protocol | Not started | |
 | Servers linked (clips.irc.so hub, laptop member) | Done | Linked 2026-10-25, checked after every deploy |
@@ -29,6 +29,8 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 - Streaming (M4): adaptive streaming is off on both servers, because it costs CPU once per video and 50 to 100%
   more disk. Turn it on under Admin → Overview → Adaptive streaming; existing videos are rebuilt in the
   background. I tested the ladder, quality switching and skipping in a browser, not playback on a throttled link.
+- Email (M5): no SMTP server is set up, so notifications are in-app and web push only, and there are no
+  password-reset emails. Add one under Admin → Overview → Email (any provider's SMTP details work).
 - Sign-up (M1): both servers still allow open sign-up. The plan suggested invite-only until moderation tools
   existed; they exist now, so I left it open. Switch it in Admin → Overview → Sign-up if you prefer.
 
@@ -232,19 +234,19 @@ viewers can download the original when allowed.
 
 ## M5: Feeds, notifications, search and analytics (v0.9), size XL
 
-- **RSS and Atom feeds** per channel, per game and per instance, linked from those pages. (S)
-- **Notifications**: an in-app bell with unread count for new uploads from subscriptions, replies, mentions
+- ✅ **RSS and Atom feeds** per channel, per game and per instance, linked from those pages. (S)
+- ✅ **Notifications**: an in-app bell with unread count for new uploads from subscriptions, replies, mentions
   and moderation outcomes; then web push (service worker plus VAPID keys); then optional email. Delivered
   through the job queue. (L)
-- **Transparent home feed**: every recommendation carries its reason ("new from a channel you follow",
+- ✅ **Transparent home feed**: every recommendation carries its reason ("new from a channel you follow",
   "popular in #valorant", "because you liked …"). Viewer controls: more or less of a game or channel, not
   interested, hide watched. Chronological stays the default. (M)
-- **Vertical clips tab**: detected from the video's dimensions, with its own tab and a setting to keep them
+- ✅ **Vertical clips tab**: detected from the video's dimensions, with its own tab and a setting to keep them
   out of the main feed. (S)
-- **Search**: a SQLite FTS5 full-text index if Node's built-in SQLite includes it (check first; otherwise
+- ✅ **Search**: a SQLite FTS5 full-text index if Node's built-in SQLite includes it (check first; otherwise
   keep the current matching), relevance ranking, filters (game, length, upload date, instance, exact phrase)
   and sort options. (M)
-- **Creator analytics**: daily views and watch time, referring sites, and a retention graph built from
+- ✅ **Creator analytics**: daily views and watch time, referring sites, and a retention graph built from
   sampled playback progress. Anonymous viewers are included, and no personal data is kept. (M)
 
 **Schema:** `notifications`, `push_subscriptions`, `feed_preferences`, `video_stats_daily`,

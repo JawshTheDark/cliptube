@@ -5,6 +5,7 @@ import { useAuth, useTitle } from '../auth.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { Empty, InfiniteScroll, VideoGrid } from '../components/VideoCard.jsx';
 import { plural, usePaged } from '../util.js';
+import { FeedButton } from '../components/FeedLink.jsx';
 
 function Cover({ game, size = 'md' }) {
   return game.artwork_url ? (
@@ -81,7 +82,9 @@ export function GamePage() {
       <div className="game-head">
         <Cover game={game} size="lg" />
         <div>
-          <h1>{game.name}</h1>
+          <h1>
+            {game.name} {!game.remote_only && <FeedButton href={`/feeds/game/${game.id}.atom`} title={`${game.name} clips`} />}
+          </h1>
           <div className="muted">
             {plural(total, 'clip')}
             {site.federation && game.network_count > 0 && ` · ${game.network_count} from other instances`}

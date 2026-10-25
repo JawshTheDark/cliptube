@@ -15,6 +15,7 @@ import { HttpError, newId, now, str } from './util.js';
 import { grabFrame } from './media.js';
 import { canEdit, canPlay, canView, loadVideo, touchVideo } from './routes/videos.js';
 import { logAction } from './reports.js';
+import { indexVideo } from './search.js';
 
 export const SEGMENT_KINDS = { sponsor: 'Sponsor', intro: 'Intro', outro: 'Outro', recap: 'Recap', selfpromo: 'Self-promotion' };
 const LANG_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/;
@@ -284,6 +285,7 @@ watchingRouter.post('/suggestions/:kind/:sid/adopt', requireAuth, (req, res) => 
   if (!canEdit(v, req.user)) throw new HttpError(403, 'Only the uploader can use a suggestion');
   if (kind === 'title') {
     db.prepare('UPDATE videos SET title = ? WHERE id = ?').run(s.title.slice(0, 120), v.id);
+    indexVideo(v.id);
   } else {
     const name = `${v.id}-${Date.now()}.jpg`;
     fs.copyFileSync(path.join(DIRS.thumbs, s.file), path.join(DIRS.thumbs, name));

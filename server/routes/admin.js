@@ -19,11 +19,12 @@ const ENCODERS = ['libx264', 'h264_nvenc', 'h264_qsv', 'h264_amf'];
 // Only the general site settings; keys, tokens and network settings never go to the browser from here.
 const SITE_SETTINGS = [
   'site_name', 'registration_mode', 'max_upload_mb', 'default_quota_mb', 'max_height', 'encoder', 'delete_originals', 'public_url',
-  'hls_ladder', 'federation_rendition', 'show_dislikes',
+  'hls_ladder', 'federation_rendition', 'show_dislikes', 'smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user', 'smtp_from',
 ];
 function siteSettings() {
   const s = getSettings();
-  return Object.fromEntries(SITE_SETTINGS.map((k) => [k, s[k]]));
+  // The SMTP password is write-only: the browser only learns whether one is set.
+  return { ...Object.fromEntries(SITE_SETTINGS.map((k) => [k, s[k]])), smtp_password_set: !!s.smtp_password };
 }
 
 adminRouter.get('/settings', (req, res) => res.json({ settings: siteSettings(), encoders: ENCODERS }));
@@ -49,6 +50,14 @@ adminRouter.patch('/settings', (req, res) => {
   }
   if (b.delete_originals !== undefined) setSetting('delete_originals', bool(b.delete_originals));
   if (b.show_dislikes !== undefined) setSetting('show_dislikes', bool(b.show_dislikes));
+  for (const k of ['smtp_host', 'smtp_user', 'smtp_from']) if (b[k] !== undefined) setSetting(k, str(b[k], 200).trim());
+  if (b.smtp_port !== undefined) setSetting('smtp_port', String(clampInt(b.smtp_port, 1, 65535, 587)));
+  if (b.smtp_secure !== undefined) {
+    if (!['starttls', 'tls', 'none'].includes(b.smtp_secure)) throw new HttpError(400, 'Encryption must be starttls, tls or none');
+    setSetting('smtp_secure', b.smtp_secure);
+  }
+  if (typeof b.smtp_password === 'string' && b.smtp_password) setSetting('smtp_password', b.smtp_password);
+  if (b.smtp_password === null) setSetting('smtp_password', '');
   // Changing the streaming ladder or the federation copy rebuilds renditions in the background.
   let rebuild = false;
   if (b.hls_ladder !== undefined) {

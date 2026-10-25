@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx';
 import { Avatar } from './Avatar.jsx';
 import { Icon } from './Icons.jsx';
 import { isAnonymous, setAnonymous } from '../util.js';
+import { NotificationBell } from './NotificationBell.jsx';
 
 /** Tracks the per-browser anonymous mode, kept in sync across components. */
 export function useAnonymous() {
@@ -108,6 +109,7 @@ export function TopBar({ onMenu }) {
               <Icon name="upload" />
               <span className="btn-text">Upload</span>
             </Link>
+            <NotificationBell />
             <div className="avatar-menu" ref={menuRef}>
               <button className={`avatar-btn ${anon ? 'anon' : ''}`} onClick={() => setMenuOpen((o) => !o)} aria-label="Account menu" title={anon ? 'Anonymous mode is on' : undefined}>
                 <Avatar user={user} size={32} />

@@ -24,6 +24,9 @@ import StudioComments from './pages/StudioComments.jsx';
 import { Games, GamePage } from './pages/Games.jsx';
 import AdminGames from './pages/AdminGames.jsx';
 import Compare from './pages/Compare.jsx';
+import Notifications from './pages/Notifications.jsx';
+import Analytics from './pages/Analytics.jsx';
+import { ForgotPassword, ResetPassword, VerifyEmail } from './pages/EmailPages.jsx';
 import Editor from './pages/Editor.jsx';
 import Network from './pages/Network.jsx';
 import RemoteWatch from './pages/RemoteWatch.jsx';
@@ -50,6 +53,11 @@ function Layout() {
   };
 
   useEffect(() => setDrawer(false), [location.pathname]);
+  // Remember the previous page of this site, so a view can say where it came from (analytics).
+  useEffect(() => {
+    window.__ctPrevPath = window.__ctCurPath || null;
+    window.__ctCurPath = location.pathname;
+  }, [location.pathname]);
   useEffect(() => {
     document.body.style.overflow = drawer ? 'hidden' : '';
   }, [drawer]);
@@ -138,6 +146,33 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <StudioComments />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route
+                path="/notifications"
+                element={
+                  <RequireAuth>
+                    <Notifications />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/studio/analytics"
+                element={
+                  <RequireAuth>
+                    <Analytics />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/studio/analytics/:id"
+                element={
+                  <RequireAuth>
+                    <Analytics />
                   </RequireAuth>
                 }
               />

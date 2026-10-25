@@ -15,6 +15,7 @@ import { defineJob, enqueueJob } from './jobs.js';
 import { createReport, logAction, REPORT_REASONS } from './reports.js';
 import { onLocalVideosChanged, sendNetworkReport } from './network.js';
 import { removeVideoFiles } from './routes/videos.js';
+import { notifyModeration } from './notify.js';
 
 const DAY = 24 * 3600_000;
 
@@ -30,6 +31,8 @@ export function setVideoModeration(video, status, reason, actor, reportId = null
   );
   const action = status === 'hidden' ? 'video.hide' : status === 'removed' ? 'video.remove' : 'video.restore';
   logAction(actor, action, { targetType: 'video', targetId: video.id, targetLabel: video.title, details: reason || null, reportId });
+  const what = status === 'hidden' ? 'was hidden by the moderators' : status === 'removed' ? 'was removed by the moderators' : 'was restored';
+  notifyModeration(video.user_id, `"${video.title}" ${what}`, { body: status ? reason || null : null, url: `/watch/${video.id}` });
   if (status === 'removed') {
     const days = Math.max(1, Number(getSettings().removed_retention_days) || 30);
     enqueueJob('video.purge', { id: video.id, removed_at: t }, { delay: days * DAY });
@@ -66,6 +69,7 @@ export function addStrike(userId, reason, actor, noticeId = null) {
     u.id, str(reason, 300), noticeId, actor?.id || null, t, days > 0 ? t + days * DAY : null,
   );
   logAction(actor, 'user.strike', { targetType: 'user', targetId: u.id, targetLabel: u.username, details: reason });
+  notifyModeration(u.id, 'You received a copyright strike', { body: reason, url: '/legal' });
   const count = activeStrikes(u.id);
   const threshold = Number(s.strike_threshold) || 0;
   if (threshold > 0 && count >= threshold && u.status === 'active') {
@@ -226,6 +230,12 @@ modRouter.patch('/reports/:id', (req, res) => {
 
 function closeReport(r, status, resolution, actor) {
   db.prepare('UPDATE reports SET status = ?, resolution = ?, handled_by = ?, handled_at = ? WHERE id = ?').run(status, resolution, actor.id, now(), r.id);
+  // Tell the people who reported it what happened (local reporters only).
+  for (const rep of db.prepare("SELECT DISTINCT reporter_id FROM reports WHERE status = 'open' AND target_type = ? AND target_id = ? AND reporter_id IS NOT NULL").all(r.target_type, r.target_id).concat(r.reporter_id ? [{ reporter_id: r.reporter_id }] : [])) {
+    notifyModeration(rep.reporter_id, status === 'resolved' ? `Thanks: the moderators acted on your report about "${r.target_title || 'that'}"` : `The moderators looked at your report about "${r.target_title || 'that'}" and left it up`, {
+      dedupe: `report:${r.id}:${rep.reporter_id}`,
+    });
+  }
   // Other open reports about the same thing are settled by the same decision.
   db.prepare("UPDATE reports SET status = ?, resolution = ?, handled_by = ?, handled_at = ? WHERE status = 'open' AND target_type = ? AND target_id = ? AND id != ?").run(
     status, resolution, actor.id, now(), r.target_type, r.target_id, r.id,
@@ -374,6 +384,9 @@ modRouter.post('/counter-notices/:id', (req, res) => {
   if (!['accept', 'reject'].includes(decision)) throw new HttpError(400, 'Decision must be accept or reject');
   db.prepare('UPDATE counter_notices SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?').run(decision === 'accept' ? 'accepted' : 'rejected', req.user.id, now(), cn.id);
   const v = videoById(cn.video_id);
+  notifyModeration(cn.user_id, decision === 'accept' ? `Your ${v?.moderation_status === 'removed' ? 'counter-notice' : 'appeal'} was accepted` : `Your ${v?.moderation_status === 'removed' ? 'counter-notice' : 'appeal'} was declined`, {
+    url: v ? `/watch/${v.id}` : null,
+  });
   if (decision === 'accept') {
     if (v) setVideoModeration(v, null, 'Counter-notice accepted', req.user);
     if (cn.notice_id) {

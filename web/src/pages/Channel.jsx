@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast.jsx';
 import { plural, formatDate, usePaged } from '../util.js';
 import { ReportButton } from '../components/ReportDialog.jsx';
 import { SupportLinks } from '../components/WatchExtras.jsx';
+import { FeedButton } from '../components/FeedLink.jsx';
 
 const SORTS = [
   ['new', 'Latest'],
@@ -91,6 +92,7 @@ export default function Channel() {
               </>
             )}
             <SupportLinks links={channel.support_links} />
+            <FeedButton href={`/feeds/channel/${channel.username}.atom`} title={`${channel.display_name} videos`} />
           </div>
         </div>
       </div>

@@ -102,6 +102,9 @@ export default function Studio() {
       <div className="page-head">
         <h1>Your videos</h1>
         <div className="row-actions">
+          <Link to="/studio/analytics" className="btn btn-ghost">
+            <Icon name="chart" /> Analytics
+          </Link>
           <Link to="/studio/comments" className="btn btn-ghost">
             <Icon name="comment" /> Comments to review
             {held > 0 && <span className="tab-count">{held}</span>}
@@ -174,6 +177,9 @@ export default function Studio() {
                     <div className="row-actions">
                       <Link className="icon-btn" to={`/studio/edit/${v.id}`} title="Edit details">
                         <Icon name="edit" />
+                      </Link>
+                      <Link className="icon-btn" to={`/studio/analytics/${v.id}`} title="Analytics">
+                        <Icon name="chart" />
                       </Link>
                       {v.status === 'ready' && (
                         <Link className="icon-btn" to={`/studio/editor/${v.id}`} title="Open the timeline editor">

@@ -507,6 +507,94 @@ CREATE TABLE suggestion_votes (
       addColumn(db, 'users', 'support_links', 'TEXT'); // JSON [{label, url}]
     },
   },
+  {
+    version: 7,
+    name: 'feeds, notifications, push, email, recommendations, full-text search, analytics',
+    up(db) {
+      db.exec(`
+CREATE TABLE notifications (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                  -- upload | reply | mention | comment | moderation
+  title TEXT NOT NULL,
+  body TEXT,
+  url TEXT,
+  image_url TEXT,
+  actor_label TEXT,
+  dedupe TEXT,
+  read_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_notifications_user ON notifications(user_id, created_at);
+CREATE UNIQUE INDEX idx_notifications_dedupe ON notifications(user_id, dedupe) WHERE dedupe IS NOT NULL;
+CREATE TABLE push_subscriptions (
+  endpoint TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent TEXT,
+  created_at INTEGER NOT NULL,
+  last_ok_at INTEGER
+);
+CREATE TABLE email_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose TEXT NOT NULL,               -- verify | reset
+  email TEXT,
+  expires_at INTEGER NOT NULL
+);
+CREATE TABLE feed_preferences (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                  -- game | channel | tag | video
+  target TEXT NOT NULL,
+  weight INTEGER NOT NULL,             -- 1 more, -1 less, -9 not interested
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, kind, target)
+);
+CREATE TABLE video_stats_daily (
+  video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  views INTEGER NOT NULL DEFAULT 0,
+  watch_seconds INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (video_id, day)
+);
+CREATE TABLE video_referrers (
+  video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  source TEXT NOT NULL,
+  views INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (video_id, day, source)
+);
+CREATE TABLE video_retention (
+  video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  bucket INTEGER NOT NULL,             -- 0..49, each 2% of the video
+  samples INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (video_id, bucket)
+);
+CREATE VIRTUAL TABLE video_search USING fts5(video_id UNINDEXED, title, description, tags, game, channel, tokenize = 'unicode61 remove_diacritics 2');
+CREATE VIRTUAL TABLE network_search USING fts5(instance_id UNINDEXED, remote_id UNINDEXED, title, description, tags, game, channel, tokenize = 'unicode61 remove_diacritics 2');
+`);
+      addColumn(db, 'users', 'email', 'TEXT');
+      addColumn(db, 'users', 'email_verified_at', 'INTEGER');
+      addColumn(db, 'users', 'notify_prefs', 'TEXT'); // JSON: which kinds go to email / push
+      addColumn(db, 'users', 'last_notified_seen_at', 'INTEGER');
+      addColumn(db, 'videos', 'notified_at', 'INTEGER'); // subscribers were told about this upload
+      addColumn(db, 'network_videos', 'notified_at', 'INTEGER');
+      // Videos that were already up before notifications existed don't notify anyone.
+      db.prepare("UPDATE videos SET notified_at = ? WHERE status = 'ready'").run(Date.now());
+      db.prepare('UPDATE network_videos SET notified_at = ?').run(Date.now());
+      // Build the search index from what is there.
+      db.exec(`INSERT INTO video_search (video_id, title, description, tags, game, channel)
+        SELECT v.id, v.title, v.description, COALESCE((SELECT group_concat(tag, ' ') FROM tags t WHERE t.video_id = v.id), ''),
+          COALESCE((SELECT g.name || ' ' || g.id || ' ' || COALESCE(g.short_name, '') || ' ' || replace(g.aliases, ',', ' ') FROM games g WHERE g.id = v.game_id), ''),
+          u.display_name || ' ' || u.username
+        FROM videos v JOIN users u ON u.id = v.user_id`);
+      db.exec(`INSERT INTO network_search (instance_id, remote_id, title, description, tags, game, channel)
+        SELECT r.instance_id, r.remote_id, r.title, r.description, replace(r.tags, ',', ' '), COALESCE(r.game_name || ' ' || r.game_slug, ''),
+          r.uploader_display_name || ' ' || r.uploader_username
+        FROM network_videos r`);
+    },
+  },
 ];
 
 export function currentVersion(db) {

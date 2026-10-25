@@ -63,6 +63,15 @@ export const DEFAULT_SETTINGS = {
   delete_originals: 'false',
   public_url: '',
   instance_description: '',
+  // Email (optional): notifications people opt into, address checks and password resets.
+  smtp_host: '',
+  smtp_port: '587',
+  smtp_secure: 'starttls', // starttls | tls | none
+  smtp_user: '',
+  smtp_password: '',
+  smtp_from: '',
+  vapid_public_key: '',
+  vapid_private_key: '',
   hls_ladder: 'off', // off | 720 (720p plus source) | full (1080p, 720p, 480p plus source)
   federation_rendition: 'true', // a ~720p MP4 for platforms that only cache small remote videos
   show_dislikes: 'true',
@@ -97,7 +106,7 @@ export const DEFAULT_SETTINGS = {
 
 /** Settings that must never be sent to a browser, even an admin's. */
 export const SECRET_SETTINGS = new Set([
-  'instance_private_key', 'network_hub_token', 'network_feed_token_hash', 'network_join_nonce', 'smtp_password',
+  'instance_private_key', 'network_hub_token', 'network_feed_token_hash', 'network_join_nonce', 'smtp_password', 'vapid_private_key',
 ]);
 
 export function getSettings() {

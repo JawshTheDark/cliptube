@@ -14,6 +14,7 @@ import { imageUpload, discard } from './uploads.js';
 import { convertImage } from './media.js';
 import { logAction } from './reports.js';
 import { NETWORK_VISIBLE, onLocalVideosChanged } from './network.js';
+import { indexVideo } from './search.js';
 
 export function slugify(s) {
   return String(s || '')
@@ -122,6 +123,7 @@ export function resolveGame(input, user) {
 function touchGameVideos(id) {
   const r = db.prepare('UPDATE videos SET updated_at = ? WHERE game_id = ?').run(now(), id);
   if (r.changes) onLocalVideosChanged();
+  return db.prepare('SELECT id FROM videos WHERE game_id = ?').all(id).map((x) => x.id);
 }
 
 export const gamesRouter = Router();
@@ -157,7 +159,7 @@ gamesRouter.patch('/:id', requireModerator, (req, res) => {
   const aliases = b.aliases !== undefined ? cleanAliases(b.aliases, g.id) : g.aliases;
   db.prepare('UPDATE games SET name = ?, short_name = ?, aliases = ? WHERE id = ?').run(name, short, aliases, g.id);
   logAction(req.user, 'game.update', { targetType: 'game', targetId: g.id, targetLabel: name });
-  if (name !== g.name) touchGameVideos(g.id);
+  if (name !== g.name || aliases !== g.aliases || short !== g.short_name) for (const vid of touchGameVideos(g.id)) indexVideo(vid);
   res.json({ game: serializeGame(db.prepare('SELECT * FROM games WHERE id = ?').get(g.id), true) });
 });
 
@@ -191,8 +193,9 @@ gamesRouter.delete('/:id/artwork', requireModerator, (req, res) => {
 gamesRouter.delete('/:id', requireModerator, (req, res) => {
   const g = db.prepare('SELECT * FROM games WHERE id = ?').get(String(req.params.id));
   if (!g) throw new HttpError(404, 'Game not found');
-  touchGameVideos(g.id);
+  const affected = touchGameVideos(g.id);
   db.prepare('UPDATE videos SET game_id = NULL WHERE game_id = ?').run(g.id);
+  for (const vid of affected) indexVideo(vid);
   db.prepare('DELETE FROM games WHERE id = ?').run(g.id);
   if (g.artwork) try { fs.unlinkSync(path.join(DIRS.thumbs, g.artwork)); } catch {}
   logAction(req.user, 'game.delete', { targetType: 'game', targetId: g.id, targetLabel: g.name });

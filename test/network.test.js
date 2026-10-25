@@ -63,6 +63,17 @@ test('likes, comments and subscriptions across instances', async () => {
   assert.equal((await A.get(`/api/videos/${aVideo.id}/comments`)).data.comments.length, 0);
 });
 
+test('a new upload notifies subscribers on another instance', async () => {
+  // Alice on the hub subscribed to bob on the member in the test above.
+  const fresh = await uploadReady(B, { title: 'Bob posts again' });
+  const n = await waitFor(async () => (await A.get('/api/notifications')).data.notifications.find((x) => x.kind === 'upload' && /Bob posts again/.test(x.title)), {
+    timeout: 60000,
+    what: 'the remote upload notification',
+  });
+  assert.match(n.url, /^\/n\/\d+\//);
+  assert.ok(n.url.endsWith(`/${fresh.id}`), n.url);
+});
+
 test('forged inbox requests are refused', async () => {
   const r = await fetch(`${hub.url}/api/network/inbox`, {
     method: 'POST',
@@ -137,7 +148,7 @@ test('blocking, network switches and hub moderation', async () => {
   assert.equal(back.video_count, 1);
 
   await A.patch(`/api/admin/network/videos/${iidOnA}/${bVideo.id}`, { hidden: true });
-  assert.equal((await net(A)).length, 0);
+  assert.ok(!(await net(A)).some((v) => v.remote.remote_id === bVideo.id));
   await A.patch(`/api/admin/network/videos/${iidOnA}/${bVideo.id}`, { hidden: false });
 });
 

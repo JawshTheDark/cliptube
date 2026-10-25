@@ -59,6 +59,104 @@ function quotaLabel(u) {
   return formatBytes(u.quota_mb * 1048576);
 }
 
+function EmailSettings() {
+  const toast = useToast();
+  const [form, setForm] = useState(null);
+  const [saved, setSaved] = useState(null);
+  const [to, setTo] = useState('');
+  const [password, setPassword] = useState('');
+  const pick = (s) => ({ smtp_host: s.smtp_host, smtp_port: s.smtp_port, smtp_secure: s.smtp_secure, smtp_user: s.smtp_user, smtp_from: s.smtp_from, smtp_password_set: s.smtp_password_set });
+  useEffect(() => {
+    api('/admin/settings')
+      .then((r) => {
+        setForm(pick(r.settings));
+        setSaved(pick(r.settings));
+      })
+      .catch(() => {});
+  }, []);
+  if (!form) return null;
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const save = async (e) => {
+    e.preventDefault();
+    try {
+      const { smtp_password_set, ...rest } = form;
+      const r = await api('/admin/settings', { method: 'PATCH', body: { ...rest, ...(password ? { smtp_password: password } : {}) } });
+      setForm(pick(r.settings));
+      setSaved(pick(r.settings));
+      setPassword('');
+      toast('Email settings saved');
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+  const test = async () => {
+    try {
+      await api('/admin/mail/test', { method: 'POST', body: { to } });
+      toast(`Sent a test email to ${to}`);
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+  const dirty = JSON.stringify(form) !== JSON.stringify(saved) || !!password;
+  return (
+    <section className="card-panel">
+      <h2>Email (optional)</h2>
+      <p className="hint">With an SMTP server, people can confirm an email address, get the notifications they pick by email, and reset forgotten passwords. Everything works without it.</p>
+      <form onSubmit={save}>
+        <div className="field-row">
+          <div className="field">
+            <label>SMTP server</label>
+            <input className="input" value={form.smtp_host} onChange={(e) => set({ smtp_host: e.target.value })} placeholder="smtp.example.com" />
+          </div>
+          <div className="field narrow">
+            <label>Port</label>
+            <input className="input" type="number" value={form.smtp_port} onChange={(e) => set({ smtp_port: e.target.value })} />
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Encryption</label>
+            <select className="select" value={form.smtp_secure} onChange={(e) => set({ smtp_secure: e.target.value })}>
+              <option value="starttls">STARTTLS (port 587)</option>
+              <option value="tls">TLS (port 465)</option>
+              <option value="none">None (local relay only)</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>From</label>
+            <input className="input" value={form.smtp_from} onChange={(e) => set({ smtp_from: e.target.value })} placeholder="ClipTube <clips@example.com>" />
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Username</label>
+            <input className="input" value={form.smtp_user} onChange={(e) => set({ smtp_user: e.target.value })} autoComplete="off" />
+          </div>
+          <div className="field">
+            <label>Password</label>
+            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={form.smtp_password_set ? 'Saved (type to change)' : ''} autoComplete="new-password" />
+          </div>
+        </div>
+        <button className="btn btn-primary" disabled={!dirty}>
+          Save
+        </button>
+      </form>
+      {saved.smtp_host && (
+        <div className="field-row align-end top-gap">
+          <div className="field grow">
+            <input className="input" type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="Send a test to..." aria-label="Test address" />
+          </div>
+          <div className="field">
+            <button className="btn" onClick={test} disabled={!to}>
+              Send test
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Invites() {
   const toast = useToast();
   const [invites, setInvites] = useState(null);
@@ -470,6 +568,7 @@ export default function Admin() {
         </section>
 
         <Invites />
+        <EmailSettings />
       </div>
 
       {stats && (

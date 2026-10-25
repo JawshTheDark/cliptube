@@ -17,6 +17,7 @@ function useRedirectIfLoggedIn() {
 export function Login() {
   const { setUser, site } = useAuth();
   const from = useRedirectIfLoggedIn();
+  const message = useLocation().state?.message;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -46,6 +47,7 @@ export function Login() {
           No accounts exist yet. <Link to="/register">Create the first account</Link> to become the admin.
         </div>
       )}
+      {message && <div className="notice">{message}</div>}
       {error && <div className="error">{error}</div>}
       <form onSubmit={submit}>
         <div className="field">
@@ -59,6 +61,11 @@ export function Login() {
         <button className="btn btn-primary" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+        {site.email && (
+          <Link to="/forgot-password" className="forgot-link">
+            Forgot your password?
+          </Link>
+        )}
       </form>
       <div className="auth-foot">
         {site.allow_registration || site.needs_setup ? (

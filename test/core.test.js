@@ -96,5 +96,7 @@ test('roles and account status', async () => {
 
 test('admin settings never expose keys or tokens', async () => {
   const s = (await admin.get('/api/admin/settings')).data.settings;
-  assert.ok(!Object.keys(s).some((k) => /key|token|nonce|password/.test(k)));
+  // Only yes/no flags like smtp_password_set may mention secrets; never their values.
+  const secretish = Object.entries(s).filter(([k]) => /key|token|nonce|password/.test(k));
+  assert.ok(secretish.every(([, v]) => typeof v === 'boolean'), JSON.stringify(secretish));
 });
