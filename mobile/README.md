@@ -23,8 +23,11 @@ Watching and browsing work on any version.
 | Upload | Pick a video, set title, description, game, tags, visibility and clipping, watch progress and processing |
 | You | Your clips (edit, publish drafts, delete), history, liked clips, subscriptions, sign out |
 | Linked accounts | Link your accounts on other servers or Mastodon (ClipTube 1.6+); channels show Also on, Subscribe to all and an All accounts filter |
+| Playlists | Save to Watch later or a playlist, play a list with shuffle, loop and autoplay, edit and reorder your own (ClipTube 1.7+) |
+| Watch parties | Synced playback with chat, reactions, a shared queue and host controls, over the server's event stream (ClipTube 1.8+) |
+| Live streams | Who's live on Home, live pages with the HLS stream, live chat (signed in or as a guest), reactions and chat moderation (ClipTube 1.9+) |
 | Inbox | Notifications with an unread badge on the tab, checked every minute while the app is open |
-| Servers | Keep several ClipTube servers with a sign-in for each, and switch between them |
+| Servers | Pick your main server on first launch (the app opens on it; change it under You → App settings), keep more servers with a sign-in for each, and switch between them |
 | Links | `https://<server>/watch/…`, `/c/…` and `/n/…` links for the three known servers can open in the app |
 
 Not in the app yet (use the website): the timeline editor, thumbnails, captions, analytics, admin and

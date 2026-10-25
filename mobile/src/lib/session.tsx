@@ -4,7 +4,11 @@ import * as SecureStore from 'expo-secure-store';
 import { Api, ApiError, normalizeServerUrl } from './api';
 import type { Site, User } from './types';
 
-export const DEFAULT_SERVER = 'https://clips.irc.so';
+/**
+ * Where the first-launch screen looks for server suggestions: the ClipTube network's hub, which lists the
+ * servers in it. Only a suggestion; nothing is chosen for the user.
+ */
+export const NETWORK_DIRECTORY = 'https://clips.irc.so';
 
 export type SavedServer = { url: string; name: string };
 
@@ -12,6 +16,10 @@ type RegisterInput = { username: string; password: string; display_name?: string
 
 type Session = {
   ready: boolean;
+  /** No server chosen yet: first launch, or every server was removed. */
+  needsSetup: boolean;
+  /** The server the app opens on. */
+  main: string | null;
   server: string;
   servers: SavedServer[];
   site: Site | null;
@@ -27,6 +35,8 @@ type Session = {
   addServer: (input: string) => Promise<SavedServer>;
   switchServer: (url: string) => Promise<void>;
   removeServer: (url: string) => Promise<void>;
+  /** Makes a server the main one (adding it first if needed) and switches to it. */
+  setMain: (input: string) => Promise<void>;
 };
 
 const Ctx = createContext<Session | null>(null);
@@ -34,7 +44,8 @@ const Ctx = createContext<Session | null>(null);
 // SecureStore keys may only hold letters, digits, ".", "-" and "_".
 const tokenKey = (url: string) => `token_${url.replace(/[^A-Za-z0-9]/g, '_')}`;
 const SERVERS_KEY = 'servers';
-const ACTIVE_KEY = 'active_server';
+const ACTIVE_KEY = 'active_server'; // 1.1 and before: the server the app was last on
+const MAIN_KEY = 'main_server';
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
   try {
@@ -56,7 +67,9 @@ export async function probeServer(url: string): Promise<Site> {
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [server, setServer] = useState(DEFAULT_SERVER);
+  const [needsSetup, setNeedsSetup] = useState(false);
+  const [main, setMainState] = useState<string | null>(null);
+  const [server, setServer] = useState('');
   const [servers, setServers] = useState<SavedServer[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -91,15 +104,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      let saved = await readJson<SavedServer[]>(SERVERS_KEY, []);
-      if (!saved.length) saved = [{ url: DEFAULT_SERVER, name: 'ClipTube' }];
-      const active = (await SecureStore.getItemAsync(ACTIVE_KEY).catch(() => null)) || saved[0].url;
-      const tok = await SecureStore.getItemAsync(tokenKey(active)).catch(() => null);
+      const saved = await readJson<SavedServer[]>(SERVERS_KEY, []);
+      if (!saved.length) {
+        // First launch: the user picks a server; there's no default.
+        setNeedsSetup(true);
+        setReady(true);
+        return;
+      }
+      let home = await SecureStore.getItemAsync(MAIN_KEY).catch(() => null);
+      if (!home || !saved.some((s) => s.url === home)) {
+        // Updating from 1.1: the server the app was last on becomes the main one.
+        const last = await SecureStore.getItemAsync(ACTIVE_KEY).catch(() => null);
+        home = last && saved.some((s) => s.url === last) ? last : saved[0].url;
+        await SecureStore.setItemAsync(MAIN_KEY, home).catch(() => {});
+      }
+      // The app opens on the main server, whichever one it was on last time.
+      const tok = await SecureStore.getItemAsync(tokenKey(home)).catch(() => null);
       setServers(saved);
-      setServer(active);
+      setMainState(home);
+      setServer(home);
       setToken(tok);
       setReady(true);
-      await load(active, tok);
+      await load(home, tok);
     })();
   }, [load]);
 
@@ -173,7 +199,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const switchServer = async (url: string) => {
     const tok = await SecureStore.getItemAsync(tokenKey(url)).catch(() => null);
-    await SecureStore.setItemAsync(ACTIVE_KEY, url);
     setServer(url);
     setToken(tok);
     setUser(null);
@@ -187,12 +212,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (tok) await new Api(url, tok).post('/auth/logout').catch(() => {});
     await SecureStore.deleteItemAsync(tokenKey(url)).catch(() => {});
     const list = servers.filter((x) => x.url !== url);
-    await saveServers(list.length ? list : [{ url: DEFAULT_SERVER, name: 'ClipTube' }]);
-    if (url === server) await switchServer((list[0] || { url: DEFAULT_SERVER }).url);
+    await saveServers(list);
+    if (!list.length) {
+      // Nothing left: back to choosing a server.
+      await SecureStore.deleteItemAsync(MAIN_KEY).catch(() => {});
+      setMainState(null);
+      setServer('');
+      setToken(null);
+      setUser(null);
+      setSite(null);
+      setNeedsSetup(true);
+      return;
+    }
+    let home = main;
+    if (url === main || !home) {
+      home = list[0].url;
+      await SecureStore.setItemAsync(MAIN_KEY, home);
+      setMainState(home);
+    }
+    if (url === server) await switchServer(home);
+  };
+
+  const setMain = async (input: string) => {
+    const url = normalizeServerUrl(input);
+    if (!servers.some((x) => x.url === url)) await addServer(url);
+    await SecureStore.setItemAsync(MAIN_KEY, url);
+    setMainState(url);
+    setNeedsSetup(false);
+    if (url !== server) await switchServer(url);
   };
 
   const value: Session = {
     ready,
+    needsSetup,
+    main,
     server,
     servers,
     site,
@@ -208,6 +261,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     addServer,
     switchServer,
     removeServer,
+    setMain,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

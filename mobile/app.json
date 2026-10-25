@@ -2,7 +2,7 @@
   "expo": {
     "name": "ClipTube",
     "slug": "cliptube",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "scheme": "cliptube",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "so.irc.cliptube",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#ff0033",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -47,6 +47,21 @@
             },
             {
               "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/playlist/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/party/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/live/"
+            },
+            {
+              "scheme": "https",
               "host": "clips.quitlyingto.us",
               "pathPrefix": "/watch/"
             },
@@ -62,6 +77,21 @@
             },
             {
               "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/playlist/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/party/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/live/"
+            },
+            {
+              "scheme": "https",
               "host": "clips.6697.pro",
               "pathPrefix": "/watch/"
             },
@@ -74,6 +104,21 @@
               "scheme": "https",
               "host": "clips.6697.pro",
               "pathPrefix": "/n/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/playlist/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/party/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/live/"
             }
           ]
         }

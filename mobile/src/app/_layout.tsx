@@ -3,8 +3,10 @@ import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { Welcome } from '@/components/Welcome';
 import { SessionProvider, useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
 
@@ -17,12 +19,13 @@ const theme = {
 };
 
 function Root() {
-  const { ready } = useSession();
+  const { ready, needsSetup } = useSession();
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
   if (!ready) return null;
   return (
+    <>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
@@ -43,7 +46,19 @@ function Root() {
       <Stack.Screen name="library/[kind]" options={{ title: '' }} />
       <Stack.Screen name="edit/[id]" options={{ title: 'Edit clip' }} />
       <Stack.Screen name="links" options={{ title: 'Linked accounts' }} />
+      <Stack.Screen name="playlist/[id]" options={{ title: 'Playlist' }} />
+      <Stack.Screen name="save" options={{ title: 'Save to', presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="party/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ title: 'App settings' }} />
+      <Stack.Screen name="live/[username]" options={{ headerShown: false }} />
     </Stack>
+    {/* No server chosen yet: pick one first. The navigator stays mounted underneath, so links still work after. */}
+    {needsSetup && (
+      <View style={StyleSheet.absoluteFill}>
+        <Welcome />
+      </View>
+    )}
+    </>
   );
 }
 

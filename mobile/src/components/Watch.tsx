@@ -10,6 +10,8 @@ import { useSession } from '@/lib/session';
 import { ago, compact, hostOf, plural } from '@/lib/format';
 import { colors } from '@/lib/theme';
 import type { RemoteWatch, Video } from '@/lib/types';
+import { refFromRoute } from '@/lib/refs';
+import { PlaylistBar, type PlaylistNav } from './PlaylistBar';
 import { VideoRow } from './VideoCard';
 import { Avatar, Button, Empty, Icon, IconButton, Loading, toast } from './ui';
 
@@ -24,9 +26,9 @@ type Loaded = {
   shareUrl: string;
 };
 
-type Props = { id?: string; peer?: string; remote?: string; server?: string | string[] };
+type Props = { id?: string; peer?: string; remote?: string; server?: string | string[]; list?: string; shuffle?: string };
 
-export function WatchScreen({ id, peer, remote, server: serverParam }: Props) {
+export function WatchScreen({ id, peer, remote, server: serverParam, list, shuffle }: Props) {
   const scope = useLinkedApi(serverParam);
   const { api, foreign } = scope;
   const session = useSession();
@@ -159,6 +161,25 @@ export function WatchScreen({ id, peer, remote, server: serverParam }: Props) {
     }
   };
 
+  // Playing from a playlist: what comes next, and whether to move on by itself.
+  const playlistNav = useRef<PlaylistNav | null>(null);
+  const ref = refFromRoute({ id, peer, remote });
+
+  const save = () => {
+    if (needSignIn() || !ref) return;
+    router.push({ pathname: '/save', params: { ref, title: data?.video.title || '' } });
+  };
+
+  const watchTogether = async () => {
+    if (needSignIn() || !ref) return;
+    try {
+      const r = await api.post<{ party: { id: string } }>('/parties', { ref });
+      router.push(`/party/${r.party.id}`);
+    } catch (e: any) {
+      toast(e.status === 404 ? 'Watch parties need ClipTube 1.8 or newer on this server.' : e.message);
+    }
+  };
+
   const switchHere = async () => {
     if (!foreign) return;
     try {
@@ -261,6 +282,8 @@ export function WatchScreen({ id, peer, remote, server: serverParam }: Props) {
             )}
           </View>
         )}
+        {(isRemote || (v.status === 'ready' && !!v.video_url)) && <Button title="Save" icon="playlist-add" small onPress={save} />}
+        {(isRemote || (v.status === 'ready' && !!v.video_url && v.visibility !== 'private')) && <Button title="Watch together" icon="groups" small onPress={watchTogether} />}
         <Button title="Share" icon="share" small onPress={() => Share.share({ message: data.shareUrl }).catch(() => {})} />
         <Button title="Open in browser" icon="open-in-browser" small onPress={() => Linking.openURL(data.shareUrl)} />
         {v.can_edit && !foreign && <Button title="Edit" icon="edit" small onPress={() => router.push(`/edit/${encodeURIComponent(v.id)}`)} />}
@@ -288,6 +311,8 @@ export function WatchScreen({ id, peer, remote, server: serverParam }: Props) {
         </Pressable>
       )}
 
+      {!!list && <PlaylistBar api={api} foreign={foreign} listId={list} currentRef={ref} shuffle={shuffle === '1'} onNav={(n) => (playlistNav.current = n)} />}
+
       <Pressable
         style={s.commentsCard}
         onPress={() =>
@@ -309,7 +334,17 @@ export function WatchScreen({ id, peer, remote, server: serverParam }: Props) {
     <ApiScope value={scope}>
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <View style={{ paddingTop: insets.top, backgroundColor: '#000' }}>
-          <Player key={v.id} video={v} api={api} resumeAt={signedIn ? v.resume_at || 0 : 0} onTime={reportProgress} />
+          <Player
+            key={v.id}
+            video={v}
+            api={api}
+            resumeAt={signedIn && !list ? v.resume_at || 0 : 0}
+            onTime={reportProgress}
+            onEnd={() => {
+              const n = playlistNav.current;
+              if (n?.autoplay && n.next) n.goNext();
+            }}
+          />
           {back}
         </View>
         <FlatList
@@ -325,7 +360,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam }: Props) {
 }
 
 /** The native player (Media3 on Android). Sends the sign-in header only to the clip's own server. */
-function Player({ video, api, resumeAt, onTime }: { video: Video; api: Api; resumeAt: number; onTime: (t: number) => void }) {
+function Player({ video, api, resumeAt, onTime, onEnd }: { video: Video; api: Api; resumeAt: number; onTime: (t: number) => void; onEnd?: () => void }) {
   const { width, height } = useWindowDimensions();
   const url = api.abs(video.hls_url || video.video_url);
   const source = useMemo<VideoSource>(
@@ -355,6 +390,7 @@ function Player({ video, api, resumeAt, onTime }: { video: Video; api: Api; resu
     }
   });
   useEventListener(player, 'timeUpdate', ({ currentTime }) => onTime(currentTime));
+  useEventListener(player, 'playToEnd', () => onEnd?.());
   useEventListener(player, 'playingChange', ({ isPlaying }) => {
     if (!isPlaying) onTime(player.currentTime);
   });

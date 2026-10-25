@@ -185,6 +185,91 @@ export type Notification = {
   created_at: number;
 };
 
+// ---- playlists (ClipTube 1.7) ----
+
+export type PlaylistItem = {
+  id: number;
+  ref: string; // 'v:<id>' here, 'n:<instance>:<remote id>' from the network
+  url: string; // the website path: /watch/<id> or /n/<peer>/<remote>
+  available: boolean;
+  title: string;
+  thumbnail_url: string | null;
+  video: Video | null;
+  added_at: number;
+};
+
+export type PlaylistSummary = {
+  id: string;
+  title: string;
+  description: string;
+  visibility: Visibility;
+  kind: 'user' | 'watch_later';
+  item_count: number;
+  thumbnail_url: string | null;
+  first_url: string | null;
+  owner: { username: string; display_name: string; avatar_url: string | null } | null;
+  is_owner: boolean;
+  created_at: number;
+  updated_at: number;
+  contains?: number | null; // with ?has=: the item holding that video, or null
+};
+
+export type Playlist = PlaylistSummary & { items: PlaylistItem[] };
+
+// ---- watch parties (ClipTube 1.8) ----
+
+export type PartyState = { item_id: number | null; playing: boolean; position: number; at: number };
+
+export type PartyMember = { id: string; name: string; username: string | null; avatar_url: string | null; guest: boolean };
+
+export type PartyMessage = { id: number; member_id: string; name: string; body: string; created_at: number };
+
+export type Party = {
+  id: string;
+  title: string;
+  control: 'host' | 'everyone';
+  locked: boolean;
+  host: { username: string; display_name: string; member_id: string } | null;
+  state: PartyState;
+  queue: PlaylistItem[];
+  messages: PartyMessage[];
+  members: PartyMember[];
+  reactions: string[];
+  you: { member_id: string; name: string; guest: boolean; is_host: boolean; can_control: boolean } | null;
+  now: number;
+};
+
+// ---- live streaming (ClipTube 1.9) ----
+
+export type LiveStream = {
+  id: string;
+  title: string;
+  description: string;
+  game: { id: string; name: string } | null;
+  visibility: string;
+  status: string; // live | ended
+  started_at: number;
+  ended_at: number | null;
+  viewers: number;
+  peak_viewers: number;
+  hls_url: string | null; // relative on the stream's own server, absolute in /live/now
+  url: string;
+  video_id: string | null; // the recording, once the stream ended
+  channel: { username: string; display_name: string; avatar_url: string | null };
+};
+
+export type LiveNow = { enabled: boolean; live: LiveStream[]; network: LiveStream[] };
+
+export type LivePage = {
+  enabled: boolean;
+  live: boolean;
+  stream: LiveStream | null;
+  last: LiveStream | null;
+  channel: { username: string; display_name: string; avatar_url: string | null };
+  you: { id: string; name: string } | null;
+  is_owner: boolean;
+};
+
 /** The network watch endpoint wraps the video with what this viewer can do. */
 export type RemoteWatch = {
   video: Video & { remote: RemoteInfo };

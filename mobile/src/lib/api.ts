@@ -36,7 +36,7 @@ export function isInsecure(base: string): boolean {
   }
 }
 
-type ReqOpts = { method?: string; body?: unknown; signal?: AbortSignal };
+type ReqOpts = { method?: string; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> };
 
 export type UploadFile = { uri: string; name: string; type: string };
 
@@ -69,8 +69,8 @@ export class Api {
     return { Authorization: `Bearer ${this.token}` };
   }
 
-  async req<T = any>(path: string, { method = 'GET', body, signal }: ReqOpts = {}): Promise<T> {
-    const headers: Record<string, string> = { Accept: 'application/json' };
+  async req<T = any>(path: string, { method = 'GET', body, signal, headers: extra }: ReqOpts = {}): Promise<T> {
+    const headers: Record<string, string> = { Accept: 'application/json', ...extra };
     if (this.token) headers.Authorization = `Bearer ${this.token}`;
     let payload: any;
     if (body instanceof FormData) payload = body;

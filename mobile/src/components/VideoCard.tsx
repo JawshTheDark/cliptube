@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useScope, withServer } from '@/lib/scope';
 import { videoHref } from '@/lib/api';
-import { ago, compact, duration, hostOf } from '@/lib/format';
+import { ago, duration, hostOf, plural } from '@/lib/format';
 import { colors } from '@/lib/theme';
 import type { Video } from '@/lib/types';
 import { Avatar, Icon } from './ui';
@@ -17,7 +17,7 @@ function meta(v: Video, withName: boolean) {
   const parts = [];
   if (withName) parts.push(v.uploader.display_name);
   if (v.remote) parts.push(v.remote.peer_name || hostOf(v.remote.peer_url));
-  parts.push(`${compact(v.views)} views`);
+  parts.push(`${plural(v.views, 'view')}`);
   parts.push(ago(v.published_at || v.created_at));
   return parts.join(' · ');
 }
@@ -106,7 +106,7 @@ export const VideoRow = memo(function VideoRow({ v, onPress, right, extra }: { v
           {v.uploader.display_name}
         </Text>
         <Text style={s.meta} numberOfLines={1}>
-          {extra || `${compact(v.views)} views · ${ago(v.published_at || v.created_at)}`}
+          {extra || `${plural(v.views, 'view')} · ${ago(v.published_at || v.created_at)}`}
         </Text>
       </View>
       {right}

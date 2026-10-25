@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { Button, Icon, IconButton, toast } from '@/components/ui';
 import { f } from '@/components/VideoForm';
 import { hostLabel, normalizeServerUrl } from '@/lib/api';
-import { DEFAULT_SERVER, useSession } from '@/lib/session';
+import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
 
 /**
@@ -13,16 +13,28 @@ import { colors } from '@/lib/theme';
  * shows one at a time; clips from the rest of the network still appear in that server's feeds.
  */
 export default function Servers() {
-  const { server, servers, site, addServer, switchServer, removeServer } = useSession();
+  const { server, servers, site, main, addServer, switchServer, removeServer, setMain } = useSession();
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const saved = new Set(servers.map((x) => x.url));
-  // Suggestions: the active server's network peers and the hub, if not saved yet.
-  const suggestions = [...(site?.network_peers || []).map((p) => ({ url: safeUrl(p.url), name: p.name })), { url: DEFAULT_SERVER, name: 'ClipTube hub' }].filter(
-    (p, i, all) => p.url && !saved.has(p.url) && all.findIndex((x) => x.url === p.url) === i,
-  );
+  // Suggestions: the open server's network peers that aren't saved yet.
+  const suggestions = (site?.network_peers || [])
+    .map((p) => ({ url: safeUrl(p.url), name: p.name }))
+    .filter((p, i, all) => p.url && !saved.has(p.url) && all.findIndex((x) => x.url === p.url) === i);
+
+  const makeMain = async (url: string) => {
+    setBusy(url);
+    try {
+      await setMain(url);
+      toast(`${hostLabel(url)} is your main server`);
+    } catch (e: any) {
+      toast(e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const use = async (url: string) => {
     setBusy(url);
@@ -56,20 +68,34 @@ export default function Servers() {
   };
 
   const remove = (url: string) =>
-    Alert.alert('Remove server?', `${hostLabel(url)} is removed from the app and you’re signed out of it.`, [
+    Alert.alert(
+      'Remove server?',
+      `${hostLabel(url)} is removed from the app and you’re signed out of it.${url === main ? (servers.length > 1 ? ' Another of your servers becomes the main one.' : ' You’ll pick a new main server.') : ''}`,
+      [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => removeServer(url) },
-    ]);
+        { text: 'Remove', style: 'destructive', onPress: () => removeServer(url) },
+      ],
+    );
 
   return (
     <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 12 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
         <Text style={s.section}>Your servers</Text>
+        <Text style={s.hint}>Tap a server to switch to it for now. The app opens on your main server.</Text>
         {servers.map((x) => (
           <Pressable key={x.url} onPress={() => x.url !== server && use(x.url)} style={[s.card, x.url === server && s.cardOn]} accessibilityRole="radio" accessibilityState={{ checked: x.url === server }}>
             <Icon name={x.url === server ? 'radio-button-checked' : 'radio-button-unchecked'} size={22} color={x.url === server ? colors.accent : colors.text2} />
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, gap: 2 }}>
               <Text style={s.name}>{x.name}</Text>
               <Text style={s.hint}>{hostLabel(x.url)}</Text>
+              {x.url === main ? (
+                <Text style={s.mainBadge}>
+                  <Icon name="home" size={13} color={colors.ok} /> Main server
+                </Text>
+              ) : (
+                <Pressable onPress={() => makeMain(x.url)} hitSlop={6} disabled={!!busy}>
+                  <Text style={s.makeMain}>Make main</Text>
+                </Pressable>
+              )}
             </View>
             {busy === x.url ? <Text style={s.hint}>…</Text> : <IconButton name="delete-outline" label={`Remove ${x.name}`} color={colors.text2} onPress={() => remove(x.url)} />}
           </Pressable>
@@ -124,4 +150,6 @@ const s = StyleSheet.create({
   cardOn: { borderColor: colors.accent },
   name: { color: colors.text, fontSize: 15, fontWeight: '600' },
   hint: { color: colors.text2, fontSize: 13 },
+  mainBadge: { color: colors.ok, fontSize: 12.5, fontWeight: '600' },
+  makeMain: { color: colors.link, fontSize: 12.5, fontWeight: '600' },
 });

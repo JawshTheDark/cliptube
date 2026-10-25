@@ -22,7 +22,7 @@ const KIND_ICON: Record<string, IconName> = {
 /** Website paths the app has screens for; anything else opens in the browser. */
 function openSitePath(url: string | null, base: string) {
   if (!url) return;
-  if (/^\/(watch|n|c|g)\/[^?#]+/.test(url)) router.push(url.replace(/[?#].*$/, '') as any);
+  if (/^\/(watch|n|c|g|playlist|party|live)\/[^?#]+/.test(url)) router.push(url.replace(/[?#].*$/, '') as any);
   else Linking.openURL(/^https?:/.test(url) ? url : `${base}${url}`);
 }
 

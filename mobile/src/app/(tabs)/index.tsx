@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
 import { VideoList } from '@/components/VideoList';
-import { Button, Chip, Empty, ErrorBox } from '@/components/ui';
+import { Avatar, Button, Chip, Empty, ErrorBox } from '@/components/ui';
+import { compact } from '@/lib/format';
+import { liveHref } from '@/lib/refs';
 import { useSession } from '@/lib/session';
 import { usePaged } from '@/lib/usePaged';
 import { colors } from '@/lib/theme';
-import type { Video } from '@/lib/types';
+import type { LiveNow, LiveStream, Video } from '@/lib/types';
 
 type Feed = { key: string; label: string; path: string };
 
@@ -15,6 +17,17 @@ export default function Home() {
   const { api, user, site, siteError, refresh, server } = useSession();
   const [feed, setFeed] = useState('all');
   const [tags, setTags] = useState<string[]>([]);
+  const [live, setLive] = useState<LiveStream[]>([]);
+
+  // Who's live, here and on the rest of the network (ClipTube 1.9; older servers have none).
+  const loadLive = useCallback(() => {
+    if (!server) return;
+    api
+      .get<LiveNow>('/live/now')
+      .then((r) => setLive([...(r.live || []), ...(r.network || [])]))
+      .catch(() => setLive([]));
+  }, [api, server]);
+  useFocusEffect(loadLive);
   const networked = !!site?.federation && (site.network_peers || []).length > 0;
 
   useEffect(() => {
@@ -51,11 +64,34 @@ export default function Home() {
   const paged = usePaged<Video>(api, current.path);
 
   const header = (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips} style={{ backgroundColor: colors.bg }}>
-      {feeds.map((f) => (
-        <Chip key={f.key} label={f.label} active={f.key === current.key} onPress={() => setFeed(f.key)} />
-      ))}
-    </ScrollView>
+    <View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips} style={{ backgroundColor: colors.bg }}>
+        {feeds.map((f) => (
+          <Chip key={f.key} label={f.label} active={f.key === current.key} onPress={() => setFeed(f.key)} />
+        ))}
+      </ScrollView>
+      {live.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.liveRow}>
+          {live.map((st) => (
+            <Pressable key={st.url} style={s.liveCard} onPress={() => router.push(liveHref(st, server) as any)} accessibilityLabel={`${st.channel.display_name} is live: ${st.title}`}>
+              <View>
+                <Avatar uri={api.abs(st.channel.avatar_url)} name={st.channel.display_name} size={44} />
+                <View style={s.liveDot} />
+              </View>
+              <View style={{ flexShrink: 1 }}>
+                <Text style={s.liveName} numberOfLines={1}>
+                  {st.channel.display_name}
+                </Text>
+                <Text style={s.liveTitle} numberOfLines={1}>
+                  {st.title}
+                </Text>
+                <Text style={s.liveMeta}>{`LIVE · ${compact(st.viewers)} watching`}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+    </View>
   );
 
   const empty =
@@ -84,4 +120,10 @@ export default function Home() {
 
 const s = StyleSheet.create({
   chips: { gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  liveRow: { gap: 10, paddingHorizontal: 12, paddingBottom: 12 },
+  liveCard: { flexDirection: 'row', alignItems: 'center', gap: 10, width: 250, padding: 10, borderRadius: 12, backgroundColor: colors.surface },
+  liveDot: { position: 'absolute', right: -2, bottom: -2, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.accent, borderWidth: 2, borderColor: colors.surface },
+  liveName: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  liveTitle: { color: colors.text2, fontSize: 12.5 },
+  liveMeta: { color: colors.accent, fontSize: 11.5, fontWeight: '700', marginTop: 2 },
 });

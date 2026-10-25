@@ -21,7 +21,7 @@ function Row({ icon, label, onPress, hint }: { icon: IconName; label: string; on
 }
 
 export default function You() {
-  const { user, api, server, site, signOut } = useSession();
+  const { user, api, server, site, main, signOut } = useSession();
 
   const confirmSignOut = () =>
     Alert.alert('Sign out?', `You’ll be signed out of ${hostLabel(server)} on this phone.`, [
@@ -58,6 +58,9 @@ export default function You() {
           <View style={s.group}>
             <Row icon="video-library" label="Your clips" onPress={() => router.push('/library/mine')} />
             <Row icon="history" label="History" onPress={() => router.push('/library/history')} />
+            <Row icon="watch-later" label="Watch later" onPress={() => router.push('/playlist/watch-later')} />
+            <Row icon="playlist-play" label="Playlists" onPress={() => router.push('/library/playlists')} />
+            <Row icon="groups" label="Watch parties" hint="Parties you host" onPress={() => router.push('/library/parties')} />
             <Row icon="thumb-up-off-alt" label="Liked clips" onPress={() => router.push('/library/liked')} />
             <Row icon="subscriptions" label="Subscriptions" onPress={() => router.push('/library/subscriptions')} />
             <Row icon="link" label="Linked accounts" hint="Your accounts on other servers, shown as one person" onPress={() => router.push('/links')} />
@@ -65,6 +68,7 @@ export default function You() {
         )}
 
         <View style={s.group}>
+          <Row icon="tune" label="App settings" hint={main ? `Main server: ${hostLabel(main)}` : undefined} onPress={() => router.push('/settings')} />
           <Row icon="dns" label="Servers" hint={`Using ${hostLabel(server)}`} onPress={() => router.push('/servers')} />
           <Row icon="settings" label="Account settings on the website" onPress={() => Linking.openURL(`${server}/settings`)} />
           {user && <Row icon="logout" label="Sign out" onPress={confirmSignOut} />}
