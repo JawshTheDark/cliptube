@@ -1,7 +1,12 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf8')).version;
+// Lets federation talk to localhost / LAN addresses. Only for testing two instances on one machine.
+export const ALLOW_PRIVATE_FEDERATION =
+  process.argv.includes('--allow-private-federation') || process.env.FEDERATION_ALLOW_PRIVATE === '1';
 export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT_DIR, 'data');
 // Port: `--port N` argument wins (used by the dev script), then the PORT env var, then 3000.
 const portArg = process.argv.indexOf('--port');
@@ -15,6 +20,7 @@ export const DIRS = {
   videos: path.join(DATA_DIR, 'videos'),
   thumbs: path.join(DATA_DIR, 'thumbs'),
   avatars: path.join(DATA_DIR, 'avatars'),
+  editor: path.join(DATA_DIR, 'editor'),
   tmp: path.join(DATA_DIR, 'tmp'),
 };
 

@@ -15,6 +15,8 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 - Public / unlisted / private videos, share dialog with "start at" timestamps
 - Discord/Slack link previews (Open Graph tags with inline player)
 - Studio page to manage your videos, admin page for site settings and users
+- **Timeline editor**: trim, split, cut out sections, volume boost or mute, fade in/out, pick a thumbnail from any frame
+- **Opt-in federation**: follow friends' ClipTube instances to browse and search their clips here while they keep hosting them
 - Keyboard shortcuts: `k` play/pause, `j`/`l` seek 10s, arrows seek 5s, `f` fullscreen, `t` theater, `m` mute, `0-9` jump
 
 ## Run it
@@ -35,6 +37,45 @@ Development (hot reload, frontend on http://localhost:5173, API on 3000):
 ```bash
 npm run dev
 ```
+
+## Timeline editor
+
+Open it from Studio (scissors icon), the video details page, or the Editor button on your own watch page.
+
+- The timeline shows a filmstrip and the audio waveform. Click or drag on it to move the playhead.
+- **S** splits the part under the playhead, **Del** removes the selected part, and dragging a part's yellow
+  edges trims it (it snaps to the playhead). **I** / **O** set the selected part's start and end to the playhead.
+- Removed sections are hatched; double-click one to bring it back.
+- **Preview edit** plays the result live, skipping cut sections. **Ctrl+Z** / **Ctrl+Shift+Z** undo and redo.
+- Volume goes up to 300%, mute removes the audio track, and fades go to and from black.
+- **Save** renders the edit in the background. The old version stays up until the new one is ready, and
+  shared links keep working. **Revert to original** restores the upload at any time, because edits are
+  non-destructive: the first processed file is kept as the editing source (an edited video uses roughly
+  twice its disk space).
+
+## Federation (opt-in)
+
+Each person runs their own instance and hosts their own clips. Instances that follow each other show each
+other's public clips in **Network**, on the home feed and in search. The video files are never copied:
+viewers stream straight from the instance that hosts the clip, and views count there.
+
+1. Admin → **Federation** → tick **Take part in federation**. It is off by default; while off the instance
+   is invisible to others and contacts nobody.
+2. Choose who may follow you: **only instances you approve** (default) or **any instance**.
+3. To see a friend's clips, enter their address (e.g. `clips.example.com`) under **Follow an instance**.
+   Their admin approves you under **Followers**, and they can **Follow back** with one click.
+4. Clips sync every 10 minutes (or press sync). Making a clip private or unlisted, unticking
+   **Share with followed instances** on it, or blocking a follower removes it from the other side on the
+   next sync.
+
+Only public, ready videos with sharing on are ever listed. Both instances need to be reachable over HTTPS
+for visitors to play each other's clips. Federation refuses to contact private-network addresses; to test
+two instances on one machine, start both with `--allow-private-federation`.
+
+Protocol summary (v1, JSON over HTTPS): `GET /.well-known/cliptube` describes an instance;
+`POST /api/federation/follow` starts a follow, which the target confirms by calling back the follower's
+`/api/federation/verify`; approved followers get a bearer token for `GET /api/federation/videos`
+(incremental by `updated_since`), `GET /api/federation/ids` (for pruning) and `GET /api/federation/status`.
 
 ## Configuration
 

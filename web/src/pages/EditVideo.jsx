@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
-import { useTitle } from '../auth.jsx';
+import { useAuth, useTitle } from '../auth.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { Empty } from '../components/VideoCard.jsx';
@@ -17,13 +17,15 @@ export default function EditVideo() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const thumbRef = useRef(null);
+  const { site } = useAuth();
 
+  const toForm = (v) => ({ title: v.title, description: v.description, tags: v.tags.join(', '), visibility: v.visibility, federate: v.federate });
   const load = useCallback(
     () =>
       api(`/videos/${id}`)
         .then((r) => {
           setVideo(r.video);
-          setForm((f) => f || { title: r.video.title, description: r.video.description, tags: r.video.tags.join(', '), visibility: r.video.visibility });
+          setForm((f) => f || toForm(r.video));
         })
         .catch(setError),
     [id],
@@ -32,7 +34,7 @@ export default function EditVideo() {
     load();
   }, [load]);
 
-  const status = video?.status;
+  const status = video?.status === 'ready' && (video?.render_status === 'queued' || video?.render_status === 'rendering') ? 'rendering' : video?.status;
   useEffect(() => {
     if (!status || status === 'ready' || status === 'failed') return;
     const t = setInterval(load, 2500);
@@ -46,7 +48,12 @@ export default function EditVideo() {
   if (!video.can_edit) return <Empty icon="lock" title="You can't edit this video" />;
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
-  const dirty = form.title !== video.title || form.description !== video.description || form.visibility !== video.visibility || form.tags !== video.tags.join(', ');
+  const dirty =
+    form.title !== video.title ||
+    form.description !== video.description ||
+    form.visibility !== video.visibility ||
+    form.tags !== video.tags.join(', ') ||
+    form.federate !== video.federate;
 
   const save = async (e) => {
     e?.preventDefault();
@@ -54,7 +61,7 @@ export default function EditVideo() {
     try {
       const r = await api(`/videos/${id}`, { method: 'PATCH', body: form });
       setVideo(r.video);
-      setForm({ title: r.video.title, description: r.video.description, tags: r.video.tags.join(', '), visibility: r.video.visibility });
+      setForm(toForm(r.video));
       toast('Changes saved');
     } catch (err) {
       toast(err.message);
@@ -104,6 +111,11 @@ export default function EditVideo() {
           <Link to={`/watch/${video.id}`} className="btn">
             <Icon name="play" /> View
           </Link>
+          {video.status === 'ready' && (
+            <Link to={`/studio/editor/${video.id}`} className="btn">
+              <Icon name="cut" /> Open editor
+            </Link>
+          )}
           <button className="btn btn-primary" onClick={save} disabled={busy || !dirty}>
             {busy ? 'Saving…' : 'Save'}
           </button>
@@ -134,6 +146,21 @@ export default function EditVideo() {
             </select>
             <span className="hint">{VISIBILITY_HELP[form.visibility]}</span>
           </div>
+          {site.federation && (
+            <label className="checkbox field">
+              <input type="checkbox" checked={form.federate} onChange={(e) => set({ federate: e.target.checked })} disabled={form.visibility !== 'public'} />
+              <span>
+                Share with followed instances
+                <br />
+                <span className="hint">Only public videos are shared. Turn this off to keep a public clip on this site only.</span>
+              </span>
+            </label>
+          )}
+          {video.edited && (
+            <p className="hint">
+              <Icon name="cut" size={14} /> This video has been edited. <Link to={`/studio/editor/${video.id}`}>Open the editor</Link> to change or revert the edit.
+            </p>
+          )}
         </form>
 
         <aside className="edit-side">

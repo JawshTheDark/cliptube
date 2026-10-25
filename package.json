@@ -1,6 +1,6 @@
 {
   "name": "cliptube",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Self-hosted YouTube-style video site for sharing gaming clips",
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "concurrently -k -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
-    "dev:server": "node --watch-path=server server/index.js --port 3000 --log",
+    "dev:server": "node --watch-path=server server/index.js --port 3000 --log --allow-private-federation",
     "dev:web": "vite --config web/vite.config.js",
     "build": "vite build --config web/vite.config.js",
     "start": "node server/index.js"

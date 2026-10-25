@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 import { Avatar } from '../components/Avatar.jsx';
@@ -13,6 +13,19 @@ const ENCODER_LABELS = {
   h264_qsv: 'Intel Quick Sync (GPU)',
   h264_amf: 'AMD AMF (GPU)',
 };
+
+export function AdminTabs() {
+  return (
+    <div className="tabs admin-tabs">
+      <NavLink to="/admin" end className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
+        Overview
+      </NavLink>
+      <NavLink to="/admin/federation" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
+        Federation
+      </NavLink>
+    </div>
+  );
+}
 
 export default function Admin() {
   const { user, refresh } = useAuth();
@@ -81,6 +94,7 @@ export default function Admin() {
 
   return (
     <div className="page page-wide">
+      <AdminTabs />
       <h1>
         <Icon name="shield" /> Admin
       </h1>
@@ -113,7 +127,7 @@ export default function Admin() {
           </div>
           <div className="stat">
             <div className="n">{stats.queue.current ? stats.queue.waiting + 1 : stats.queue.waiting}</div>
-            <div className="l">{stats.queue.current ? 'Processing now' : 'Processing queue'}</div>
+            <div className="l">{stats.queue.current ? 'Processing now' : 'Processing queue'}{stats.rendering ? ` · ${stats.rendering} edit render(s)` : ''}</div>
           </div>
         </div>
       )}

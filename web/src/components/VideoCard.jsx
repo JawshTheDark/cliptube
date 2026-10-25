@@ -23,8 +23,20 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const watched = v.position > 5 && v.duration ? Math.min(100, (v.position / v.duration) * 100) : 0;
-  const watchUrl = `/watch/${v.id}`;
-  const channelUrl = `/c/${u.username}`;
+  const remote = v.remote;
+  const watchUrl = remote ? `/n/${remote.peer_id}/${remote.remote_id}` : `/watch/${v.id}`;
+  const channelUrl = remote ? u.url || remote.peer_url : `/c/${u.username}`;
+  // Remote channels live on their own instance, so link out instead of routing.
+  const ChannelLink = ({ className, children }) =>
+    remote ? (
+      <a href={channelUrl} className={className} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ) : (
+      <Link to={channelUrl} className={className}>
+        {children}
+      </Link>
+    );
 
   return (
     <article className={`card ${variant}`}>
@@ -58,9 +70,9 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
       </Link>
       <div className="card-body">
         {variant === 'grid' && (
-          <Link to={channelUrl} className="card-avatar">
+          <ChannelLink className="card-avatar">
             <Avatar user={u} size={36} />
-          </Link>
+          </ChannelLink>
         )}
         <div className="card-text">
           <Link to={watchUrl} className="card-title" title={v.title}>
@@ -72,10 +84,15 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true }) {
             </div>
           )}
           {showChannel && (
-            <Link to={channelUrl} className="card-channel">
+            <ChannelLink className="card-channel">
               {variant === 'list' && <Avatar user={u} size={24} />}
               {u.display_name}
-            </Link>
+            </ChannelLink>
+          )}
+          {remote && (
+            <span className="card-instance" title={`Hosted on ${remote.peer_url}`}>
+              <Icon name="public" /> {remote.peer_name}
+            </span>
           )}
           {variant !== 'list' && (
             <div className="card-meta">

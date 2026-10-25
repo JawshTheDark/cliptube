@@ -110,7 +110,89 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Federation: instances we pull public videos from.
+CREATE TABLE IF NOT EXISTS peers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  url TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  token TEXT,
+  nonce TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',      -- pending | approved | rejected | error
+  paused INTEGER NOT NULL DEFAULT 0,
+  video_count INTEGER NOT NULL DEFAULT 0,
+  cursor INTEGER NOT NULL DEFAULT 0,
+  last_sync_at INTEGER,
+  last_full_sync_at INTEGER,
+  last_error TEXT,
+  fail_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+-- Federation: instances that pull from us.
+CREATE TABLE IF NOT EXISTS followers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  url TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL DEFAULT '',
+  token_hash TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',      -- pending | approved | blocked
+  created_at INTEGER NOT NULL,
+  last_seen_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_followers_token ON followers(token_hash);
+
+-- Federation: cached index of peers' public videos (metadata only, media stays on the origin).
+CREATE TABLE IF NOT EXISTS remote_videos (
+  peer_id INTEGER NOT NULL REFERENCES peers(id) ON DELETE CASCADE,
+  remote_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  tags TEXT NOT NULL DEFAULT '',
+  duration REAL NOT NULL DEFAULT 0,
+  width INTEGER NOT NULL DEFAULT 0,
+  height INTEGER NOT NULL DEFAULT 0,
+  views INTEGER NOT NULL DEFAULT 0,
+  likes INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  thumbnail_url TEXT,
+  video_url TEXT NOT NULL,
+  watch_url TEXT NOT NULL,
+  uploader_username TEXT NOT NULL,
+  uploader_display_name TEXT NOT NULL,
+  uploader_avatar_url TEXT,
+  uploader_url TEXT,
+  fetched_at INTEGER NOT NULL,
+  PRIMARY KEY (peer_id, remote_id)
+);
+CREATE INDEX IF NOT EXISTS idx_remote_created ON remote_videos(created_at);
 `);
+
+// ---- additive migrations -----------------------------------------------------
+
+function addColumn(table, name, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${def}`);
+}
+addColumn('videos', 'base_path', 'TEXT');                      // first processed MP4, the source for edits
+addColumn('videos', 'base_duration', 'REAL');
+addColumn('videos', 'fps', 'REAL NOT NULL DEFAULT 0');
+addColumn('videos', 'edit_json', 'TEXT');                      // current edit decision list, NULL = unedited
+addColumn('videos', 'edit_version', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('videos', 'render_status', 'TEXT');                  // NULL | queued | rendering | failed
+addColumn('videos', 'render_progress', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('videos', 'render_error', 'TEXT');
+addColumn('videos', 'federate', 'INTEGER NOT NULL DEFAULT 1'); // include in the federated network when public
+addColumn('videos', 'updated_at', 'INTEGER');
+db.exec('UPDATE videos SET base_path = file_path, base_duration = duration WHERE base_path IS NULL AND file_path IS NOT NULL');
+db.exec('UPDATE videos SET updated_at = COALESCE(published_at, created_at) WHERE updated_at IS NULL');
+db.exec('CREATE INDEX IF NOT EXISTS idx_videos_updated ON videos(updated_at, id)');
+
+/** Marks a video as changed so federation peers pick it up on their next sync. */
+export function touchVideo(id) {
+  db.prepare('UPDATE videos SET updated_at = ? WHERE id = ?').run(Date.now(), id);
+}
 
 export const DEFAULT_SETTINGS = {
   site_name: 'ClipTube',
@@ -120,6 +202,9 @@ export const DEFAULT_SETTINGS = {
   encoder: 'libx264',
   delete_originals: 'false',
   public_url: '',
+  federation_enabled: 'false',
+  federation_mode: 'approval', // approval | open
+  instance_description: '',
 };
 
 export function getSettings() {

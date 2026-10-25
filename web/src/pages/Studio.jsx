@@ -17,6 +17,16 @@ export function VisibilityBadge({ value }) {
 }
 
 export function StatusBadge({ video }) {
+  if (video.status === 'ready' && (video.render_status === 'queued' || video.render_status === 'rendering')) {
+    return <span className="badge warn">Rendering edit {video.render_progress || 0}%</span>;
+  }
+  if (video.status === 'ready' && video.render_status === 'failed') {
+    return (
+      <span className="badge err" title={video.render_error || ''}>
+        <Icon name="warning" /> Edit failed
+      </span>
+    );
+  }
   switch (video.status) {
     case 'ready':
       return (
@@ -48,7 +58,7 @@ export default function Studio() {
     load();
   }, [load]);
 
-  const busy = videos?.some((v) => v.status === 'queued' || v.status === 'processing');
+  const busy = videos?.some((v) => v.status === 'queued' || v.status === 'processing' || v.render_status === 'queued' || v.render_status === 'rendering');
   useEffect(() => {
     if (!busy) return;
     const t = setInterval(load, 3000);
@@ -148,7 +158,12 @@ export default function Studio() {
                       <Link className="icon-btn" to={`/studio/edit/${v.id}`} title="Edit details">
                         <Icon name="edit" />
                       </Link>
-                      {v.status === 'failed' && (
+                      {v.status === 'ready' && (
+                        <Link className="icon-btn" to={`/studio/editor/${v.id}`} title="Open the timeline editor">
+                          <Icon name="cut" />
+                        </Link>
+                      )}
+                      {(v.status === 'failed' || v.render_status === 'failed') && (
                         <button className="icon-btn" onClick={() => retry(v)} title="Retry processing">
                           <Icon name="refresh" />
                         </button>

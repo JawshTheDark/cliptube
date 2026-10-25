@@ -6,6 +6,7 @@ import { DIRS } from '../config.js';
 import { requireAdmin, userToPublic } from '../auth.js';
 import { HttpError } from '../util.js';
 import { queueInfo, ffmpegInfo } from '../media.js';
+import { removeVideoFiles } from './videos.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
@@ -69,16 +70,9 @@ adminRouter.delete('/users/:id', (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(String(req.params.id));
   if (!u) throw new HttpError(404, 'User not found');
   if (u.id === req.user.id) throw new HttpError(400, 'You cannot delete your own account from here');
-  const videos = db.prepare('SELECT original_path, file_path, thumb_path FROM videos WHERE user_id = ?').all(u.id);
+  const videos = db.prepare('SELECT * FROM videos WHERE user_id = ?').all(u.id);
   db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
-  for (const v of videos) {
-    const files = [
-      v.original_path && path.join(DIRS.originals, v.original_path),
-      v.file_path && path.join(DIRS.videos, v.file_path),
-      v.thumb_path && path.join(DIRS.thumbs, v.thumb_path),
-    ];
-    for (const f of files) if (f) try { fs.unlinkSync(f); } catch {}
-  }
+  for (const v of videos) removeVideoFiles(v);
   if (u.avatar) try { fs.unlinkSync(path.join(DIRS.avatars, u.avatar)); } catch {}
   res.json({ ok: true });
 });
@@ -102,6 +96,7 @@ adminRouter.get('/stats', (req, res) => {
     views: db.prepare('SELECT COALESCE(SUM(views), 0) AS n FROM videos').get().n,
     comments: db.prepare('SELECT COUNT(*) AS n FROM comments').get().n,
     disk: { videos: dirSize(DIRS.videos), originals: dirSize(DIRS.originals), thumbs: dirSize(DIRS.thumbs), avatars: dirSize(DIRS.avatars) },
+    rendering: db.prepare("SELECT COUNT(*) AS n FROM videos WHERE render_status IN ('queued', 'rendering')").get().n,
     queue: queueInfo(),
     tools: ffmpegInfo(),
   });

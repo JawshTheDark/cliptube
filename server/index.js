@@ -11,6 +11,7 @@ import { usersRouter, meRouter } from './routes/users.js';
 import { adminRouter } from './routes/admin.js';
 import { mediaRouter } from './routes/media.js';
 import { resumePending } from './media.js';
+import { federationRouter, federationAdminRouter, networkRouter, fedEnabled, networkPeers, startFederation } from './federation.js';
 import { HttpError, escapeHtml } from './util.js';
 
 const app = express();
@@ -37,12 +38,17 @@ app.get('/api/site', (req, res) => {
     allow_registration: s.allow_registration === 'true',
     max_upload_mb: Number(s.max_upload_mb),
     needs_setup: userCount() === 0,
+    federation: fedEnabled(),
+    network_peers: networkPeers(),
   });
 });
+app.use(federationRouter); // /.well-known/cliptube and /api/federation/*
 app.use('/api/auth', authRouter);
 app.use('/api/videos', videosRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/me', meRouter);
+app.use('/api/network', networkRouter);
+app.use('/api/admin/federation', federationAdminRouter);
 app.use('/api/admin', adminRouter);
 app.use('/media', mediaRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
@@ -126,6 +132,7 @@ for (const f of fs.readdirSync(DIRS.tmp)) {
   try { fs.unlinkSync(path.join(DIRS.tmp, f)); } catch {}
 }
 resumePending();
+startFederation();
 
 const server = app.listen(PORT, HOST, () => {
   const s = getSettings();

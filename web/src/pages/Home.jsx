@@ -11,6 +11,9 @@ export default function Home({ trending = false }) {
   const tag = params.get('tag') || '';
   const sort = trending ? 'views' : params.get('sort') || 'new';
   const { user, site } = useAuth();
+  const networked = site.federation && (site.network_peers || []).length > 0;
+  // With federation on, Home mixes in clips from followed instances unless "This site" is picked.
+  const scope = networked ? params.get('scope') || 'all' : 'local';
   const [tags, setTags] = useState([]);
 
   useEffect(() => {
@@ -19,7 +22,7 @@ export default function Home({ trending = false }) {
       .catch(() => {});
   }, []);
 
-  const url = useMemo(() => `/videos?sort=${sort}${tag ? `&tag=${encodeURIComponent(tag)}` : ''}`, [sort, tag]);
+  const url = useMemo(() => `/videos?sort=${sort}&scope=${scope}${tag ? `&tag=${encodeURIComponent(tag)}` : ''}`, [sort, tag, scope]);
   const { items, hasMore, loading, error, loadMore } = usePaged(url);
   useTitle(trending ? 'Trending' : tag ? `#${tag}` : null);
 
@@ -31,10 +34,15 @@ export default function Home({ trending = false }) {
         </h1>
       ) : (
         <div className="chips">
-          <button className={`chip ${!tag && sort === 'new' ? 'active' : ''}`} onClick={() => setParams({})}>
+          <button className={`chip ${!tag && sort === 'new' && scope !== 'local' ? 'active' : ''}`} onClick={() => setParams({})}>
             All
           </button>
-          <button className={`chip ${!tag && sort === 'top' ? 'active' : ''}`} onClick={() => setParams({ sort: 'top' })}>
+          {networked && (
+            <button className={`chip ${!tag && scope === 'local' && sort === 'new' ? 'active' : ''}`} onClick={() => setParams({ scope: 'local' })}>
+              This site
+            </button>
+          )}
+          <button className={`chip ${!tag && sort === 'top' ? 'active' : ''}`} onClick={() => setParams(networked ? { sort: 'top', scope } : { sort: 'top' })}>
             Top rated
           </button>
           {tags.map((t) => (

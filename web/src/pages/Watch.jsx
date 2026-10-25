@@ -11,7 +11,7 @@ import { useToast } from '../components/Toast.jsx';
 import { compact, formatDate, formatDuration, parseTimestamp, copyText } from '../util.js';
 
 /** Renders description text with clickable URLs and seekable timestamps. */
-function Description({ text, onSeek }) {
+export function Description({ text, onSeek }) {
   const parts = [];
   const re = /(https?:\/\/[^\s<]+)|(\b(?:\d{1,2}:)?\d{1,2}:\d{2}\b)/g;
   let last = 0;
@@ -259,9 +259,16 @@ export default function Watch() {
               </div>
             </div>
             {isOwner ? (
-              <Link to={`/studio/edit/${video.id}`} className="btn">
-                <Icon name="edit" /> Edit video
-              </Link>
+              <>
+                <Link to={`/studio/edit/${video.id}`} className="btn">
+                  <Icon name="edit" /> Details
+                </Link>
+                {video.status === 'ready' && (
+                  <Link to={`/studio/editor/${video.id}`} className="btn">
+                    <Icon name="cut" /> Editor
+                  </Link>
+                )}
+              </>
             ) : (
               <button className={`btn ${video.subscribed ? '' : 'btn-primary'}`} onClick={toggleSub}>
                 {video.subscribed ? 'Subscribed' : 'Subscribe'}

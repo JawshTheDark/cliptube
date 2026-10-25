@@ -16,11 +16,15 @@ import { Login, Register } from './pages/Auth.jsx';
 import Settings from './pages/Settings.jsx';
 import { Subscriptions, Liked, History } from './pages/Library.jsx';
 import Admin from './pages/Admin.jsx';
+import AdminFederation from './pages/AdminFederation.jsx';
+import Editor from './pages/Editor.jsx';
+import Network from './pages/Network.jsx';
+import RemoteWatch from './pages/RemoteWatch.jsx';
 import { Empty } from './components/VideoCard.jsx';
 
 function Layout() {
   const location = useLocation();
-  const isWatch = location.pathname.startsWith('/watch/');
+  const isWatch = /^\/(watch|n|studio\/editor)\//.test(location.pathname);
   const narrow = useMediaQuery('(max-width: 792px)');
   const medium = useMediaQuery('(max-width: 1312px)');
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar') === 'mini');
@@ -87,6 +91,24 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="/trending" element={<Home trending />} />
               <Route path="/watch/:id" element={<Watch />} />
+              <Route path="/n/:peerId/:remoteId" element={<RemoteWatch />} />
+              <Route path="/network" element={<Network />} />
+              <Route
+                path="/studio/editor/:id"
+                element={
+                  <RequireAuth>
+                    <Editor />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/federation"
+                element={
+                  <RequireAuth admin>
+                    <AdminFederation />
+                  </RequireAuth>
+                }
+              />
               <Route path="/c/:username" element={<Channel />} />
               <Route path="/results" element={<Search />} />
               <Route path="/login" element={<Login />} />
