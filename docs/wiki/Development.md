@@ -109,6 +109,19 @@ Docker sandbox, streams a test picture with ffmpeg, and checks the stream, the H
 recording (see [Live Streaming](Live-Streaming.md#how-it-works)). With `--keep` the sandbox stays up, and
 `ssh -N -L 3320:127.0.0.1:3320 <ssh-host>` shows it in your browser at http://localhost:3320.
 
+To work on a live player (the live page, or the Android app) without Docker, `scripts/fake-live.mjs` stands in
+for MediaMTX next to a local server: it makes a live test picture with the bundled ffmpeg, serves it as HLS and
+tells ClipTube the channel went live. Start ClipTube pointed at it, copy a channel's stream key from Settings, and
+run the script with the same secret:
+
+```bash
+LIVE_SERVER=127.0.0.1 LIVE_SECRET=dev-live-secret LIVE_API_URL=http://127.0.0.1:8897 LIVE_HLS_URL=http://127.0.0.1:8897 LIVE_END_GRACE_MS=5000 node server/index.js --port 3300
+LIVE_SECRET=dev-live-secret node scripts/fake-live.mjs http://127.0.0.1:3300 'alice?key=...' 10
+```
+
+The stream plays at http://127.0.0.1:3300/live/alice (from an Android emulator, http://10.0.2.2:3300) for ten
+minutes or until Ctrl+C; it is plain HLS, a few seconds behind, where the real MediaMTX sends low-latency HLS.
+
 ## Releasing
 
 1. Set the new version: `npm version 1.5.0 --no-git-tag-version` (updates `package.json` and
