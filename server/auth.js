@@ -135,8 +135,24 @@ export function checkInvite(code) {
   return inv;
 }
 
+/**
+ * Slows down password guessing and mass sign-ups. Failed sign-ins count per address and account, per
+ * address, and per account (so many addresses can't hammer one account either); a success clears its pair.
+ */
+const attempts = new Map(); // key -> timestamps
+const recent = (key, windowMs) => (attempts.get(key) || []).filter((t) => now() - t < windowMs);
+const over = (key, max, windowMs) => recent(key, windowMs).length >= max;
+const note = (key, windowMs) => attempts.set(key, [...recent(key, windowMs), now()]);
+const FAIL_WINDOW = 15 * 60_000;
+setInterval(() => {
+  for (const k of attempts.keys()) if (!recent(k, 3600_000).length) attempts.delete(k);
+}, 10 * 60_000).unref();
+
 authRouter.post('/register', async (req, res) => {
   const { username, password, display_name, setup_code, invite, accept_terms } = req.body || {};
+  // Many new accounts from one address in an hour are slowed down.
+  const signupKey = `signup:${req.ip || 'unknown'}`;
+  if (over(signupKey, 20, 3600_000)) throw new HttpError(429, 'Too many new accounts from your address. Try again later.');
   const first = userCount() === 0;
   const mode = registrationMode();
   let inv = null;
@@ -163,6 +179,7 @@ authRouter.post('/register', async (req, res) => {
     'INSERT INTO users (id, username, display_name, password_hash, is_admin, role, status, terms_accepted_at, invited_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
   ).run(id, username, str(display_name, 50).trim() || username, hash, first ? 1 : 0, first ? 'admin' : 'user', status, accept_terms ? now() : null, inv?.created_by || null, now());
   if (inv) db.prepare('UPDATE invites SET uses = uses + 1 WHERE code = ?').run(inv.code);
+  note(signupKey, 3600_000);
   if (status === 'pending') {
     return res.status(202).json({ pending: true, message: 'Thanks! An admin needs to approve your account before you can sign in.' });
   }
@@ -172,8 +189,16 @@ authRouter.post('/register', async (req, res) => {
 
 authRouter.post('/login', async (req, res) => {
   const { username, password } = req.body || {};
+  const ip = req.ip || 'unknown';
+  const name = String(username || '').toLowerCase();
+  const keys = [[`pair:${ip}:${name}`, 10], [`ip:${ip}`, 50], [`user:${name}`, 30]];
+  if (keys.some(([k, max]) => over(k, max, FAIL_WINDOW))) throw new HttpError(429, 'Too many failed sign-ins. Try again in a few minutes.');
   const u = db.prepare('SELECT * FROM users WHERE username = ? AND remote_instance_id IS NULL').get(String(username || ''));
-  if (!u || !(await bcrypt.compare(String(password || ''), u.password_hash))) throw new HttpError(401, 'Wrong username or password');
+  if (!u || !(await bcrypt.compare(String(password || ''), u.password_hash))) {
+    for (const [k] of keys) note(k, FAIL_WINDOW);
+    throw new HttpError(401, 'Wrong username or password');
+  }
+  attempts.delete(keys[0][0]);
   if (u.status === 'pending') throw new HttpError(403, 'This account is waiting for an admin to approve it');
   if (u.status && u.status !== 'active') {
     throw new HttpError(403, `This account is ${u.status}${u.status_reason ? `: ${u.status_reason}` : ''}`);

@@ -32,7 +32,7 @@ test('isPrivateIp recognises private, loopback and link-local ranges', () => {
   for (const ip of ['127.0.0.1', '10.1.2.3', '192.168.1.97', '172.20.0.5', '169.254.169.254', '100.64.0.1', '::1', 'fe80::1', 'fd00::1', '::ffff:10.0.0.1']) {
     assert.equal(isPrivateIp(ip), true, ip);
   }
-  for (const ip of ['8.8.8.8', '173.208.50.194', '24.26.6.202', '2606:4700::1111']) assert.equal(isPrivateIp(ip), false, ip);
+  for (const ip of ['8.8.8.8', '1.1.1.1', '9.9.9.9', '2606:4700::1111']) assert.equal(isPrivateIp(ip), false, ip);
 });
 
 test('cleanItem rejects media that is not hosted on the origin', () => {

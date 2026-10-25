@@ -286,11 +286,12 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 | [Troubleshooting](docs/wiki/Troubleshooting.md) | Common problems and their fixes |
 | [Development](docs/wiki/Development.md) | Code layout, tests, migrations, releases |
 | [Android App](docs/wiki/Android-App.md) | Installing the APK, servers and sign-in, uploading from your phone |
+| [Security](SECURITY.md) | Reporting a vulnerability, and how servers and networks are protected |
 
 ## Status
 
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.6.0**); smaller ideas are tracked in
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.6.1**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/cliptube/releases).
 

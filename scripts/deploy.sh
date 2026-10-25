@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploys the committed code (git HEAD) to one or more Docker hosts over SSH.
 #
-#   scripts/deploy.sh jawsh@192.168.1.97 ircso
+#   scripts/deploy.sh user@server-one user@server-two
 #
 # For each host: backs up the database, tags the running image for rollback, copies the code,
 # rebuilds and restarts the container, and waits for the health check.

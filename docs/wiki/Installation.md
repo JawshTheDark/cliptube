@@ -273,7 +273,7 @@ Within a sync round the hub's games appear under Admin → Games, and other serv
 4. **Expect hairpin NAT trouble.** Many home routers don't support NAT loopback: from inside your own network
    the public name won't connect even though it works for everyone else. Turn on NAT loopback if your router
    has it, add a hosts-file entry pointing the name at the machine's LAN address, or use the LAN address
-   directly (for example `http://192.168.1.97:3100`). For the same reason, your own clips can look broken to
+   directly (for example `http://192.168.1.10:3100`). For the same reason, your own clips can look broken to
    you when you view them through another server in the network.
 
 ## GPU encoding

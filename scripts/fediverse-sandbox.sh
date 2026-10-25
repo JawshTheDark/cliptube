@@ -3,8 +3,8 @@
 # in a private Docker sandbox on a host reachable over SSH. Nothing is exposed: the sandbox network is
 # internal (no published ports, no internet), and Caddy issues the HTTPS certificates from its own local CA.
 #
-#   scripts/fediverse-sandbox.sh jawsh@192.168.1.97          # build this working tree, run the checks, clean up
-#   scripts/fediverse-sandbox.sh jawsh@192.168.1.97 --keep   # leave the sandbox running for a look around
+#   scripts/fediverse-sandbox.sh user@docker-host          # build this working tree, run the checks, clean up
+#   scripts/fediverse-sandbox.sh user@docker-host --keep   # leave the sandbox running for a look around
 #
 # Needs Docker with Compose on the host and about 3 GB of memory while it runs. The images it pulls stay
 # cached on the host for the next run. Exit code: 0 when every check passed.

@@ -22,6 +22,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | After M8: SteamGridDB artwork, uploads as drafts until saved | Done | v1.4.0, 2026-10-25 |
 | Android app (mobile/, Expo); bearer-token sign-in for it | Done | v1.5.0 and android-v1.0.0, 2026-10-25 |
 | After M8: linked accounts (one person on several servers, verified both ways) | Done | v1.6.0, 2026-10-25 |
+| Security pass before going public: sign-in and sign-up limits, SECURITY.md, no private details in the repo | Done | v1.6.1, 2026-10-25 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you
@@ -33,7 +34,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 - Streaming (M4): adaptive streaming is off on both servers, because it costs CPU once per video and 50 to 100%
   more disk. Turn it on under Admin → Overview → Adaptive streaming; existing videos are rebuilt in the
   background. I tested the ladder, quality switching and skipping in a browser, not playback on a throttled link.
-- Fediverse checks (M6, M7): done without subdomains. `scripts/fediverse-sandbox.sh jawsh@192.168.1.97` runs a
+- Fediverse checks (M6, M7): done without subdomains. `scripts/fediverse-sandbox.sh <ssh-host>` runs a
   real PeerTube (7.3) and GoToSocial (0.22, Mastodon-compatible) next to ClipTube in a private Docker sandbox on
   the laptop, with no ports opened, and all 17 checks pass. It cleans up after itself; the images stay cached
   (about 2.3 GB). A check from a real Mastodon account is still worth a try: search for
