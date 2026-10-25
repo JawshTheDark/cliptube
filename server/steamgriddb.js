@@ -30,6 +30,15 @@ const SAFE = { nsfw: 'false', humor: 'false', epilepsy: 'false' };
 export const sgdbConfigured = () => !!getSettings().steamgriddb_api_key;
 export const sgdbAuto = () => sgdbConfigured() && getSettings().steamgriddb_auto !== 'false';
 
+// A name by its letters and digits alone, so "Call of Duty Black Ops 7" is "Call of Duty: Black Ops 7".
+const sameName = (s) => String(s || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
+/** The SteamGridDB game a name means: the same name ignoring case and punctuation, else the first verified one. */
+export function bestMatch(found, name) {
+  const want = sameName(name);
+  return (want && found.find((x) => sameName(x.name) === want)) || found.find((x) => x.verified) || found[0] || null;
+}
+
 async function call(p, params = {}) {
   const key = getSettings().steamgriddb_api_key;
   if (!key) throw new HttpError(400, 'Add a SteamGridDB API key first (Admin → Games)');
@@ -150,9 +159,7 @@ export async function autoArtwork(gameId, { force = false, kinds = Object.keys(A
   if (!g || g.source === 'hub' || !sgdbConfigured()) return { applied: [] };
   let sgdbId = g.sgdb_id;
   if (!sgdbId) {
-    const found = await searchGames(g.name);
-    const lower = g.name.toLowerCase();
-    const pick = found.find((x) => x.name.toLowerCase() === lower) || found.find((x) => x.verified) || found[0];
+    const pick = bestMatch(await searchGames(g.name), g.name);
     if (!pick) return { applied: [], sgdb_id: null };
     sgdbId = pick.id;
     db.prepare('UPDATE games SET sgdb_id = ? WHERE id = ?').run(sgdbId, g.id);

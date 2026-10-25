@@ -44,6 +44,10 @@ function fakeSteamGridDB() {
     if (req.headers.authorization !== `Bearer ${KEY}`) return json(401, { success: false, errors: ['Unauthorized'] });
     if (url.pathname.startsWith('/search/autocomplete/')) {
       const term = decodeURIComponent(url.pathname.split('/').pop()).toLowerCase();
+      // An older game ranks first here, so only matching the name finds Black Ops 7.
+      if (term.includes('black ops')) {
+        return json(200, { success: true, data: [{ id: 10034, name: 'Call of Duty: Black Ops', release_date: 1289260800, verified: true }, { id: 5491818, name: 'Call of Duty: Black Ops 7', release_date: 1763078400, verified: true }] });
+      }
       return json(200, { success: true, data: term.includes('rocket') ? [{ id: 4242, name: 'Rocket League', release_date: 1436832000, verified: true, types: ['steam'] }] : [] });
     }
     if (url.pathname === '/grids/game/4242') return json(200, { success: true, data: [image(1, 'cover1.png', 'Gridder', 600, 900), image(2, 'cover2.png', 'Gridder Two', 600, 900)] });
@@ -154,6 +158,13 @@ test('SteamGridDB: moderators pick another image, and a bad key is reported', as
   assert.equal(bad.status, 400);
   assert.match(bad.data.error, /refused the API key/);
   await A.patch('/api/admin/settings', { steamgriddb_api_key: KEY });
+});
+
+test('SteamGridDB: a game is found by its name, whatever the punctuation', async () => {
+  const r = await A.post('/api/games', { name: 'Call of Duty Black Ops 7' });
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  const sgdbId = await waitFor(async () => (await A.get(`/api/games/${r.data.game.id}`)).data.game.sgdb_id, { timeout: 30000, what: 'the game to be found on SteamGridDB' });
+  assert.equal(sgdbId, 5491818, 'the game of that name, not the first verified one');
 });
 
 test("the hub's catalog carries the artwork to members", async () => {

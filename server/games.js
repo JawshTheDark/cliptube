@@ -16,7 +16,7 @@ import { logAction } from './reports.js';
 import { NETWORK_VISIBLE, isHub, networkRole, onHubGames, onLocalVideosChanged } from './network.js';
 import { indexVideo } from './search.js';
 import { getSettings } from './db.js';
-import { ART, applyImage, autoArtwork, clearImage, listImages, queueArtwork, searchGames, sgdbAuto, sgdbConfigured } from './steamgriddb.js';
+import { ART, applyImage, autoArtwork, bestMatch, clearImage, listImages, queueArtwork, searchGames, sgdbAuto, sgdbConfigured } from './steamgriddb.js';
 import { enqueueJob } from './jobs.js';
 
 export function slugify(s) {
@@ -255,8 +255,7 @@ gamesRouter.get('/:id/steamgriddb', requireModerator, async (req, res) => {
   const kind = ART[req.query.kind] ? String(req.query.kind) : 'cover';
   let sgdbId = Number(req.query.sgdb_id) || g.sgdb_id;
   if (!sgdbId) {
-    const found = await searchGames(g.name);
-    sgdbId = (found.find((x) => x.name.toLowerCase() === g.name.toLowerCase()) || found[0])?.id || null;
+    sgdbId = bestMatch(await searchGames(g.name), g.name)?.id || null;
   }
   res.json({ sgdb_id: sgdbId, kind, images: sgdbId ? await listImages(kind, sgdbId) : [] });
 });
