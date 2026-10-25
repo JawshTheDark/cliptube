@@ -1,403 +1,299 @@
+<div align="center">
+
+<img src="web/public/favicon.svg" width="84" height="84" alt="ClipTube logo">
+
 # ClipTube
 
-A self-hosted, YouTube-style video site for sharing gaming clips with friends.
-Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled through npm
-(nothing else to install).
+**A self-hosted YouTube for gaming clips.**<br>
+Upload your best moments, share them with friends, and link your server with theirs.
+
+[![Node.js 22.13+](https://img.shields.io/badge/Node.js-22.13%2B-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](#quick-start)
+[![ActivityPub](https://img.shields.io/badge/ActivityPub-federated-F1007E?logo=activitypub&logoColor=white)](docs/wiki/Fediverse.md)
+[![SQLite](https://img.shields.io/badge/SQLite-built%20in-003B57?logo=sqlite&logoColor=white)](docs/wiki/Configuration.md#the-data-folder)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![FFmpeg bundled](https://img.shields.io/badge/FFmpeg-bundled-007808?logo=ffmpeg&logoColor=white)](docs/wiki/Uploading-and-Editing.md#how-uploads-are-processed)
+
+[Features](#features) •
+[Quick start](#quick-start) •
+[The network](#one-network-many-servers) •
+[Wiki](docs/wiki/Home.md) •
+[Development](#development)
+
+<img src="docs/images/game.jpg" alt="A ClipTube game page: SteamGridDB banner, title logo and cover above the game's clips" width="100%">
+
+</div>
+
+## Why ClipTube
+
+Your clips shouldn't live on a platform you don't control. ClipTube is a video site you run yourself, built
+around what a clip site needs:
+
+- **Clips go up fast.** Drop in a pile of recordings, fill in the details while they upload, and publish when
+  you're ready. H.264 recordings are remuxed losslessly in seconds; anything else is transcoded, on your GPU if
+  you have one.
+- **Every friend runs their own.** Each person hosts their own clips. The servers link up into one network, so
+  everyone's clips show up in everyone's feed, and likes, comments and subscriptions work across servers.
+- **It speaks the fediverse.** Channels can be followed from Mastodon and PeerTube, and ClipTube follows
+  PeerTube channels back.
+- **It's yours.** One container, one SQLite database, one folder to back up. No ads, and analytics that count
+  views without recording who watched.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/home.jpg" alt="The home feed with three gaming clips"></td>
+    <td width="50%"><img src="docs/images/watch.jpg" alt="The watch page with the player, likes, share, compare and download"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Home: clips from this server and the rest of the network</sub></td>
+    <td align="center"><sub>Watch: adaptive quality, likes, sharing, compare and download</sub></td>
+  </tr>
+</table>
 
 ## Features
 
-- Upload clips (drag and drop, multiple files, progress bar), fill in details while they upload; nothing is
-  published until you click **Save details** (until then the clip is a draft only you can see)
-- Automatic thumbnails, duration, resolution; custom thumbnails
-- Smart processing: H.264 MP4s are remuxed losslessly in seconds, everything else (MKV, HEVC, WebM, ...) is
-  transcoded to browser-friendly MP4 with an optional GPU encoder (NVENC / QuickSync / AMF)
-- Home feed with tag chips, trending, search, channel pages, related videos
-- Accounts, subscriptions, likes/dislikes, threaded comments, watch history with resume
-- Public / unlisted / private videos, share dialog with "start at" timestamps
-- Discord/Slack link previews (Open Graph tags with inline player)
-- Studio page to manage your videos, admin page for site settings and users
-- **Timeline editor**: trim, split, cut out sections, volume boost or mute, fade in/out, pick a thumbnail from any frame
-- **Network**: instances browse and search each other's clips, with likes, comments and subscriptions across instances; join through a hub or any instance, and keep working without the hub
-- **Moderation**: reports (also across instances), a moderation queue with an audit log, comment spam holds, copyright takedowns with counter-notices and strikes, invite or approval sign-up, storage quotas
-- **Privacy**: pause history, anonymous mode, download all your data, delete your account
-- **Clip tools**: clip a moment into a new video, GIF and MP4 export, looping share links, games with their own pages, side-by-side compare
-- **Watching**: adaptive streaming with a source-quality rung, captions, skippable sponsor and intro parts, community titles and thumbnails, original downloads, support links
-- **Discovery**: RSS/Atom feeds, notifications (in-app, web push, optional email), a "For you" feed that explains itself, a vertical clips tab, full-text search with filters, creator analytics
-- **Fediverse**: ActivityPub, so Mastodon and PeerTube can follow channels, watch, like and comment, and people here can follow PeerTube channels
-- Keyboard shortcuts: `k` play/pause, `j`/`l` seek 10s, arrows seek 5s, `f` fullscreen, `t` theater, `m` mute, `0-9` jump
+<table>
+<tr>
+<td width="50%" valign="top">
 
-## Run it
+### Upload and edit
+
+- Drag in many files at once, with progress bars
+- Uploads stay **drafts** until you click *Save details*
+- Lossless remux for H.264, transcoding for MKV, HEVC, WebM and the rest, with NVENC, Quick Sync or AMF
+- **Timeline editor**: trim, split, cut, volume, fades, frame-picked thumbnails; non-destructive, so the
+  original is one click away
+- Captions (WebVTT, SRT), skippable sponsor and intro parts
+
+</td>
+<td width="50%" valign="top">
+
+### Watch
+
+- Adaptive streaming (HLS) that always offers the full-quality source
+- Theater mode, keyboard shortcuts, resume where you left off
+- Community titles and thumbnails, visible dislikes, support links
+- Link previews with an inline player in Discord and Slack
+- Original downloads when the uploader allows them
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Clip tools
+
+- **Clip a moment** from any video into a new one that links back
+- GIF and MP4 export of any range
+- Looping share links (`/watch/abc?t=12&end=20`)
+- **Compare** two clips side by side, frame-aligned, at up to 1/10 speed
+
+</td>
+<td width="50%" valign="top">
+
+### Games
+
+- A game catalog with other spellings, so clips match across servers
+- A page and a feed for every game
+- Covers, title logos and banners from **SteamGridDB**, with the artists credited
+- One catalog for the whole network, kept by the hub
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Discover
+
+- Home with *All*, *For you* (it tells you why) and *Vertical*
+- Trending, and full-text search with filters
+- RSS and Atom for the site, every channel and every game
+- Notifications in the app, as web push or by email
+- Creator analytics with retention curves
+
+</td>
+<td width="50%" valign="top">
+
+### Network and fediverse
+
+- Servers peer directly over **ActivityPub**; the hub is optional
+- Likes, comments and subscriptions across servers
+- Follow and be followed from Mastodon and PeerTube
+- Move a channel to another server, subscribers included
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Moderation
+
+- Members, moderators and admins
+- Reports, also about content on other servers, with an audit log
+- Spam holds for comments, rate limits, blocked words
+- Open, approval, invite-only or closed sign-up; storage quotas
+- Copyright notices, counter-notices and strikes
+
+</td>
+<td width="50%" valign="top">
+
+### Privacy
+
+- Pause watch history, or browse in anonymous mode
+- Download everything you've put on the site
+- Delete your account, with a 7-day grace period
+- Analytics keep counts only, never who watched
+
+</td>
+</tr>
+</table>
+
+## Quick start
+
+You need **Docker** with Compose. To share beyond your own network you also need a domain name and a reverse
+proxy with HTTPS in front (Nginx Proxy Manager, Caddy, nginx or a tunnel).
 
 ```bash
-npm install
-npm run build
-npm start
+git clone https://github.com/JawshTheDark/cliptube.git
+cd cliptube
+mkdir -p data
+docker network create proxy-net    # the network your reverse proxy shares with ClipTube (once)
+docker compose up -d --build
+docker logs cliptube               # shows the one-time setup code
 ```
 
-Open http://localhost:3000. The first account you create becomes the admin; the register form asks
-for the one-time **setup code** that the server prints in its console at startup, so nobody else can
-claim the admin account on a public instance (with Docker: `docker logs cliptube`).
-The console also prints your LAN address so friends on your network can connect.
+Then:
 
-Development (hot reload, frontend on http://localhost:5173, API on 3000):
+1. Point your reverse proxy at **`cliptube:3000`**, and let it pass large uploads (the
+   [Installation](docs/wiki/Installation.md) guide has settings for Nginx Proxy Manager, Caddy and nginx).
+2. Open the site and **create the first account**. It becomes the admin; the form asks for the setup code
+   from the log, so nobody else can claim a fresh server.
+3. In **Admin → Overview**, set the **Public URL** to your `https://` address and choose who may sign up.
+4. Optional: **Admin → Network → Join network** with `https://clips.irc.so` to link up with the ClipTube
+   network, and add a SteamGridDB key under **Admin → Games** for game artwork.
 
-```bash
-npm run dev
+No reverse proxy yet, or no Docker? The [Installation](docs/wiki/Installation.md) guide covers a standalone
+container, running straight from Node.js, hosting at home and GPU encoding.
+
+## One network, many servers
+
+```mermaid
+flowchart TB
+    hub(["<b>Hub</b> · clips.irc.so<br/>directory · game catalog · block list"])
+    subgraph net ["Servers peer directly over ActivityPub"]
+        direction LR
+        you["Your server"] <--> f1["A friend’s server"] <--> f2["Another friend’s server"]
+    end
+    fedi["Mastodon · PeerTube · the fediverse"]
+
+    hub -.->|join, sync| net
+    net <-->|follow, like, comment| fedi
 ```
 
-## Timeline editor
+- **Everyone hosts their own clips.** Video files are never copied: viewers stream from the server that has
+  the clip, while titles, likes, comments and subscriptions travel between servers as ActivityPub activities.
+- **The hub is the front door, not a single point of failure.** It keeps the list of servers, the shared game
+  catalog with its artwork, and a block list every member follows. It can lock the network down or require
+  approval. Servers also peer with each other directly, so if the hub goes away the rest keep working.
+- **Each server stays in charge of itself.** Decide who may peer with you, block any server, keep a clip off
+  the network, or leave at any time.
 
-Open it from Studio (scissors icon), the video details page, or the Editor button on your own watch page.
+Details: [Network](docs/wiki/Network.md), [Fediverse](docs/wiki/Fediverse.md), and the protocol in
+[docs/federation.md](docs/federation.md).
 
-- The timeline shows a filmstrip and the audio waveform. Click or drag on it to move the playhead.
-- **S** splits the part under the playhead, **Del** removes the selected part, and dragging a part's yellow
-  edges trims it (it snaps to the playhead). **I** / **O** set the selected part's start and end to the playhead.
-- Removed sections are hatched; double-click one to bring it back.
-- **Preview edit** plays the result live, skipping cut sections. **Ctrl+Z** / **Ctrl+Shift+Z** undo and redo.
-- Volume goes up to 300%, mute removes the audio track, and fades go to and from black.
-- **Save** renders the edit in the background. The old version stays up until the new one is ready, and
-  shared links keep working. **Revert to original** restores the upload at any time, because edits are
-  non-destructive: the first processed file is kept as the editing source (an edited video uses roughly
-  twice its disk space).
+## Under the hood
 
-## Watching
-
-- **Adaptive streaming.** Admin → Overview → *Adaptive streaming (HLS)*: off, 720p plus source, or 1080p, 720p
-  and 480p plus source. The source rung is the published file cut into segments without re-encoding, so full
-  quality is always offered. The player switches quality with the connection, and the quality button picks
-  one by hand (remembered per browser). The MP4 stays for downloads, link previews and older browsers. Videos
-  are rebuilt in the background when the setting changes.
-- **720p copy for other platforms.** Large videos get a small MP4 too, for services like Mastodon that only
-  cache small remote videos (on by default; same page).
-- **Download original.** Uploaders can always download the file they uploaded (or the full-quality file when
-  the upload was remuxed). Ticking *Let viewers download the original* on a video offers it to everyone.
-- **Dislikes** are shown; admins can hide the counts (uploaders still see theirs).
-- **Support links** (Settings → *Support links*): up to five tip, membership or merch links, shown on the
-  channel and under each video.
-- **Captions.** Upload WebVTT or SRT files per language on the video's details page. Viewers can submit
-  captions from the watch page's ⋯ menu; they appear once the uploader publishes them. Nothing is generated or
-  machine-translated.
-- **Skippable parts.** Mark sponsor reads, intros, outros, recaps and self-promotion on the details page;
-  viewers can suggest them too. Each viewer picks in Settings → *Watching*: skip automatically, show a Skip
-  button, or don't skip.
-- **Community titles and thumbnails.** Viewers suggest a plainer title or pick a frame, and vote. People who
-  turn on *Community titles and thumbnails* in Settings see the most-voted version everywhere; the uploader
-  can adopt a suggestion as the real title or thumbnail.
-
-## Finding clips and staying up to date
-
-- **Feeds.** Atom and RSS for the whole site (`/feeds/videos.atom`), each channel (`/feeds/channel/<name>.atom`)
-  and each game (`/feeds/game/<id>.atom`); swap `.atom` for `.rss`. Pages link them for feed readers, and
-  entries carry the thumbnail and the MP4.
-- **Notifications.** The bell shows new uploads from channels you subscribe to (also on other instances),
-  replies, @mentions, comments on your videos and moderation decisions. Settings → *Notifications* picks which
-  of those also arrive as web push on a device or by email.
-- **Email (optional).** Admin → Overview → *Email*: an SMTP server (STARTTLS, TLS or a local relay) with a test
-  button. With it, people can confirm an address, receive the emails they chose and reset a forgotten password.
-- **Home.** *All* stays newest first. *For you* (signed in) picks from channels you follow and games and tags
-  you like, says why on every card, and has *Not interested*, *More/Less of this game* and *More/Less from this
-  channel*, plus *Hide watched*. *Vertical* collects clips that are taller than wide, and *Keep vertical clips in
-  their own tab* leaves them out of the main feed.
-- **Search** ranks by relevance (title, tags, game, channel, description) with filters for length, upload date,
-  shape, game and where a clip is hosted. Put words in quotes for an exact phrase.
-- **Analytics** (Studio → *Analytics*): views and watch time per day, where views came from, top videos, and a
-  retention curve per video. Only counts are stored, never who watched; anonymous mode sends nothing.
-
-## Gaming clip tools
-
-- **Clip a moment.** The Clip button on a watch page (and "Make a clip" in the editor) cuts a range into a
-  new video that links back to where it came from. It defaults to the 30 seconds before the playhead.
-  "Exact" starts where you chose; "Fast" starts at the nearest keyframe before it and copies without
-  re-encoding, so it keeps full quality and is ready almost at once. Uploaders can tick "Let others clip
-  this video" so viewers can make their own clips of it.
-- **GIF and MP4 export.** The same dialog exports a range as a palette-optimised GIF (up to 15 seconds) or a
-  720p MP4 (up to 60 seconds, with or without sound). Downloads last a day.
-- **Looping links.** Share → "Loop a range" makes a link like `/watch/abc?t=12&end=20` that plays and loops
-  just that part.
-- **Games.** Moderators keep a list in Admin → Games, with box art and other spellings ("Also known as").
-  Uploads and video details have a Game field; each game has a page at `/g/<id>` and all of them are under
-  Games in the sidebar. The game travels with the video across the network, and aliases match it to the
-  same game on other instances.
-- **Game artwork from SteamGridDB.** With an API key from a [SteamGridDB](https://www.steamgriddb.com) account
-  (Admin → Games; get one under its Preferences, API), new games get SteamGridDB's best-rated cover, title
-  logo and banner on their own, and moderators can pick others per game (*Artwork*) or fill in what's missing
-  for every game. Game pages show the banner and logo and credit the artists. Members of a network get the
-  hub's games with their artwork, so only the hub needs the key. From the command line:
-  `docker exec -i cliptube node server/cli.js settings set-secret steamgriddb_api_key < keyfile`.
-- **Compare.** The compare button on a watch page opens `/compare` with that clip on one side. Pick the
-  other, line up the same moment with each side's start buttons (down to one frame), then play both on one
-  transport bar at up to 1/10 speed. "Copy link" shares the lined-up comparison.
-
-## Network (a hub if you want one, peers either way)
-
-Each person runs their own instance and hosts their own clips. Instances in a network see each other's public
-clips in **Network**, on the home feed and in search. Video files are never copied: viewers stream from the
-instance that hosts the clip.
-
-A **hub** is the easy way in and can moderate the whole network, but it is optional. Instances also peer with
-each other directly, over ActivityPub (since ClipTube 1.3): their instance actors follow each other, new clips
-arrive within seconds, and each round they read each other's outboxes so nothing is missed. You can join
-through the hub or through any instance already in the network, and the rest is found from there. If the hub
-goes offline, gets a legal notice or shuts down, the others keep seeing each other and keep liking and
-commenting.
-
-People can like, comment on and subscribe to videos on other instances. The action goes to the instance
-hosting the video as an ActivityPub activity, so counts and comment threads are the same everywhere, and that
-instance answers each comment (shown, held for review, or refused). People from elsewhere appear as
-`name@their.host` and link back to their home instance.
-
-The hub also keeps the network's **game catalog**: members get its games automatically, and a game the hub
-deletes goes from every member's list (their clips stay, without a game). Members can add games of their own.
-
-**Running the hub** (Admin → Network → *This instance is the hub*):
-
-| Setting | Default | What it does |
-| --- | --- | --- |
-| Accept new instances | on | Turn off to lock the network to its current members |
-| Require my approval | off | New instances wait until the hub admin approves them |
-| HTTPS only | on | Refuse instances not served over HTTPS (the same three switches decide who may peer with the hub) |
-| Comments / likes / subscriptions between instances | on | Network-wide switches for each kind of interaction |
-| Include this instance's videos | on | Share the hub's own public clips with the network |
-| Max videos per instance | 5000 | Cap on how many clips one instance can put in the index |
-| Sync every | 10 min | How often the hub and members refresh (changes are also pushed within seconds) |
-| Announcement | empty | Banner shown on the Network page of every instance |
-
-Per instance, the hub admin can approve, suspend (temporarily drop from the network), ban (can't rejoin),
-stop its likes and comments, hide its videos, or remove it. Any single network video can be hidden too.
-
-**Joining** (Admin → Network → *Join network*): enter the hub's address (`https://clips.irc.so` by default) or
-the address of any instance in the network. The site needs a public HTTPS address set as its Public URL. Each
-instance can also:
-
-- peer with any instance directly (Direct peers → *Peer with it*), and see each peer's state both ways;
-- decide who can peer with it: accept new instances (lockdown when off), ask first, HTTPS only, a peer limit;
-- block any other instance, which hides its videos and refuses likes, comments and subscriptions from it;
-- publish its block list and follow other instances' lists, applied automatically or after review. Members
-  follow their hub's list automatically, so the hub's bans and network-wide hides reach them even though they
-  pull from peers directly. Blocks from a list are lifted when the source lifts them;
-- turn off accepting comments, likes or subscriptions from other instances;
-- untick **Share with the network** on a public video to keep it local;
-- **Leave hub only** (keep the direct peers) or leave the network entirely.
-
-Failing peers are retried with backoff (1 minute doubling up to 6 hours).
-
-Only public, ready videos with sharing on are ever listed. Networking refuses to contact private-network
-addresses; to test several instances on one machine, start them with `--allow-private-federation`.
-
-Protocol summary (v4): `GET /.well-known/cliptube` describes an instance, its admission switches and its
-instance actor. Peering, videos and interactions are ActivityPub, described in
-[docs/federation.md](docs/federation.md) along with ClipTube's few extensions. The instance layer stays plain
-JSON over HTTPS: `GET /api/network/known-peers` exchanges peer lists (signed with each instance's Ed25519 key,
-checked at its own address), `GET /api/network/blocklist` publishes blocks, and members register with the hub
-(`POST /api/hub/join`, with a nonce callback to `/api/network/verify`) and read its directory, switches and
-game catalog (`/api/hub/directory`, `/api/hub/status`, `/api/hub/games`).
-
-Instances on ClipTube 1.2 and earlier (protocol v3, and the v2 hub protocol) still work for one release: a
-1.3 instance serves its v3 feed to them, pulls theirs and takes their signed messages, and moves each one to
-ActivityPub once it has upgraded.
-
-## Fediverse (ActivityPub)
-
-ClipTube also speaks ActivityPub, the protocol of Mastodon, PeerTube and the rest of the fediverse
-(on by default; Admin → Network → *Fediverse*). It needs the Public URL set to the site's https:// address.
-
-- **Being followed.** Every account is a fediverse account and has a channel, in PeerTube's style: search
-  for `@name_channel@your.site` (the channel) or `@name@your.site` (the account) from Mastodon or PeerTube.
-  Each channel's About tab lists both. Followers count as subscribers.
-- **Videos go out** to followers when they're published (Create, plus an Announce from the channel), and
-  edits and removals follow (Update, Delete). The video object uses PeerTube's vocabulary, so PeerTube plays
-  the MP4s, and Mastodon gets a video attachment (the small 720p copy when there is one). Pasting a
-  `/watch/...` or `/c/...` link into Mastodon or PeerTube search finds the video or channel.
-- **Coming back:** replies from the fediverse land in the comment thread (through the same spam checks as
-  everyone else's), likes and dislikes count, shares are counted, and replies here go back to the person
-  you answered.
-- **Following out.** Subscriptions → *Follow from the fediverse* takes a handle or a link. The channel's
-  recent videos are imported once it accepts, new ones arrive as they're posted, and they appear in Network,
-  search and your subscriptions with notifications. You can like and comment on them here; the comments go
-  to their server. Admins can follow a whole PeerTube server, the way PeerTube servers mirror each other.
-- **Moderation:** blocked instances are blocked for ActivityPub too, reports about fediverse videos go to
-  their server as a `Flag` from this instance (not from the person who reported), and incoming reports join
-  the moderation queue.
-- **Mastodon:** clips arrive as a post with the title, a link and a playable video (with its poster frame).
-  Channel pages have *Follow from your server*, which opens the follow page on the viewer's own server, and
-  Follow buttons on other servers can point back here (`/authorize_interaction`). Support links show as
-  profile fields. The help page at `/help/fediverse` explains all of this for viewers.
-- **Moving a channel** (Settings → *Moving to another site*): export the channel (one archive with videos,
-  thumbnails, captions, comments and the subscriber list), import it on the new instance from the export's
-  private link or by uploading it, add the old account as an alias there, then move. Fediverse followers get
-  an ActivityPub `Move`, subscribers on the old instance and on other ClipTube instances are moved too, and
-  the old channel points to the new one. Moves of fediverse accounts people here follow are followed in turn.
-- **One protocol:** ClipTube instances use ActivityPub between themselves too, with the hub as directory,
-  switchboard, block list and game catalog. How it works is in [docs/federation.md](docs/federation.md).
-- **Checked against real servers:** `scripts/fediverse-sandbox.sh <ssh-host>` starts PeerTube, GoToSocial and
-  a ClipTube built from your working tree in a private Docker sandbox on that host (nothing exposed, its own
-  certificates), runs the interop checks and cleans up.
-- **Under the hood:** WebFinger, NodeInfo and host-meta for discovery; RSA HTTP Signatures (draft-cavage,
-  rsa-sha256) on every delivery and fetch, checked on every incoming activity; deliveries retried over three
-  days through the job queue.
-
-## Moderation and legal
-
-Everything here lives under **Admin**: the **Moderation** tab for moderators and admins, and the **Legal** tab
-for admins.
-
-- **Roles.** Members, moderators (reports, held comments, hiding and removing videos, suspending members) and
-  admins (everything, including settings, the network and legal).
-- **Reports.** Signed-in people can flag a video, comment or channel, including ones from other instances.
-  Reports about another instance's content are forwarded to it, so its moderators see them in their own queue.
-  Each report has one-click actions, notes, and every action lands in the audit log.
-- **Videos** can be hidden (only the uploader and moderators see it) or removed (nobody can play it). Removed
-  files are kept for the retention period in Admin → Legal, then deleted.
-- **Comments.** First comments, links from new accounts and names that imitate the uploader are held for
-  review, and fast posting is rate limited. Uploaders can add blocked words, hold every comment, turn comments
-  off per video, and pin or heart comments. Held comments stay visible to their author marked as held, and
-  wait in Studio → Comments to review. The thresholds are in Admin → Moderation → Spam settings.
-- **Sign-up** can be open, need approval, be invite-only (invite links with use limits and expiry) or closed.
-  An invite also skips approval. If you write terms in Admin → Legal, people accept them when they sign up.
-- **Storage quotas**: a default per person in Admin → Overview, with per-person overrides in the users table.
-- **Copyright notices.** Record each notice in Admin → Legal. Choosing "Remove the video" takes it down and,
-  optionally, gives the uploader a strike; enough active strikes suspend the account. The uploader can send a
-  counter-notice from the removed video, and accepting it restores the video and takes the strike away.
-- **Public pages.** `/legal` shows your rules, terms and contacts, and `/transparency` shows counts of notices,
-  removals and restorations (you can turn it off).
-- **Privacy.** People can pause their watch history, turn on anonymous mode in a browser, download all of their
-  data, and delete their account after a 7-day grace period. Deletion is announced to the network.
-
-### Background, not legal advice
-
-If strangers can upload to your instance, you are hosting their content. Laws differ by country, so talk to a
-lawyer before opening sign-ups. For the US, the short version:
-
-- **DMCA safe harbor (17 U.S.C. § 512(c))** protects hosts from copyright claims over user uploads if they
-  register a designated agent with the US Copyright Office (an online form with a small fee, renewed every
-  three years), remove material quickly when they get a valid notice, and have and enforce a policy that ends
-  repeat infringers' accounts. Put the agent's details in Admin → Legal so they show on `/legal`.
-- **Counter-notices.** After a valid counter-notice, the law expects the host to put the material back in 10 to
-  14 business days unless the claimant says they have gone to court. ClipTube records the counter-notice and
-  leaves the decision to you.
-- **Section 230** generally shields hosts from liability for what users post, but not for copyright or
-  federal crimes. Child sexual abuse material must be reported to NCMEC; remove it and preserve what you're
-  told to.
-- **Elsewhere**: the EU's Digital Services Act has its own notice-and-action and transparency rules for hosts.
-
-Running a members-only instance for friends keeps most of this simple. Use invite-only sign-up until you're
-ready for more.
+| Part | Built with |
+| --- | --- |
+| Server | Node.js 22.13+ (24 in the Docker image), Express 5, the built-in `node:sqlite` |
+| Web app | React 19, React Router, Vite, hls.js |
+| Media | FFmpeg and FFprobe bundled through npm, optional hardware encoders |
+| Background work | A persistent job queue with separate lanes for media, network and transfers |
+| Federation | ActivityPub with HTTP Signatures, WebFinger, NodeInfo |
+| Storage | One SQLite file plus a data folder; migrations back up the database before they run |
 
 ## Configuration
 
-Environment variables (all optional):
+Almost everything is set in the **Admin** pages: site name, Public URL, sign-up, upload and storage limits,
+maximum resolution, encoder, adaptive streaming, email, game artwork and the network. A few things are set in
+the environment:
 
-| Variable      | Default    | Purpose                                              |
-| ------------- | ---------- | ---------------------------------------------------- |
-| `PORT`        | `3000`     | Port to listen on                                    |
-| `HOST`        | `0.0.0.0`  | Interface to bind                                    |
-| `DATA_DIR`    | `./data`   | Where the database, videos and thumbnails are stored |
-| `TRUST_PROXY` | unset      | Set to `1` when running behind a reverse proxy       |
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `PORT` | `3000` | Port to listen on |
+| `HOST` | `0.0.0.0` | Interface to bind |
+| `DATA_DIR` | `./data` (`/data` in Docker) | Database, videos, thumbnails and backups |
+| `TRUST_PROXY` | unset (`1` in Docker) | Trust `X-Forwarded-*` headers from a reverse proxy |
+| `SETUP_CODE` | random | The code needed to create the first (admin) account |
+| `FFMPEG_PATH`, `FFPROBE_PATH` | bundled | Use another FFmpeg, for example one built for your GPU |
 
-Everything else (site name, registration on/off, upload limit, max resolution, encoder, public URL)
-is in the Admin page.
+All settings, the data folder and what to back up: [Configuration](docs/wiki/Configuration.md).
 
-## Storage
+## Command line
 
-```
-data/
-  cliptube.db   SQLite database
-  videos/       processed MP4s served to viewers
-  thumbs/       thumbnails
-  originals/    source files kept after a transcode (remuxed sources are deleted; see Admin)
-  avatars/
-```
-
-Back up the `data` folder and you have everything.
-
-Optional: `FFMPEG_PATH` and `FFPROBE_PATH` point at a system ffmpeg instead of the bundled one, for
-example a build with NVENC support.
-
-## Deploy with Docker behind Nginx Proxy Manager
-
-On the server (Docker + Compose, a running Nginx Proxy Manager on a shared docker network):
+Server operators can manage the network, accounts and settings without a web login:
 
 ```bash
-git clone git@github.com:JawshTheDark/cliptube.git && cd cliptube
-mkdir -p data
-# Only if your proxy network is not called "proxy-net", or your uid/gid is not 1000:
-# printf 'PROXY_NETWORK=my-proxy-net\nPUID=1000\nPGID=1000\n' > .env
-docker compose up -d --build
+docker exec cliptube node server/cli.js network status
+docker exec cliptube node server/cli.js network join https://clips.irc.so
+docker exec cliptube node server/cli.js user role alice moderator
+docker exec -i cliptube node server/cli.js settings set-secret steamgriddb_api_key < keyfile
 ```
 
-The container publishes no host port. In Nginx Proxy Manager add a **Proxy Host**:
+Every command: [Admin CLI](docs/wiki/Admin-CLI.md).
 
-| Field                | Value                                   |
-| -------------------- | --------------------------------------- |
-| Domain               | `clips.example.com`                     |
-| Scheme / Host / Port | `http` / `cliptube` / `3000`            |
-| Block Common Exploits | on                                     |
-| SSL                  | Request a new certificate, Force SSL, HTTP/2 |
-
-and paste this in the **Advanced** tab so multi-gigabyte uploads are not cut off:
-
-```nginx
-client_max_body_size 0;
-proxy_request_buffering off;
-proxy_read_timeout 3600s;
-proxy_send_timeout 3600s;
-```
-
-Then open the site, create the first (admin) account, set the **Public URL** in Admin so Discord previews
-use the right address, and turn off "Allow new people to create accounts" once your friends have joined.
-
-Update later with:
+## Updating
 
 ```bash
 git pull && docker compose up -d --build
 ```
 
-Or, from a checkout on another machine, deploy over SSH (backs up the database, tags the old image as
-`cliptube:rollback`, rebuilds and waits for the health check):
+Or deploy from another machine over SSH. The script backs up the database, keeps the old image for rollback,
+rebuilds and waits for the health check:
 
 ```bash
 scripts/deploy.sh user@your-server
 ```
 
-## Admin command line
-
-For server operators, without needing a web login (inside Docker prefix with `docker exec cliptube`):
-
-```bash
-node server/cli.js network status
-node server/cli.js network hub-enable https://clips.example.com
-node server/cli.js network join https://clips.irc.so
-node server/cli.js network peer https://clips.friend.example
-node server/cli.js network follow-blocklist https://clips.irc.so --mode auto
-node server/cli.js network leave --keep-peers
-node server/cli.js user list
-node server/cli.js user role alice moderator
-node server/cli.js user status spammer banned "posting spam"
-```
-
-Run `node server/cli.js` with no arguments for the full list.
+Backups, rollbacks and moving to a new server: [Upgrading and Backups](docs/wiki/Upgrading-and-Backups.md).
 
 ## Development
 
 ```bash
-npm run dev     # API on :3000, frontend with hot reload on :5173
-npm test        # unit tests plus real multi-instance integration tests (under a minute)
+npm install
+npm run dev     # API on :3000, web app with hot reload on :5173
+npm test        # unit tests plus real multi-server federation tests (about a minute)
 ```
 
-Database changes go in `server/migrations.js` as a new numbered migration; the server applies pending
-migrations at startup and writes a backup to `data/backups` first.
+Database changes go in `server/migrations.js` as a new numbered migration. The repository layout, the test
+setup and the fediverse interop sandbox are described in [Development](docs/wiki/Development.md).
 
-## Sharing outside your network without Docker
+## Documentation
 
-Any reverse proxy with HTTPS works (Caddy, nginx, Cloudflare Tunnel, Tailscale Funnel). Set
-`TRUST_PROXY=1` so the app sees real client addresses and the HTTPS scheme, and raise the proxy's
-request body limit for uploads.
+| Page | What's in it |
+| --- | --- |
+| [Installation](docs/wiki/Installation.md) | Docker, reverse proxies, Node.js, hosting at home, GPU encoding, first run |
+| [Configuration](docs/wiki/Configuration.md) | Environment, admin settings, email, the data folder |
+| [Upgrading and Backups](docs/wiki/Upgrading-and-Backups.md) | Updates, rollbacks, backups, moving servers |
+| [Uploading and Editing](docs/wiki/Uploading-and-Editing.md) | Uploads, drafts, processing, the timeline editor, captions |
+| [Watching and Discovery](docs/wiki/Watching-and-Discovery.md) | The player, streaming, feeds, notifications, search, analytics |
+| [Clip Tools and Games](docs/wiki/Clip-Tools-and-Games.md) | Clipping, exports, compare, the game catalog, SteamGridDB |
+| [Network](docs/wiki/Network.md) | Hubs, members, peering, blocking, running a hub |
+| [Fediverse](docs/wiki/Fediverse.md) | Mastodon, PeerTube, moving a channel |
+| [Moderation and Legal](docs/wiki/Moderation-and-Legal.md) | Roles, reports, spam, sign-up, copyright, privacy |
+| [Admin CLI](docs/wiki/Admin-CLI.md) | Every command-line command |
+| [Troubleshooting](docs/wiki/Troubleshooting.md) | Common problems and their fixes |
+| [Development](docs/wiki/Development.md) | Code layout, tests, migrations, releases |
 
-## Hosting at home
+## Status
 
-Forward ports 80 and 443 on your router to the machine running ClipTube, point a (dynamic) DNS name at
-your home IP (for example with ddclient), and put nginx or Caddy with a Let's Encrypt certificate in front.
-Many home routers don't support "NAT loopback" (hairpin NAT): from inside your own network the public name
-then won't connect, even though it works for everyone else. Turn on NAT loopback if your router has it,
-add a hosts-file entry pointing the name at the machine's LAN address, or use the LAN address directly
-(for example `http://192.168.1.97:3100`).
+ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.4.1**); smaller ideas are tracked in
+[TODO.md](TODO.md).
+
+## Credits
+
+Game artwork comes from the [SteamGridDB](https://www.steamgriddb.com) community, and each image's artist is
+credited on its game page. Video work is done by [FFmpeg](https://ffmpeg.org), adaptive playback by
+[hls.js](https://github.com/video-dev/hls.js), and federation follows the vocabulary of
+[PeerTube](https://joinpeertube.org) so the two play each other's videos.
