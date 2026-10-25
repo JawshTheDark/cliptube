@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v1.3.0): a hub (clips.irc.so) plus direct peering between instances over ActivityPub, with
+Planned work. Current state (v1.3.1): a hub (clips.irc.so) plus direct peering between instances over ActivityPub, with
 cross-instance likes, comments and subscriptions signed per instance, and ActivityPub so Mastodon and PeerTube can follow channels. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 

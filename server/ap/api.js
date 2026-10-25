@@ -204,9 +204,15 @@ function threadComment(n, v, me, mine, inThread, base) {
   const a = n.attributedTo && typeof n.attributedTo === 'object' ? n.attributedTo : { id: idOf(n.attributedTo) };
   const actorId = idOf(a.id) || '';
   const own = mine.get(n.id);
-  // People from here who commented over there show up as themselves.
-  const localName = base && actorId.startsWith(`${base}/ap/users/`) ? decodeURIComponent(actorId.slice(`${base}/ap/users/`.length)) : null;
-  const local = localName ? db.prepare('SELECT username, display_name, avatar FROM users WHERE username = ? AND remote_instance_id IS NULL').get(localName) : null;
+  // People from here who commented over there show up as themselves (by their actor, or by name and host
+  // for comments sent the v3 way).
+  const localName =
+    base && actorId.startsWith(`${base}/ap/users/`)
+      ? decodeURIComponent(actorId.slice(`${base}/ap/users/`.length))
+      : base && a.host && a.host === hostOf(base)
+        ? a.preferredUsername
+        : null;
+  const local = localName ? db.prepare('SELECT id, username, display_name, avatar FROM users WHERE username = ? AND remote_instance_id IS NULL').get(localName) : null;
   const host = a.host || hostOf(actorId) || hostOf(v.ap_id);
   const icon = a.icon && typeof a.icon === 'object' ? idOf(a.icon.url) : idOf(a.icon);
   const parent = idOf(n.inReplyTo);
@@ -223,7 +229,7 @@ function threadComment(n, v, me, mine, inThread, base) {
     hearted: !!n.hearted,
     pinned: !!n.pinned,
     status: 'visible',
-    can_delete: !!own && !!me && (me.id === own.user_id || me.is_moderator),
+    can_delete: !!me && ((!!own && (me.id === own.user_id || me.is_moderator)) || (!!local && local.id === me.id)),
   };
 }
 
@@ -314,6 +320,17 @@ apNetworkRouter.delete('/videos/:iid/:rid/comments/:cid', requireAuth, async (re
   let c = db.prepare('SELECT * FROM network_comments WHERE id = ? AND instance_id = ? AND remote_id = ?').get(cid, v.instance_id, v.remote_id);
   const noteId = c ? null : fromNoteKey(cid);
   if (!c && noteId) c = db.prepare('SELECT * FROM network_comments WHERE ap_id = ? AND instance_id = ? AND remote_id = ?').get(noteId, v.instance_id, v.remote_id);
+  if (!c && noteId && apEnabled()) {
+    // A comment of yours from before (sent the v3 way, so not stored here): ask its server to delete it.
+    const n = (await remoteThread(v).catch(() => null))?.find((x) => x.id === noteId);
+    const a = n && typeof n.attributedTo === 'object' ? n.attributedTo : null;
+    const base = apBase();
+    const mineThere = a && (idOf(a.id) === urls(base).person(req.user.username) || (a.host === hostOf(base) && a.preferredUsername === req.user.username));
+    if (!mineThere) throw new HttpError(404, 'Comment not found');
+    sendTo(`u:${req.user.id}`, { type: 'Delete', actor: urls(base).person(req.user.username), to: [PUBLIC], object: { id: noteId, type: 'Tombstone' } }, await videoAudience(v));
+    forgetThread(v.ap_id);
+    return res.json({ ok: true });
+  }
   if (!c) throw new HttpError(404, 'Comment not found');
   if (c.user_id !== req.user.id && !req.user.is_moderator) throw new HttpError(403, 'You cannot delete that comment');
   db.prepare('DELETE FROM network_comments WHERE id = ?').run(c.id);

@@ -443,6 +443,13 @@ async function onDelete(a, actorId, base) {
     db.prepare('DELETE FROM ap_actors WHERE id = ?').run(actorId);
     return;
   }
+  // A comment sent the v3 way lives here under our own id: its author can still delete it.
+  const local = parseLocal(target, base);
+  if (local?.kind === 'comment') {
+    const actor = await getActor(actorId).catch(() => null);
+    if (actor) db.prepare('DELETE FROM comments WHERE id = ? AND user_id = ?').run(local.id, shadowUser(actor).id);
+    return;
+  }
   if (hostOf(target) !== hostOf(actorId)) return;
   db.prepare('DELETE FROM comments WHERE ap_id = ?').run(target);
   db.prepare('DELETE FROM network_comments WHERE ap_id = ?').run(target);
