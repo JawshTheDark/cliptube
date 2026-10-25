@@ -8,7 +8,92 @@ import { VideoCard, Empty } from '../components/VideoCard.jsx';
 import { Avatar } from '../components/Avatar.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { compact, formatDate, formatDuration, parseTimestamp, copyText } from '../util.js';
+import { ReportButton } from '../components/ReportDialog.jsx';
+import { compact, formatDate, formatDuration, parseTimestamp, copyText, isAnonymous, timeAgo } from '../util.js';
+
+/** Shown to the uploader and moderators when a video is hidden or removed. */
+function ModerationBanner({ video, isOwner }) {
+  const toast = useToast();
+  const [info, setInfo] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [statement, setStatement] = useState('');
+  const [contact, setContact] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    api(`/videos/${video.id}/moderation`).then(setInfo).catch(() => {});
+  }, [video.id, isOwner]);
+
+  const send = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api(`/videos/${video.id}/counter-notice`, { method: 'POST', body: { statement, contact } });
+      toast('Counter-notice sent. An admin will review it.');
+      setOpen(false);
+      setInfo((i) => ({ ...i, counter_notice: { status: 'pending', created_at: Date.now() } }));
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removed = video.moderation_status === 'removed';
+  const cn = info?.counter_notice;
+  return (
+    <div className={`mod-banner ${removed ? 'removed' : ''}`}>
+      <Icon name="gavel" />
+      <div>
+        <b>{removed ? 'Removed by the moderators' : 'Hidden by the moderators'}</b>
+        {video.moderation_reason && <div>Reason: {video.moderation_reason}</div>}
+        <div className="muted">
+          {removed
+            ? "Nobody can watch it. The file is kept for a while in case the removal was a mistake."
+            : 'Only you and the moderators can see it.'}
+        </div>
+        {isOwner && cn && (
+          <div className="muted">
+            {removed ? 'Counter-notice' : 'Appeal'} {cn.status === 'pending' ? 'sent' : cn.status} {timeAgo(cn.decided_at || cn.created_at)}.
+          </div>
+        )}
+        {isOwner && (!cn || cn.status === 'rejected') && !open && (
+          <button className="btn btn-sm top-gap" onClick={() => setOpen(true)}>
+            {removed ? 'This was a mistake: send a counter-notice' : 'Ask the moderators to look again'}
+          </button>
+        )}
+        {open && (
+          <form onSubmit={send} className="top-gap">
+            <div className="field">
+              <label>Why the removal was a mistake</label>
+              <textarea
+                className="textarea"
+                rows={4}
+                value={statement}
+                onChange={(e) => setStatement(e.target.value)}
+                placeholder="For example: this is my own recording, or the use is covered by fair use because..."
+                required
+              />
+            </div>
+            <div className="field">
+              <label>How to reach you</label>
+              <input className="input" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Email address" />
+            </div>
+            <div className="row-actions">
+              <button className="btn btn-primary" disabled={busy}>
+                Send counter-notice
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** Renders description text with clickable URLs and seekable timestamps. */
 export function Description({ text, onSeek }) {
@@ -147,7 +232,7 @@ export default function Watch() {
       .then((r) => {
         if (dead) return;
         setVideo(r.video);
-        return api(`/videos/${id}/view`, { method: 'POST' }).then((v) => !dead && setVideo((x) => (x ? { ...x, views: v.views } : x)));
+        return api(`/videos/${id}/view`, { method: 'POST', body: { anonymous: isAnonymous() } }).then((v) => !dead && setVideo((x) => (x ? { ...x, views: v.views } : x)));
       })
       .catch((e) => !dead && setError(e));
     api(`/videos/${id}/related`)
@@ -194,11 +279,24 @@ export default function Watch() {
 
   const onProgress = useCallback(
     (pos) => {
-      if (!user) return;
+      if (!user || isAnonymous()) return;
       api(`/videos/${id}/progress`, { method: 'POST', body: { position: pos } }).catch(() => {});
     },
     [id, user],
   );
+
+  const moderate = async (action) => {
+    const reason = action === 'restore' ? '' : window.prompt(`Reason to ${action} this video (shown to the uploader):`, '');
+    if (reason === null) return;
+    try {
+      await api(`/mod/videos/${id}`, { method: 'POST', body: { action, reason } });
+      const r = await api(`/videos/${id}`);
+      setVideo(r.video);
+      toast(action === 'restore' ? 'Video restored' : `Video ${action === 'hide' ? 'hidden' : 'removed'}`);
+    } catch (e) {
+      toast(e.message);
+    }
+  };
 
   const toggleTheater = useCallback(() => {
     setTheater((t) => {
@@ -234,8 +332,16 @@ export default function Watch() {
   return (
     <div className={`watch ${theater ? 'theater' : ''}`}>
       <div className="player-wrap">
-        {video.status === 'ready' ? (
+        {video.status === 'ready' && video.video_url ? (
           <Player video={video} videoRef={videoRef} startAt={startAt} onProgress={onProgress} theater={theater} onToggleTheater={toggleTheater} />
+        ) : video.status === 'ready' ? (
+          <div className="player">
+            <div className="processing-panel">
+              <Icon name="gavel" size={48} />
+              <h2>This video was removed</h2>
+              <p className="muted">{video.moderation_reason || 'It broke the rules of this site.'}</p>
+            </div>
+          </div>
         ) : (
           <div className="player">
             <ProcessingPanel video={video} />
@@ -244,6 +350,7 @@ export default function Watch() {
       </div>
 
       <div className="watch-body">
+        {video.moderation_status && <ModerationBanner video={video} isOwner={isOwner} onChanged={(v) => setVideo(v)} />}
         <h1 className="watch-title">{video.title}</h1>
         <div className="watch-row">
           <div className="watch-channel">
@@ -289,7 +396,7 @@ export default function Watch() {
               <Icon name="share" /> Share
             </button>
             {video.video_url && (
-              <a className="btn" href={`${video.video_url}?download`}>
+              <a className="btn" href={`${video.video_url}${video.video_url.includes('?') ? '&' : '?'}download`}>
                 <Icon name="download" /> Download
               </a>
             )}
@@ -300,6 +407,30 @@ export default function Watch() {
               <Link to={`/studio/edit/${video.id}`} className="btn">
                 <Icon name="edit" /> Edit
               </Link>
+            )}
+            {!isOwner && <ReportButton target={{ type: 'video', id: video.id, label: video.title }} className="btn btn-icon" iconOnly />}
+            {video.can_moderate && (
+              <details className="more-menu">
+                <summary className="btn btn-icon" title="Moderator tools">
+                  <Icon name="gavel" />
+                </summary>
+                <div className="menu">
+                  {video.moderation_status ? (
+                    <button className="menu-item" onClick={() => moderate('restore')}>
+                      <Icon name="check" /> Restore video
+                    </button>
+                  ) : (
+                    <button className="menu-item" onClick={() => moderate('hide')}>
+                      <Icon name="lock" /> Hide from everyone else
+                    </button>
+                  )}
+                  {video.moderation_status !== 'removed' && (
+                    <button className="menu-item" onClick={() => moderate('remove')}>
+                      <Icon name="delete" /> Remove (rule or copyright violation)
+                    </button>
+                  )}
+                </div>
+              </details>
             )}
           </div>
         </div>
@@ -317,6 +448,14 @@ export default function Watch() {
           <div className="desc-text">
             {video.description ? <Description text={video.description} onSeek={seek} /> : <span className="muted">No description</span>}
           </div>
+          {expanded && (
+            <p className="desc-legal muted">
+              Something wrong with this video?{' '}
+              <Link to="/legal" onClick={(e) => e.stopPropagation()}>
+                Rules, copyright and contact
+              </Link>
+            </p>
+          )}
           <button
             className="expand"
             onClick={(e) => {
@@ -328,7 +467,12 @@ export default function Watch() {
           </button>
         </div>
 
-        <Comments base={`/videos/${video.id}`} initialCount={video.comment_count} />
+        <Comments
+          base={`/videos/${video.id}`}
+          initialCount={video.comment_count}
+          isOwner={isOwner}
+          reportTarget={(c) => ({ type: 'comment', id: c.id, label: `"${c.body.slice(0, 120)}" by @${c.author.username}` })}
+        />
       </div>
 
       <aside className="watch-secondary">

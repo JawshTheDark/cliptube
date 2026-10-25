@@ -137,6 +137,21 @@ export function useMediaQuery(query) {
   return matches;
 }
 
+/** Anonymous mode: watching doesn't touch history or count as you (per browser). */
+export function isAnonymous() {
+  try {
+    return localStorage.getItem('ct_anon') === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setAnonymous(on) {
+  try {
+    localStorage.setItem('ct_anon', on ? '1' : '0');
+  } catch {}
+}
+
 export const VISIBILITY_HELP = {
   public: 'Anyone can find and watch this video.',
   unlisted: 'Only people with the link can watch. It will not show up in listings or search.',

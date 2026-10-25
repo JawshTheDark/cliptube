@@ -3,6 +3,26 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useAuth } from '../auth.jsx';
 import { Avatar } from './Avatar.jsx';
 import { Icon } from './Icons.jsx';
+import { isAnonymous, setAnonymous } from '../util.js';
+
+/** Tracks the per-browser anonymous mode, kept in sync across components. */
+export function useAnonymous() {
+  const [anon, setAnon] = useState(isAnonymous());
+  useEffect(() => {
+    const h = () => setAnon(isAnonymous());
+    window.addEventListener('ct-anon', h);
+    window.addEventListener('storage', h);
+    return () => {
+      window.removeEventListener('ct-anon', h);
+      window.removeEventListener('storage', h);
+    };
+  }, []);
+  const toggle = () => {
+    setAnonymous(!anon);
+    window.dispatchEvent(new Event('ct-anon'));
+  };
+  return [anon, toggle];
+}
 
 export function TopBar({ onMenu }) {
   const { user, site, logout } = useAuth();
@@ -12,6 +32,7 @@ export function TopBar({ onMenu }) {
   const [q, setQ] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [anon, toggleAnon] = useAnonymous();
   const menuRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -88,8 +109,13 @@ export function TopBar({ onMenu }) {
               <span className="btn-text">Upload</span>
             </Link>
             <div className="avatar-menu" ref={menuRef}>
-              <button className="avatar-btn" onClick={() => setMenuOpen((o) => !o)} aria-label="Account menu">
+              <button className={`avatar-btn ${anon ? 'anon' : ''}`} onClick={() => setMenuOpen((o) => !o)} aria-label="Account menu" title={anon ? 'Anonymous mode is on' : undefined}>
                 <Avatar user={user} size={32} />
+                {anon && (
+                  <span className="anon-dot">
+                    <Icon name="incognito" />
+                  </span>
+                )}
               </button>
               {menuOpen && (
                 <div className="menu">
@@ -109,10 +135,19 @@ export function TopBar({ onMenu }) {
                   <Link to="/settings" className="menu-item">
                     <Icon name="settings" /> Settings
                   </Link>
-                  {user.is_admin && (
+                  <button className="menu-item" onClick={toggleAnon} title="Watching doesn't touch your history and counts as a signed-out view">
+                    <Icon name="incognito" /> Anonymous mode: {anon ? 'on' : 'off'}
+                  </button>
+                  {user.is_admin ? (
                     <Link to="/admin" className="menu-item">
                       <Icon name="shield" /> Admin
                     </Link>
+                  ) : (
+                    user.is_moderator && (
+                      <Link to="/admin/moderation" className="menu-item">
+                        <Icon name="gavel" /> Moderation
+                      </Link>
+                    )
                   )}
                   <button
                     className="menu-item"

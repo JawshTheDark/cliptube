@@ -55,6 +55,7 @@ export function Sidebar({ mini = false, drawer = false, onClose }) {
           <Item to="/liked" icon="thumb_up" label="Liked" />
           <Item to="/studio" icon="video" label="Studio" />
           {user.is_admin && !mini && <Item to="/admin" icon="shield" label="Admin" />}
+          {!user.is_admin && user.is_moderator && !mini && <Item to="/admin/moderation" icon="gavel" label="Moderation" />}
         </>
       ) : (
         !mini && (
@@ -93,6 +94,14 @@ export function Sidebar({ mini = false, drawer = false, onClose }) {
           <div className="nav-divider" />
           <div className="nav-foot">
             {site.site_name} · self-hosted
+            <br />
+            <Link to="/legal">Rules and contact</Link>
+            {site.transparency && (
+              <>
+                {' · '}
+                <Link to="/transparency">Transparency</Link>
+              </>
+            )}
             <br />
             Shortcuts: k play/pause · j/l seek · f fullscreen · t theater · m mute
           </div>

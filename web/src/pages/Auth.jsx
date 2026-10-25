@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 
@@ -81,11 +81,18 @@ export function Register() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [setupCode, setSetupCode] = useState('');
+  const [params] = useSearchParams();
+  const [invite, setInvite] = useState(() => params.get('invite') || '');
+  const [terms, setTerms] = useState(false);
+  const [pending, setPending] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   useTitle('Create account');
 
-  const closed = !site.allow_registration && !site.needs_setup;
+  const mode = site.registration_mode || (site.allow_registration ? 'open' : 'closed');
+  const closed = mode === 'closed' && !site.needs_setup;
+  const askInvite = !site.needs_setup && (mode === 'invite' || !!params.get('invite'));
+  const askTerms = !site.needs_setup && site.has_terms;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -93,7 +100,14 @@ export function Register() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api('/auth/register', { method: 'POST', body: { username, password, display_name: displayName, setup_code: setupCode } });
+      const r = await api('/auth/register', {
+        method: 'POST',
+        body: { username, password, display_name: displayName, setup_code: setupCode, invite: invite.trim() || undefined, accept_terms: terms },
+      });
+      if (r.pending) {
+        setPending(r.message);
+        return;
+      }
       setUser(r.user);
       refresh().catch(() => {});
     } catch (err) {
@@ -108,7 +122,10 @@ export function Register() {
       <h1>Create your account</h1>
       <p className="sub">{site.needs_setup ? `Set up ${site.site_name}` : `Join ${site.site_name}`}</p>
       {site.needs_setup && <div className="notice">You are creating the first account, so it becomes the admin account.</div>}
-      {closed ? (
+      {!site.needs_setup && mode === 'approval' && !invite && !pending && <div className="notice">An admin approves new accounts before they can sign in.</div>}
+      {pending ? (
+        <div className="notice">{pending}</div>
+      ) : closed ? (
         <div className="error">Registration is closed on this site. Ask the admin to invite you.</div>
       ) : (
         <>
@@ -138,6 +155,24 @@ export function Register() {
               <label>Confirm password</label>
               <input className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
             </div>
+            {askInvite && (
+              <div className="field">
+                <label>Invite code</label>
+                <input className="input" value={invite} onChange={(e) => setInvite(e.target.value)} autoComplete="off" required={mode === 'invite'} />
+                {mode === 'invite' && <span className="hint">This site is invite-only. Ask someone here for an invite link.</span>}
+              </div>
+            )}
+            {askTerms && (
+              <label className="checkbox field">
+                <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} required />
+                <span>
+                  I have read and accept the{' '}
+                  <Link to="/legal" target="_blank">
+                    rules and terms
+                  </Link>
+                </span>
+              </label>
+            )}
             <button className="btn btn-primary" disabled={busy}>
               {busy ? 'Creating…' : 'Create account'}
             </button>

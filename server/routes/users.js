@@ -8,7 +8,7 @@ import { requireAuth, userToPublic } from '../auth.js';
 import { imageUpload, discard } from '../uploads.js';
 import { HttpError, now, str, clampInt } from '../util.js';
 import { convertImage } from '../media.js';
-import { videoSelect, serializeVideo, LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapListRow } from './videos.js';
+import { videoSelect, serializeVideo, LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapListRow, storageFor } from './videos.js';
 import { NETWORK_VISIBLE, serializeRemote, networkActive } from '../network.js';
 
 /** Local channels only; people from other instances have placeholder accounts with no channel page here. */
@@ -18,7 +18,7 @@ function channelByUsername(username) {
 
 export function channelInfo(u, viewer) {
   const own = !!viewer && (viewer.id === u.id || viewer.is_admin);
-  const visibility = own ? '' : "AND visibility = 'public'";
+  const visibility = own ? '' : "AND visibility = 'public' AND moderation_status IS NULL";
   return {
     ...userToPublic(u),
     subscriber_count: db.prepare('SELECT COUNT(*) AS n FROM subscriptions WHERE channel_id = ?').get(u.id).n,
@@ -47,7 +47,7 @@ usersRouter.get('/:username/videos', (req, res) => {
   const offset = clampInt(req.query.offset, 0, 1_000_000, 0);
   const order = { views: 'v.views DESC, v.created_at DESC', old: 'v.created_at ASC' }[req.query.sort] || 'v.created_at DESC';
   const rows = db
-    .prepare(`${videoSelect()} WHERE v.user_id = ? AND v.status = 'ready' ${own ? '' : "AND v.visibility = 'public'"} ORDER BY ${order} LIMIT ? OFFSET ?`)
+    .prepare(`${videoSelect()} WHERE v.user_id = ? AND v.status = 'ready' ${own ? '' : "AND v.visibility = 'public' AND v.moderation_status IS NULL"} ORDER BY ${order} LIMIT ? OFFSET ?`)
     .all(u.id, limit, offset);
   res.json({ videos: rows.map(serializeVideo), has_more: rows.length === limit });
 });
@@ -89,7 +89,7 @@ meRouter.get('/feed', (req, res) => {
   const offset = clampInt(req.query.offset, 0, 1_000_000, 0);
   const parts = [
     `SELECT ${LOCAL_LIST_COLS} FROM videos v JOIN users u ON u.id = v.user_id
-     WHERE v.status = 'ready' AND v.visibility = 'public' AND v.user_id IN (SELECT channel_id FROM subscriptions WHERE subscriber_id = ?)`,
+     WHERE v.status = 'ready' AND v.visibility = 'public' AND v.moderation_status IS NULL AND v.user_id IN (SELECT channel_id FROM subscriptions WHERE subscriber_id = ?)`,
   ];
   const params = [req.user.id];
   if (networkActive()) {
@@ -130,7 +130,7 @@ meRouter.get('/subscriptions', (req, res) => {
 meRouter.get('/liked', (req, res) => {
   const rows = db
     .prepare(
-      `${videoSelect('l.created_at AS liked_at')} JOIN likes l ON l.video_id = v.id AND l.user_id = ? WHERE l.value = 1 AND v.status = 'ready' AND (v.visibility != 'private' OR v.user_id = ?) ORDER BY l.created_at DESC LIMIT 200`,
+      `${videoSelect('l.created_at AS liked_at')} JOIN likes l ON l.video_id = v.id AND l.user_id = ? WHERE l.value = 1 AND v.status = 'ready' AND v.moderation_status IS NULL AND (v.visibility != 'private' OR v.user_id = ?) ORDER BY l.created_at DESC LIMIT 200`,
     )
     .all(req.user.id, req.user.id);
   const videos = rows.map((r) => ({ ...serializeVideo(r), _at: r.liked_at }));
@@ -152,7 +152,7 @@ meRouter.get('/liked', (req, res) => {
 meRouter.get('/history', (req, res) => {
   const rows = db
     .prepare(
-      `${videoSelect('h.position, h.watched_at')} JOIN history h ON h.video_id = v.id AND h.user_id = ? WHERE v.status = 'ready' AND (v.visibility != 'private' OR v.user_id = ?) ORDER BY h.watched_at DESC LIMIT 200`,
+      `${videoSelect('h.position, h.watched_at')} JOIN history h ON h.video_id = v.id AND h.user_id = ? WHERE v.status = 'ready' AND v.moderation_status IS NULL AND (v.visibility != 'private' OR v.user_id = ?) ORDER BY h.watched_at DESC LIMIT 200`,
     )
     .all(req.user.id, req.user.id);
   res.json({ videos: rows.map((r) => ({ ...serializeVideo(r), watched_at: r.watched_at })) });
@@ -170,6 +170,11 @@ meRouter.patch('/', async (req, res) => {
   if (!display_name) throw new HttpError(400, 'Display name cannot be empty');
   const bio = b.bio !== undefined ? str(b.bio, 1000) : u.bio;
   db.prepare('UPDATE users SET display_name = ?, bio = ? WHERE id = ?').run(display_name, bio, u.id);
+  if (b.history_paused !== undefined) db.prepare('UPDATE users SET history_paused = ? WHERE id = ?').run(b.history_paused ? 1 : 0, u.id);
+  if (b.comment_mode !== undefined) {
+    if (!['open', 'hold_all'].includes(b.comment_mode)) throw new HttpError(400, 'Comment mode must be open or hold_all');
+    db.prepare('UPDATE users SET comment_mode = ? WHERE id = ?').run(b.comment_mode, u.id);
+  }
 
   if (b.new_password) {
     if (typeof b.new_password !== 'string' || b.new_password.length < 6) throw new HttpError(400, 'New password must be at least 6 characters');
@@ -177,6 +182,60 @@ meRouter.patch('/', async (req, res) => {
     db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(await bcrypt.hash(b.new_password, 10), u.id);
   }
   res.json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
+});
+
+/** Account settings that aren't part of the public profile. */
+meRouter.get('/settings', (req, res) => {
+  const u = db.prepare('SELECT history_paused, comment_mode, delete_requested_at FROM users WHERE id = ?').get(req.user.id);
+  res.json({
+    history_paused: !!u.history_paused,
+    comment_mode: u.comment_mode || 'open',
+    comment_filters: db.prepare('SELECT word, action FROM comment_filters WHERE user_id = ? ORDER BY word').all(req.user.id),
+    storage: storageFor(req.user.id),
+    delete_requested_at: u.delete_requested_at || null,
+  });
+});
+
+meRouter.put('/comment-filters', (req, res) => {
+  const list = Array.isArray(req.body?.filters) ? req.body.filters : [];
+  const clean = [];
+  for (const f of list.slice(0, 200)) {
+    const word = str(f?.word, 60).trim().toLowerCase();
+    if (word && !clean.some((x) => x.word === word)) clean.push({ word, action: f?.action === 'reject' ? 'reject' : 'hold' });
+  }
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM comment_filters WHERE user_id = ?').run(req.user.id);
+    const ins = db.prepare('INSERT INTO comment_filters (user_id, word, action) VALUES (?, ?, ?)');
+    for (const f of clean) ins.run(req.user.id, f.word, f.action);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  res.json({ comment_filters: clean });
+});
+
+/** Comments waiting for review on this person's videos. */
+meRouter.get('/comments/held', (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT c.*, u.username, u.display_name, u.remote_instance_id, v.title AS video_title FROM comments c
+       JOIN users u ON u.id = c.user_id JOIN videos v ON v.id = c.video_id
+       WHERE c.status = 'held' AND v.user_id = ? ORDER BY c.created_at DESC LIMIT 200`,
+    )
+    .all(req.user.id);
+  res.json({
+    comments: rows.map((c) => ({
+      id: c.id,
+      video_id: c.video_id,
+      video_title: c.video_title,
+      body: c.body,
+      held_reason: c.held_reason,
+      created_at: c.created_at,
+      author: { username: c.username, display_name: c.display_name, remote: !!c.remote_instance_id },
+    })),
+  });
 });
 
 meRouter.post('/avatar', imageUpload('avatar'), async (req, res) => {

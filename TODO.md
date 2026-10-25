@@ -1,6 +1,6 @@
 # ClipTube TODO
 
-Planned work. Current state (v0.3.0): one hub (clips.irc.so) that every instance joins, with
+Planned work. Current state (v0.5.0): one hub (clips.irc.so) that every instance joins, with
 cross-instance likes, comments and subscriptions signed per instance. The build order, sizes and
 dependencies are in [PLAN.md](PLAN.md).
 
@@ -34,18 +34,18 @@ legal notice, or is shut down, every other instance keeps seeing and interacting
 
 Not legal advice; talk to a lawyer before opening a public instance.
 
-- [ ] **Abuse / DMCA contact page** per instance (`/legal`), set in Admin: contact email, DMCA agent details,
+- [x] **Abuse / DMCA contact page** per instance (`/legal`), set in Admin: contact email, DMCA agent details,
       rules text. Linked in the sidebar footer and on every watch page.
-- [ ] **Report button** on videos and comments (local and remote), with reasons (copyright, spam,
+- [x] **Report button** on videos and comments (local and remote), with reasons (copyright, spam,
       harassment, illegal content, other). Reports for remote content are forwarded to the hosting instance's
       inbox as a signed `report` request.
-- [ ] **Moderation queue** in Admin: open reports, one-click hide or delete video, ban user, block or ban
+- [x] **Moderation queue** in Admin: open reports, one-click hide or delete video, ban user, block or ban
       instance, notes, resolved state.
-- [ ] **Takedown log**: record notices received, action taken, date. Supports a repeat-infringer policy.
-- [ ] **Counter-notice flow**: uploader sees why a video was removed and can respond.
-- [ ] **Registration modes**: open, approval required, invite-only (invite links), closed.
-- [ ] **Terms / rules page** template shown at sign-up.
-- [ ] Docs: what the DMCA safe harbors require (registered DMCA agent with the US Copyright Office, prompt
+- [x] **Takedown log**: record notices received, action taken, date. Supports a repeat-infringer policy.
+- [x] **Counter-notice flow**: uploader sees why a video was removed and can respond.
+- [x] **Registration modes**: open, approval required, invite-only (invite links), closed.
+- [x] **Terms / rules page** template shown at sign-up.
+- [x] Docs: what the DMCA safe harbors require (registered DMCA agent with the US Copyright Office, prompt
       action on notices, repeat-infringer policy) and Section 230 basics, with a pointer to get real advice.
 
 ## 3. ActivityPub (join the fediverse)
@@ -102,8 +102,8 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 ### Creators and copyright
 
 - [x] No automated Content ID matching.
-- [ ] Human-reviewed takedowns with a counter-notice flow and a public takedown log (see section 2).
-- [ ] Every removal or restriction shows the reason and the rule it broke; instances publish their rules;
+- [x] Human-reviewed takedowns with a counter-notice flow and a public takedown log (see section 2).
+- [x] Every removal or restriction shows the reason and the rule it broke; instances publish their rules;
       appeals go to a human.
 - [ ] Full channel export (videos, metadata, comments, subscribers list) and import on another instance;
       account moves between instances keep subscribers (ActivityPub `Move`, see section 3).
@@ -124,16 +124,16 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 
 ### Comments and community
 
-- [ ] Anti-spam: rate limits for new accounts, hold first-time commenters for review, link filtering,
+- [x] Anti-spam: rate limits for new accounts, hold first-time commenters for review, link filtering,
       block display names that imitate the uploader.
-- [ ] Never silently drop comments: tell the commenter when a comment is held, and why.
-- [ ] Creator tools: keyword filters, hold-for-review, pinned comments, creator hearts, turn comments off
+- [x] Never silently drop comments: tell the commenter when a comment is held, and why.
+- [x] Creator tools: keyword filters, hold-for-review, pinned comments, creator hearts, turn comments off
       per video.
 
 ### Privacy
 
 - [x] No tracking or third-party scripts; watch history can be cleared.
-- [ ] Pause watch history; anonymous viewing mode; per-user data export and account deletion.
+- [x] Pause watch history; anonymous viewing mode; per-user data export and account deletion.
 
 ### Gaming clips
 

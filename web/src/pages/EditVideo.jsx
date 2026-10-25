@@ -19,7 +19,14 @@ export default function EditVideo() {
   const thumbRef = useRef(null);
   const { site } = useAuth();
 
-  const toForm = (v) => ({ title: v.title, description: v.description, tags: v.tags.join(', '), visibility: v.visibility, federate: v.federate });
+  const toForm = (v) => ({
+    title: v.title,
+    description: v.description,
+    tags: v.tags.join(', '),
+    visibility: v.visibility,
+    federate: v.federate,
+    comment_mode: v.comment_mode || 'inherit',
+  });
   const load = useCallback(
     () =>
       api(`/videos/${id}`)
@@ -53,7 +60,8 @@ export default function EditVideo() {
     form.description !== video.description ||
     form.visibility !== video.visibility ||
     form.tags !== video.tags.join(', ') ||
-    form.federate !== video.federate;
+    form.federate !== video.federate ||
+    form.comment_mode !== (video.comment_mode || 'inherit');
 
   const save = async (e) => {
     e?.preventDefault();
@@ -145,6 +153,15 @@ export default function EditVideo() {
               <option value="private">Private</option>
             </select>
             <span className="hint">{VISIBILITY_HELP[form.visibility]}</span>
+          </div>
+          <div className="field">
+            <label>Comments</label>
+            <select className="select" value={form.comment_mode} onChange={(e) => set({ comment_mode: e.target.value })}>
+              <option value="inherit">Use my default (Settings)</option>
+              <option value="open">Publish right away</option>
+              <option value="hold_all">Hold all for review</option>
+              <option value="off">Turn comments off</option>
+            </select>
           </div>
           {site.federation && (
             <label className="checkbox field">

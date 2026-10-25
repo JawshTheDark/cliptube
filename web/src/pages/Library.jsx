@@ -52,7 +52,7 @@ export function Subscriptions() {
   );
 }
 
-function SimpleList({ title, icon, url, emptyTitle, emptyText, onClear }) {
+function SimpleList({ title, icon, url, emptyTitle, emptyText, onClear, actions }) {
   const [videos, setVideos] = useState(null);
   const [error, setError] = useState(null);
   useTitle(title);
@@ -67,6 +67,7 @@ function SimpleList({ title, icon, url, emptyTitle, emptyText, onClear }) {
     <>
       <div className="page-title">
         <Icon name={icon} /> {title}
+        {actions}
         {onClear && videos?.length > 0 && (
           <button className="btn btn-ghost" onClick={async () => (await onClear()) && setVideos([])}>
             <Icon name="delete" /> Clear all
@@ -102,5 +103,36 @@ export function History() {
       return false;
     }
   };
-  return <SimpleList title="Watch history" icon="history" url="/me/history" emptyTitle="Nothing watched yet" emptyText="Videos you watch show up here, with your place saved so you can pick up where you left off." onClear={clear} />;
+  const [paused, setPaused] = useState(null);
+  useEffect(() => {
+    api('/me/settings')
+      .then((s) => setPaused(s.history_paused))
+      .catch(() => {});
+  }, []);
+  const togglePause = async () => {
+    try {
+      await api('/me', { method: 'PATCH', body: { history_paused: !paused } });
+      setPaused(!paused);
+      toast(paused ? 'History is on' : 'History paused');
+    } catch (e) {
+      toast(e.message);
+    }
+  };
+  return (
+    <SimpleList
+      title="Watch history"
+      icon="history"
+      url="/me/history"
+      emptyTitle="Nothing watched yet"
+      emptyText="Videos you watch show up here, with your place saved so you can pick up where you left off."
+      onClear={clear}
+      actions={
+        paused !== null && (
+          <button className={`btn btn-ghost ${paused ? 'active' : ''}`} onClick={togglePause} title={paused ? 'Start saving history again' : 'Stop saving what you watch'}>
+            <Icon name={paused ? 'play' : 'pause'} /> {paused ? 'Resume history' : 'Pause history'}
+          </button>
+        )
+      }
+    />
+  );
 }

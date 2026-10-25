@@ -17,6 +17,10 @@ import Settings from './pages/Settings.jsx';
 import { Subscriptions, Liked, History } from './pages/Library.jsx';
 import Admin from './pages/Admin.jsx';
 import AdminNetwork from './pages/AdminNetwork.jsx';
+import AdminModeration from './pages/AdminModeration.jsx';
+import AdminLegal from './pages/AdminLegal.jsx';
+import { Legal, Transparency } from './pages/Legal.jsx';
+import StudioComments from './pages/StudioComments.jsx';
 import Editor from './pages/Editor.jsx';
 import Network from './pages/Network.jsx';
 import RemoteWatch from './pages/RemoteWatch.jsx';
@@ -64,12 +68,13 @@ function Layout() {
   );
 }
 
-function RequireAuth({ children, admin = false }) {
+function RequireAuth({ children, admin = false, moderator = false }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) return <div className="spinner" />;
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   if (admin && !user.is_admin) return <Empty icon="lock" title="Admins only" />;
+  if (moderator && !user.is_moderator && !user.is_admin) return <Empty icon="lock" title="Moderators only" />;
   return children;
 }
 
@@ -109,6 +114,32 @@ export default function App() {
                   </RequireAuth>
                 }
               />
+              <Route
+                path="/admin/moderation"
+                element={
+                  <RequireAuth moderator>
+                    <AdminModeration />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/legal"
+                element={
+                  <RequireAuth admin>
+                    <AdminLegal />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/studio/comments"
+                element={
+                  <RequireAuth>
+                    <StudioComments />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/legal" element={<Legal />} />
+              <Route path="/transparency" element={<Transparency />} />
               <Route path="/c/:username" element={<Channel />} />
               <Route path="/results" element={<Search />} />
               <Route path="/login" element={<Login />} />

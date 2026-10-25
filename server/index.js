@@ -13,6 +13,10 @@ import { mediaRouter } from './routes/media.js';
 import { resumePending } from './media.js';
 import { startJobs } from './jobs.js';
 import { networkProtocolRouter, networkAdminRouter, networkRouter, networkActive, networkPeers, networkInfo, startNetwork } from './network.js';
+import { modRouter, reportsRouter, legalAdminRouter, legalPublicRouter } from './moderation.js';
+import { privacyRouter } from './privacy.js';
+import { registrationMode } from './auth.js';
+import './spam.js'; // registers the comment spam checks with the intake pipeline
 import { HttpError, escapeHtml } from './util.js';
 
 const app = express();
@@ -35,9 +39,14 @@ if (LOG_REQUESTS) {
 
 app.get('/api/site', (req, res) => {
   const s = getSettings();
+  const mode = registrationMode();
   res.json({
     site_name: s.site_name,
-    allow_registration: s.allow_registration === 'true',
+    registration_mode: mode,
+    allow_registration: mode !== 'closed',
+    has_terms: !!s.legal_terms.trim(),
+    has_legal: !!(s.legal_contact_email || s.legal_dmca_agent || s.legal_rules || s.legal_terms),
+    transparency: s.legal_transparency_public === 'true',
     max_upload_mb: Number(s.max_upload_mb),
     needs_setup: userCount() === 0,
     federation: networkActive(),
@@ -46,12 +55,17 @@ app.get('/api/site', (req, res) => {
   });
 });
 app.use(networkProtocolRouter); // /.well-known/cliptube, /api/hub/*, /api/network/{verify,feed,inbox}
+app.use('/api', legalPublicRouter); // /api/legal, /api/transparency
 app.use('/api/auth', authRouter);
 app.use('/api/videos', videosRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);
+app.use('/api/reports', reportsRouter);
+app.use('/api/mod', modRouter);
 app.use('/api/network', networkRouter);
 app.use('/api/admin/network', networkAdminRouter);
+app.use('/api/admin/legal', legalAdminRouter);
 app.use('/api/admin', adminRouter);
 app.use('/media', mediaRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));

@@ -40,8 +40,13 @@ test('likes, comments and subscriptions across instances', async () => {
   assert.equal(like.likes, 1);
   assert.equal((await A.get(`/api/videos/${aVideo.id}`)).data.video.likes, 1);
 
-  const posted = (await B.post(`/api/network/videos/${iidOnB}/${aVideo.id}/comments`, { body: 'from the member' })).data.comment;
+  const sent = (await B.post(`/api/network/videos/${iidOnB}/${aVideo.id}/comments`, { body: 'from the member' })).data;
+  const posted = sent.comment;
   assert.ok(posted.id);
+  // A first comment from someone new is held on the hosting instance until its owner approves it.
+  assert.equal(sent.held, true);
+  assert.equal((await new Client(hub.url).get(`/api/videos/${aVideo.id}/comments`)).data.comments.length, 0);
+  assert.equal((await A.patch(`/api/videos/${aVideo.id}/comments/${posted.id}`, { status: 'visible' })).status, 200);
   const onHub = (await A.get(`/api/videos/${aVideo.id}/comments`)).data.comments;
   assert.equal(onHub[0].author.remote, true);
   assert.match(onHub[0].author.username, /^bob@127\.0\.0\.1:/);
@@ -65,6 +70,25 @@ test('forged inbox requests are refused', async () => {
     body: JSON.stringify({ type: 'like', instance: member.url, ts: Date.now(), nonce: 'n1', actor: { username: 'bob' }, video_id: aVideo.id, value: 1 }),
   });
   assert.equal(r.status, 401);
+});
+
+test('reports about remote videos reach the instance that hosts them', async () => {
+  const iidOnB = (await net(B))[0].remote.peer_id;
+  const r = await B.post('/api/reports', { target_type: 'remote_video', target_id: `${iidOnB}:${aVideo.id}`, reason: 'copyright', details: 'not theirs' });
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  const onA = await waitFor(async () => (await A.get('/api/mod/reports')).data.reports.find((x) => x.target_id === aVideo.id), { what: 'forwarded report' });
+  assert.equal(onA.reason, 'copyright');
+  assert.match(onA.reporter, /^bob@/);
+  assert.ok(onA.from_instance);
+  assert.equal((await B.get('/api/mod/reports')).data.reports[0].target_type, 'remote_video');
+
+  // Acting on it there takes the video off the whole network, and restoring brings it back.
+  assert.equal((await A.post(`/api/mod/reports/${onA.id}/action`, { action: 'remove_video', reason: 'copyright' })).status, 200);
+  await B.post('/api/admin/network/sync');
+  assert.equal((await net(B)).length, 0);
+  await A.post(`/api/mod/videos/${aVideo.id}`, { action: 'restore' });
+  await B.post('/api/admin/network/sync');
+  assert.equal((await net(B)).length, 1);
 });
 
 test('blocking, network switches and hub moderation', async () => {

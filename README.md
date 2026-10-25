@@ -17,6 +17,8 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 - Studio page to manage your videos, admin page for site settings and users
 - **Timeline editor**: trim, split, cut out sections, volume boost or mute, fade in/out, pick a thumbnail from any frame
 - **Network**: instances join one hub to browse and search each other's clips, with likes, comments and subscriptions across instances
+- **Moderation**: reports (also across instances), a moderation queue with an audit log, comment spam holds, copyright takedowns with counter-notices and strikes, invite or approval sign-up, storage quotas
+- **Privacy**: pause history, anonymous mode, download all your data, delete your account
 - Keyboard shortcuts: `k` play/pause, `j`/`l` seek 10s, arrows seek 5s, `f` fullscreen, `t` theater, `m` mute, `0-9` jump
 
 ## Run it
@@ -94,6 +96,53 @@ Members register with `POST /api/hub/join` and prove they own their address thro
 `/api/network/verify`. The hub pulls each member's `/api/network/feed` and serves `/api/hub/index`,
 `/api/hub/index/ids` and `/api/hub/directory` (members and their public keys). Interactions go to the target
 instance's `/api/network/inbox`, signed with an `X-ClipTube-Signature` header.
+
+## Moderation and legal
+
+Everything here lives under **Admin**: the **Moderation** tab for moderators and admins, and the **Legal** tab
+for admins.
+
+- **Roles.** Members, moderators (reports, held comments, hiding and removing videos, suspending members) and
+  admins (everything, including settings, the network and legal).
+- **Reports.** Signed-in people can flag a video, comment or channel, including ones from other instances.
+  Reports about another instance's content are forwarded to it, so its moderators see them in their own queue.
+  Each report has one-click actions, notes, and every action lands in the audit log.
+- **Videos** can be hidden (only the uploader and moderators see it) or removed (nobody can play it). Removed
+  files are kept for the retention period in Admin → Legal, then deleted.
+- **Comments.** First comments, links from new accounts and names that imitate the uploader are held for
+  review, and fast posting is rate limited. Uploaders can add blocked words, hold every comment, turn comments
+  off per video, and pin or heart comments. Held comments stay visible to their author marked as held, and
+  wait in Studio → Comments to review. The thresholds are in Admin → Moderation → Spam settings.
+- **Sign-up** can be open, need approval, be invite-only (invite links with use limits and expiry) or closed.
+  An invite also skips approval. If you write terms in Admin → Legal, people accept them when they sign up.
+- **Storage quotas**: a default per person in Admin → Overview, with per-person overrides in the users table.
+- **Copyright notices.** Record each notice in Admin → Legal. Choosing "Remove the video" takes it down and,
+  optionally, gives the uploader a strike; enough active strikes suspend the account. The uploader can send a
+  counter-notice from the removed video, and accepting it restores the video and takes the strike away.
+- **Public pages.** `/legal` shows your rules, terms and contacts, and `/transparency` shows counts of notices,
+  removals and restorations (you can turn it off).
+- **Privacy.** People can pause their watch history, turn on anonymous mode in a browser, download all of their
+  data, and delete their account after a 7-day grace period. Deletion is announced to the network.
+
+### Background, not legal advice
+
+If strangers can upload to your instance, you are hosting their content. Laws differ by country, so talk to a
+lawyer before opening sign-ups. For the US, the short version:
+
+- **DMCA safe harbor (17 U.S.C. § 512(c))** protects hosts from copyright claims over user uploads if they
+  register a designated agent with the US Copyright Office (an online form with a small fee, renewed every
+  three years), remove material quickly when they get a valid notice, and have and enforce a policy that ends
+  repeat infringers' accounts. Put the agent's details in Admin → Legal so they show on `/legal`.
+- **Counter-notices.** After a valid counter-notice, the law expects the host to put the material back in 10 to
+  14 business days unless the claimant says they have gone to court. ClipTube records the counter-notice and
+  leaves the decision to you.
+- **Section 230** generally shields hosts from liability for what users post, but not for copyright or
+  federal crimes. Child sexual abuse material must be reported to NCMEC; remove it and preserve what you're
+  told to.
+- **Elsewhere**: the EU's Digital Services Act has its own notice-and-action and transparency rules for hosts.
+
+Running a members-only instance for friends keeps most of this simple. Use invite-only sign-up until you're
+ready for more.
 
 ## Configuration
 

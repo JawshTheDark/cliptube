@@ -6,6 +6,7 @@ import { Avatar } from '../components/Avatar.jsx';
 import { VideoGrid, InfiniteScroll, Empty } from '../components/VideoCard.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { plural, formatDate, usePaged } from '../util.js';
+import { ReportButton } from '../components/ReportDialog.jsx';
 
 const SORTS = [
   ['new', 'Latest'],
@@ -81,9 +82,12 @@ export default function Channel() {
                 </Link>
               </>
             ) : (
-              <button className={`btn ${channel.subscribed ? '' : 'btn-primary'}`} onClick={toggleSub}>
-                {channel.subscribed ? 'Subscribed' : 'Subscribe'}
-              </button>
+              <>
+                <button className={`btn ${channel.subscribed ? '' : 'btn-primary'}`} onClick={toggleSub}>
+                  {channel.subscribed ? 'Subscribed' : 'Subscribe'}
+                </button>
+                <ReportButton target={{ type: 'user', id: channel.id, label: `@${channel.username}` }} className="btn btn-icon" iconOnly />
+              </>
             )}
           </div>
         </div>

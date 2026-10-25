@@ -6,7 +6,9 @@ import { DIRS } from '../config.js';
 import { requireAdmin, userToPublic, setUserRole, setUserStatus } from '../auth.js';
 import { HttpError } from '../util.js';
 import { queueInfo, ffmpegInfo } from '../media.js';
-import { removeVideoFiles } from './videos.js';
+import { deleteAccount } from '../privacy.js';
+import { logAction } from '../reports.js';
+import { newId, now, str, clampInt } from '../util.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
@@ -14,7 +16,7 @@ adminRouter.use(requireAdmin);
 const ENCODERS = ['libx264', 'h264_nvenc', 'h264_qsv', 'h264_amf'];
 
 // Only the general site settings; keys, tokens and network settings never go to the browser from here.
-const SITE_SETTINGS = ['site_name', 'allow_registration', 'max_upload_mb', 'max_height', 'encoder', 'delete_originals', 'public_url'];
+const SITE_SETTINGS = ['site_name', 'registration_mode', 'max_upload_mb', 'default_quota_mb', 'max_height', 'encoder', 'delete_originals', 'public_url'];
 function siteSettings() {
   const s = getSettings();
   return Object.fromEntries(SITE_SETTINGS.map((k) => [k, s[k]]));
@@ -30,7 +32,17 @@ adminRouter.patch('/settings', (req, res) => {
     if (!name) throw new HttpError(400, 'Site name cannot be empty');
     setSetting('site_name', name);
   }
-  if (b.allow_registration !== undefined) setSetting('allow_registration', bool(b.allow_registration));
+  if (b.allow_registration !== undefined) setSetting('registration_mode', bool(b.allow_registration) === 'true' ? 'open' : 'closed');
+  if (b.registration_mode !== undefined) {
+    if (!['open', 'approval', 'invite', 'closed'].includes(b.registration_mode)) throw new HttpError(400, 'Registration must be open, approval, invite or closed');
+    setSetting('registration_mode', b.registration_mode);
+    setSetting('allow_registration', b.registration_mode === 'closed' ? 'false' : 'true');
+  }
+  if (b.default_quota_mb !== undefined) {
+    const n = parseInt(b.default_quota_mb, 10);
+    if (!Number.isFinite(n) || n < 0 || n > 100_000_000) throw new HttpError(400, 'Quota must be 0 (unlimited) or more MB');
+    setSetting('default_quota_mb', n);
+  }
   if (b.delete_originals !== undefined) setSetting('delete_originals', bool(b.delete_originals));
   if (b.max_upload_mb !== undefined) {
     const n = parseInt(b.max_upload_mb, 10);
@@ -54,13 +66,50 @@ adminRouter.patch('/settings', (req, res) => {
   res.json({ settings: siteSettings(), encoders: ENCODERS });
 });
 
+const ADMIN_USER_SQL =
+  'SELECT u.*, (SELECT COUNT(*) FROM videos v WHERE v.user_id = u.id) AS video_count, (SELECT COALESCE(SUM(size_bytes), 0) FROM videos v WHERE v.user_id = u.id) AS bytes FROM users u';
+
+function adminUser(u) {
+  return {
+    ...userToPublic(u),
+    status_reason: u.status_reason || null,
+    quota_mb: u.quota_bytes === null || u.quota_bytes === undefined ? null : Math.round(u.quota_bytes / 1048576),
+    strikes: db.prepare('SELECT COUNT(*) AS n FROM strikes WHERE user_id = ? AND (expires_at IS NULL OR expires_at > ?)').get(u.id, now()).n,
+    delete_requested_at: u.delete_requested_at || null,
+    video_count: u.video_count,
+    bytes: u.bytes,
+  };
+}
+
 adminRouter.get('/users', (req, res) => {
-  const rows = db
-    .prepare(
-      'SELECT u.*, (SELECT COUNT(*) FROM videos v WHERE v.user_id = u.id) AS video_count, (SELECT COALESCE(SUM(size_bytes), 0) FROM videos v WHERE v.user_id = u.id) AS bytes FROM users u WHERE u.remote_instance_id IS NULL ORDER BY u.created_at ASC',
-    )
-    .all();
-  res.json({ users: rows.map((u) => ({ ...userToPublic(u), status_reason: u.status_reason || null, video_count: u.video_count, bytes: u.bytes })) });
+  const rows = db.prepare(`${ADMIN_USER_SQL} WHERE u.remote_instance_id IS NULL ORDER BY u.created_at ASC`).all();
+  res.json({ users: rows.map(adminUser) });
+});
+
+// ---- invites ---------------------------------------------------------------------------------
+
+adminRouter.get('/invites', (req, res) => {
+  res.json({
+    invites: db
+      .prepare('SELECT i.*, u.username AS created_by_name FROM invites i LEFT JOIN users u ON u.id = i.created_by ORDER BY i.created_at DESC')
+      .all(),
+  });
+});
+
+adminRouter.post('/invites', (req, res) => {
+  const b = req.body || {};
+  const code = newId(9);
+  const days = clampInt(b.expires_days, 0, 365, 14);
+  db.prepare('INSERT INTO invites (code, created_by, note, max_uses, uses, expires_at, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)').run(
+    code, req.user.id, str(b.note, 200), clampInt(b.max_uses, 0, 1000, 1), days ? now() + days * 24 * 3600_000 : null, now(),
+  );
+  logAction(req.user, 'invite.create', { targetType: 'invite', targetId: code, details: b.note || null });
+  res.status(201).json({ invite: db.prepare('SELECT * FROM invites WHERE code = ?').get(code) });
+});
+
+adminRouter.delete('/invites/:code', (req, res) => {
+  db.prepare('DELETE FROM invites WHERE code = ?').run(String(req.params.code));
+  res.json({ ok: true });
 });
 
 adminRouter.patch('/users/:id', (req, res) => {
@@ -77,18 +126,25 @@ adminRouter.patch('/users/:id', (req, res) => {
   if (b.status !== undefined) {
     if (u.id === req.user.id) throw new HttpError(400, 'You cannot change your own account status');
     setUserStatus(u.id, b.status, b.reason);
+    const verb = { active: u.status === 'pending' ? 'approve' : 'activate', suspended: 'suspend', banned: 'ban', pending: 'unapprove' }[b.status] || b.status;
+    logAction(req.user, `user.${verb}`, { targetType: 'user', targetId: u.id, targetLabel: u.username, details: b.reason || null });
   }
-  res.json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
+  if (b.quota_mb !== undefined) {
+    const q = b.quota_mb === null || b.quota_mb === '' ? null : clampInt(b.quota_mb, 0, 100_000_000, 0) * 1048576;
+    db.prepare('UPDATE users SET quota_bytes = ? WHERE id = ?').run(q, u.id);
+  }
+  if (b.clear_strikes) {
+    db.prepare('DELETE FROM strikes WHERE user_id = ?').run(u.id);
+    logAction(req.user, 'user.clear_strikes', { targetType: 'user', targetId: u.id, targetLabel: u.username });
+  }
+  res.json({ user: adminUser(db.prepare(`${ADMIN_USER_SQL} WHERE u.id = ?`).get(u.id)) });
 });
 
-adminRouter.delete('/users/:id', (req, res) => {
+adminRouter.delete('/users/:id', async (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(String(req.params.id));
   if (!u) throw new HttpError(404, 'User not found');
   if (u.id === req.user.id) throw new HttpError(400, 'You cannot delete your own account from here');
-  const videos = db.prepare('SELECT * FROM videos WHERE user_id = ?').all(u.id);
-  db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
-  for (const v of videos) removeVideoFiles(v);
-  if (u.avatar) try { fs.unlinkSync(path.join(DIRS.avatars, u.avatar)); } catch {}
+  await deleteAccount(u.id, req.user);
   res.json({ ok: true });
 });
 

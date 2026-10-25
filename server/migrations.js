@@ -233,6 +233,128 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_dedupe ON jobs(dedupe_key) WHERE stat
 `);
     },
   },
+  {
+    version: 3,
+    name: 'trust and safety: reports, moderation, takedowns, invites, comment states, privacy',
+    up(db) {
+      db.exec(`
+CREATE TABLE reports (
+  id TEXT PRIMARY KEY,
+  target_type TEXT NOT NULL,            -- video | comment | user | remote_video | remote_comment
+  target_id TEXT NOT NULL,
+  target_title TEXT,
+  target_url TEXT,
+  target_owner TEXT,
+  reason TEXT NOT NULL,                 -- copyright | spam | harassment | illegal | other
+  details TEXT NOT NULL DEFAULT '',
+  reporter_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  reporter_label TEXT,
+  source_instance_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'open',  -- open | resolved | dismissed
+  resolution TEXT,
+  notes TEXT NOT NULL DEFAULT '',
+  handled_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at INTEGER NOT NULL,
+  handled_at INTEGER
+);
+CREATE INDEX idx_reports_status ON reports(status, created_at);
+CREATE INDEX idx_reports_target ON reports(target_type, target_id);
+
+CREATE TABLE mod_actions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  actor_label TEXT,
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id TEXT,
+  target_label TEXT,
+  details TEXT,
+  report_id TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_mod_actions_created ON mod_actions(created_at);
+
+CREATE TABLE takedown_notices (
+  id TEXT PRIMARY KEY,
+  video_id TEXT,
+  video_title TEXT,
+  uploader_id TEXT,
+  claimant TEXT NOT NULL,
+  claimant_contact TEXT NOT NULL DEFAULT '',
+  work TEXT NOT NULL,
+  url TEXT NOT NULL DEFAULT '',
+  received_at INTEGER NOT NULL,
+  action TEXT NOT NULL,                 -- removed | none | rejected
+  notes TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'closed',-- closed | countered | restored
+  created_by TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_takedowns_video ON takedown_notices(video_id);
+
+CREATE TABLE counter_notices (
+  id TEXT PRIMARY KEY,
+  notice_id TEXT,
+  video_id TEXT NOT NULL,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  statement TEXT NOT NULL,
+  contact TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | accepted | rejected
+  decided_by TEXT,
+  created_at INTEGER NOT NULL,
+  decided_at INTEGER
+);
+
+CREATE TABLE strikes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  notice_id TEXT,
+  created_by TEXT,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER
+);
+CREATE INDEX idx_strikes_user ON strikes(user_id);
+
+CREATE TABLE invites (
+  code TEXT PRIMARY KEY,
+  created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  note TEXT NOT NULL DEFAULT '',
+  max_uses INTEGER NOT NULL DEFAULT 1,
+  uses INTEGER NOT NULL DEFAULT 0,
+  expires_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE comment_filters (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  word TEXT NOT NULL COLLATE NOCASE,
+  action TEXT NOT NULL DEFAULT 'hold',  -- hold | reject
+  PRIMARY KEY (user_id, word)
+);
+`);
+      addColumn(db, 'videos', 'moderation_status', 'TEXT'); // NULL | hidden | removed
+      addColumn(db, 'videos', 'moderation_reason', 'TEXT');
+      addColumn(db, 'videos', 'moderated_at', 'INTEGER');
+      addColumn(db, 'videos', 'comment_mode', "TEXT NOT NULL DEFAULT 'inherit'"); // inherit | open | hold_all | off
+      addColumn(db, 'videos', 'pinned_comment_id', 'TEXT');
+      addColumn(db, 'comments', 'status', "TEXT NOT NULL DEFAULT 'visible'"); // visible | held
+      addColumn(db, 'comments', 'held_reason', 'TEXT');
+      addColumn(db, 'comments', 'hearted', 'INTEGER NOT NULL DEFAULT 0');
+      addColumn(db, 'users', 'comment_mode', "TEXT NOT NULL DEFAULT 'open'"); // open | hold_all
+      addColumn(db, 'users', 'quota_bytes', 'INTEGER'); // NULL = instance default, 0 = unlimited
+      addColumn(db, 'users', 'history_paused', 'INTEGER NOT NULL DEFAULT 0');
+      addColumn(db, 'users', 'terms_accepted_at', 'INTEGER');
+      addColumn(db, 'users', 'invited_by', 'TEXT');
+      addColumn(db, 'users', 'delete_requested_at', 'INTEGER');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_comments_user ON comments(user_id)');
+      // allow_registration (true/false) becomes registration_mode (open | approval | invite | closed).
+      const old = db.prepare("SELECT value FROM settings WHERE key = 'allow_registration'").get();
+      if (old && !db.prepare("SELECT 1 FROM settings WHERE key = 'registration_mode'").get()) {
+        db.prepare("INSERT INTO settings (key, value) VALUES ('registration_mode', ?)").run(old.value === 'false' ? 'closed' : 'open');
+      }
+    },
+  },
 ];
 
 export function currentVersion(db) {

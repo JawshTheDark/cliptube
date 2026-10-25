@@ -22,10 +22,11 @@ import { ALLOW_PRIVATE_FEDERATION, VERSION } from './config.js';
 import { HttpError, now, str, sha256, clampInt, parseTags, newId } from './util.js';
 import { requireAuth, requireAdmin } from './auth.js';
 import { intakeComment, intakeLike } from './intake.js';
+import { createReport } from './reports.js';
 
 export const PROTOCOL = 2;
 const FULL_SYNC_MS = 6 * 3600 * 1000;
-const PUBLIC_WHERE = "v.status = 'ready' AND v.visibility = 'public' AND v.federate = 1";
+const PUBLIC_WHERE = "v.status = 'ready' AND v.visibility = 'public' AND v.federate = 1 AND v.moderation_status IS NULL";
 const USERNAME_RE = /^[A-Za-z0-9_]{3,20}$/;
 const S = () => getSettings();
 const yes = (v) => v === true || v === 'true' || v === 1 || v === '1';
@@ -1001,13 +1002,16 @@ function likeCounts(videoId) {
 }
 
 /** A comment as any viewer sees it (same shape as the local comments API). */
-export function publicComment(c, videoOwnerId) {
+export function publicComment(c, videoOwnerId, pinnedId = null) {
   const remote = !!c.remote_instance_id;
   return {
     id: c.id,
     parent_id: c.parent_id,
     body: c.body,
     created_at: c.created_at,
+    status: c.status || 'visible',
+    hearted: !!c.hearted,
+    pinned: !!pinnedId && pinnedId === c.id,
     author: {
       id: c.user_id,
       username: c.username,
@@ -1052,14 +1056,41 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
 
   const site = S().site_name;
   if (inst.blocked) throw new HttpError(403, `${site} has blocked your instance`);
+  const t = now();
+
+  // Account deletions are honoured from any known instance, even one that may no longer interact.
+  if (b.type === 'actor_delete') {
+    const username = String(b.actor?.username || '');
+    const r = db.prepare('DELETE FROM users WHERE username = ? AND remote_instance_id = ?').run(`${username}@${hostOf(inst.url)}`, inst.id);
+    return res.json({ ok: true, removed: r.changes });
+  }
+
   if (inst.hub_status !== 'approved' || !inst.allow_interactions) throw new HttpError(403, 'Your instance is not allowed to interact on this network');
+
+  // Reports always get through (unless the instance is blocked), whatever the interaction switches say.
+  if (b.type === 'report') {
+    const handle = `${String(b.actor?.username || 'someone').slice(0, 40)}@${hostOf(inst.url)}`;
+    const reason = String(b.reason || 'other');
+    if (b.target_type === 'video') {
+      const v = db.prepare('SELECT v.*, u.username FROM videos v JOIN users u ON u.id = v.user_id WHERE v.id = ?').get(String(b.target_id || ''));
+      if (!v) throw new HttpError(404, 'Video not found');
+      createReport({ targetType: 'video', targetId: v.id, targetTitle: v.title, targetUrl: `/watch/${v.id}`, targetOwner: v.username, reason, details: str(b.details, 2000), reporterLabel: handle, sourceInstanceId: inst.id });
+    } else if (b.target_type === 'comment') {
+      const c = db.prepare('SELECT c.*, u.username FROM comments c JOIN users u ON u.id = c.user_id WHERE c.id = ?').get(String(b.target_id || ''));
+      if (!c) throw new HttpError(404, 'Comment not found');
+      createReport({ targetType: 'comment', targetId: c.id, targetTitle: c.body.slice(0, 200), targetUrl: `/watch/${c.video_id}`, targetOwner: c.username, reason, details: str(b.details, 2000), reporterLabel: handle, sourceInstanceId: inst.id });
+    } else {
+      throw new HttpError(400, 'Unknown report target');
+    }
+    return res.status(201).json({ ok: true });
+  }
+
   const kind = KIND[b.type];
   if (!kind) throw new HttpError(400, 'Unknown request type');
   if (!networkPolicy()[kind]) throw new HttpError(403, `The network has turned off ${kind} between instances`);
   if (!acceptsFromNetwork()[kind]) throw new HttpError(403, `${site} does not accept ${kind} from other instances`);
 
   const actor = ensureShadowUser(inst, b.actor);
-  const t = now();
 
   switch (b.type) {
     case 'like': {
@@ -1091,8 +1122,14 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
       const verdict = intakeComment({ video: v, author: actor, body, parentId, remote: true, instance: inst });
       if (verdict.status === 'rejected') throw new HttpError(400, verdict.reason || 'Comment not accepted');
       const id = newId();
-      db.prepare('INSERT INTO comments (id, video_id, user_id, parent_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, v.id, actor.id, parentId, body, t);
-      return res.status(201).json({ comment: publicComment(db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(id), v.user_id) });
+      db.prepare('INSERT INTO comments (id, video_id, user_id, parent_id, body, status, held_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+        id, v.id, actor.id, parentId, body, verdict.status, verdict.status === 'held' ? verdict.reason : null, t,
+      );
+      return res.status(201).json({
+        comment: publicComment(db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(id), v.user_id),
+        held: verdict.status === 'held',
+        held_reason: verdict.status === 'held' ? verdict.reason : null,
+      });
     }
     case 'comment_delete': {
       const r = db.prepare('DELETE FROM comments WHERE id = ? AND user_id = ?').run(String(b.comment_id || ''), actor.id);
@@ -1117,10 +1154,11 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
 async function sendToInstance(inst, type, data, user) {
   if (!networkActive()) throw new HttpError(400, 'This site is not connected to a network');
   if (!inst || inst.is_self) throw new HttpError(404, 'Instance not found');
-  if (inst.blocked) throw new HttpError(403, 'You have blocked this instance');
-  if (inst.hub_status !== 'approved' || !inst.allow_interactions) throw new HttpError(403, `${instName(inst)} cannot receive likes or comments right now`);
+  const always = type === 'report' || type === 'actor_delete';
+  if (inst.blocked && !always) throw new HttpError(403, 'You have blocked this instance');
+  if (!always && (inst.hub_status !== 'approved' || !inst.allow_interactions)) throw new HttpError(403, `${instName(inst)} cannot receive likes or comments right now`);
   const kind = KIND[type];
-  if (!networkPolicy()[kind]) throw new HttpError(403, `The network has turned off ${kind} between instances`);
+  if (kind && !networkPolicy()[kind]) throw new HttpError(403, `The network has turned off ${kind} between instances`);
   const self = storedSelf();
   if (!self) throw new HttpError(400, 'This site has no network address yet');
   const raw = JSON.stringify({
@@ -1142,6 +1180,28 @@ async function sendToInstance(inst, type, data, user) {
     const status = e.status === 403 ? 403 : e.status === 404 ? 404 : e.status >= 400 && e.status < 500 ? 400 : 502;
     throw new HttpError(status, `${instName(inst)}: ${e.message}`);
   }
+}
+
+/** Forwards a report about another instance's video or comment to that instance. */
+export async function sendNetworkReport(instanceId, data, user) {
+  const inst = instById(instanceId);
+  if (!inst) throw new HttpError(404, 'Instance not found');
+  return sendToInstance(inst, 'report', data, user);
+}
+
+/** Tells every known instance that a local account was deleted, so they drop its comments and likes. */
+export async function announceAccountDeletion(user) {
+  if (!networkActive()) return 0;
+  let sent = 0;
+  for (const inst of db.prepare("SELECT * FROM instances WHERE is_self = 0 AND hub_status = 'approved' AND public_key IS NOT NULL").all()) {
+    try {
+      await sendToInstance(inst, 'actor_delete', {}, user);
+      sent++;
+    } catch (e) {
+      console.warn(`[network] could not tell ${inst.url} about a deleted account: ${e.message}`);
+    }
+  }
+  return sent;
 }
 
 // ---- local API for this instance's own pages (/api/network) -----------------------------------------
@@ -1228,6 +1288,9 @@ function mapRemoteComment(c, inst, me) {
     created_at: Number(c.created_at) || 0,
     author: { username, display_name: str(a.display_name, 50) || username, avatar_url: avatar, profile_url: profile, remote: !!profile },
     is_uploader: !!c.is_uploader,
+    hearted: !!c.hearted,
+    pinned: !!c.pinned,
+    status: c.status === "held" ? "held" : "visible",
     can_delete: mine,
   };
 }
@@ -1254,7 +1317,7 @@ networkRouter.post('/videos/:iid/:rid/comments', requireAuth, async (req, res) =
   const body = str(req.body?.body, 2000).trim();
   if (!body) throw new HttpError(400, 'Comment cannot be empty');
   const r = await sendToInstance(inst, 'comment', { video_id: row.remote_id, body, parent_id: req.body?.parent_id || null }, req.user);
-  res.status(201).json({ comment: mapRemoteComment(r.comment, inst, req.user) });
+  res.status(201).json({ comment: mapRemoteComment(r.comment, inst, req.user), held: !!r.held, held_reason: r.held_reason || null });
 });
 
 networkRouter.delete('/videos/:iid/:rid/comments/:cid', requireAuth, async (req, res) => {

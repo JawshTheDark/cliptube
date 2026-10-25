@@ -1,13 +1,15 @@
 import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, touchVideo } from '../db.js';
+import { db, touchVideo, getSettings } from '../db.js';
 import { DIRS } from '../config.js';
 import { requireAuth } from '../auth.js';
 import { videoUpload, imageUpload, discard } from '../uploads.js';
 import { HttpError, newId, now, parseTags, str, clampInt, sha256 } from '../util.js';
 import { enqueue, enqueueRender, convertImage, grabFrame, editorAssets, editorDir } from '../media.js';
 import { intakeComment, intakeLike } from '../intake.js';
+import { effectiveCommentMode } from '../spam.js';
+import { logAction } from '../reports.js';
 import { networkActive, serializeRemote, NETWORK_VISIBLE, acceptsFromNetwork, publicComment, onLocalVideosChanged } from '../network.js';
 
 export const videosRouter = Router();
@@ -57,6 +59,9 @@ export function serializeVideo(v) {
     render_progress: v.render_progress || 0,
     render_error: v.render_error || null,
     federate: v.federate !== 0,
+    moderation_status: v.moderation_status || null,
+    moderation_reason: v.moderation_status ? v.moderation_reason || null : null,
+    comment_mode: v.comment_mode || 'inherit',
     uploader: {
       id: v.user_id,
       username: v.username,
@@ -72,9 +77,17 @@ export function loadVideo(id) {
   return db.prepare(`${videoSelect()} WHERE v.id = ?`).get(String(id));
 }
 
+/** Hidden or removed videos are only visible to their uploader and moderators. */
 export function canView(v, user) {
+  if (v.moderation_status && !(user && (user.id === v.user_id || user.is_moderator))) return false;
   if (v.visibility !== 'private') return true;
   return !!user && (user.id === v.user_id || user.is_admin);
+}
+
+/** Who may play the file: removed videos only by moderators (the uploader sees the details, not the video). */
+export function canPlay(v, user) {
+  if (v.moderation_status === 'removed') return !!user?.is_moderator;
+  return canView(v, user);
 }
 
 export function canEdit(v, user) {
@@ -117,6 +130,8 @@ export function fullVideo(id, user) {
   out.original_name = v.original_name;
   out.base_duration = v.base_duration || v.duration;
   out.fps = v.fps || 0;
+  out.can_moderate = !!user?.is_moderator;
+  if (!canPlay(v, user)) out.video_url = null;
   return out;
 }
 
@@ -190,7 +205,7 @@ videosRouter.get('/', (req, res) => {
   const params = [];
 
   if (scope !== 'network') {
-    const where = ["v.status = 'ready'", "v.visibility = 'public'"];
+    const where = ["v.status = 'ready'", "v.visibility = 'public'", 'v.moderation_status IS NULL'];
     if (q && String(q).trim()) {
       const like = likeParam(q);
       where.push(
@@ -243,7 +258,7 @@ videosRouter.get('/', (req, res) => {
 videosRouter.get('/tags', (req, res) => {
   const rows = db
     .prepare(
-      "SELECT t.tag, COUNT(*) AS n FROM tags t JOIN videos v ON v.id = t.video_id WHERE v.status = 'ready' AND v.visibility = 'public' GROUP BY t.tag ORDER BY n DESC, t.tag ASC LIMIT 30",
+      "SELECT t.tag, COUNT(*) AS n FROM tags t JOIN videos v ON v.id = t.video_id WHERE v.status = 'ready' AND v.visibility = 'public' AND v.moderation_status IS NULL GROUP BY t.tag ORDER BY n DESC, t.tag ASC LIMIT 30",
     )
     .all();
   res.json({ tags: rows.map((r) => ({ tag: r.tag, count: r.n })) });
@@ -251,8 +266,22 @@ videosRouter.get('/tags', (req, res) => {
 
 // ---- upload -----------------------------------------------------------------
 
+/** Bytes a user's videos use, and their quota (0 = unlimited). */
+export function storageFor(userId) {
+  const used = db.prepare('SELECT COALESCE(SUM(size_bytes), 0) AS n FROM videos WHERE user_id = ?').get(userId).n;
+  const u = db.prepare('SELECT quota_bytes FROM users WHERE id = ?').get(userId);
+  const quota = u?.quota_bytes ?? (Number(getSettings().default_quota_mb) || 0) * 1024 * 1024;
+  return { used, quota };
+}
+
 videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
   if (!req.file) throw new HttpError(400, 'No video file was received');
+  const { used, quota } = storageFor(req.user.id);
+  if (quota > 0 && used + req.file.size > quota) {
+    discard(req.file);
+    const mb = (n) => `${Math.round(n / 1048576).toLocaleString()} MB`;
+    throw new HttpError(413, `This upload would go over your storage quota (${mb(used)} of ${mb(quota)} used). Delete some videos or ask an admin for more space.`);
+  }
   const id = newId();
   const ext = path.extname(req.file.originalname).toLowerCase();
   const originalName = `${id}${ext}`;
@@ -284,7 +313,7 @@ videosRouter.get('/:id/related', (req, res) => {
     .prepare(
       `${videoSelect(
         '(SELECT COUNT(*) FROM tags t1 JOIN tags t2 ON t1.tag = t2.tag WHERE t1.video_id = v.id AND t2.video_id = ?) AS shared_tags, (v.user_id = ?) AS same_user',
-      )} WHERE v.status = 'ready' AND v.visibility = 'public' AND v.id != ? ORDER BY shared_tags DESC, same_user DESC, v.created_at DESC LIMIT 20`,
+      )} WHERE v.status = 'ready' AND v.visibility = 'public' AND v.moderation_status IS NULL AND v.id != ? ORDER BY shared_tags DESC, same_user DESC, v.created_at DESC LIMIT 20`,
     )
     .all(v.id, v.user_id, v.id);
   res.json({ videos: rows.map(serializeVideo) });
@@ -299,8 +328,10 @@ videosRouter.patch('/:id', requireAuth, (req, res) => {
   const visibility = b.visibility !== undefined ? b.visibility : v.visibility;
   if (!VISIBILITIES.includes(visibility)) throw new HttpError(400, 'Visibility must be public, unlisted or private');
   const federate = b.federate !== undefined ? (b.federate ? 1 : 0) : v.federate;
-  db.prepare('UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, updated_at = ? WHERE id = ?').run(
-    title, description, visibility, federate, now(), v.id,
+  const commentMode = b.comment_mode !== undefined ? b.comment_mode : v.comment_mode || 'inherit';
+  if (!['inherit', 'open', 'hold_all', 'off'].includes(commentMode)) throw new HttpError(400, 'Comment mode must be inherit, open, hold_all or off');
+  db.prepare('UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, updated_at = ? WHERE id = ?').run(
+    title, description, visibility, federate, commentMode, now(), v.id,
   );
   if (b.tags !== undefined) setTags(v.id, parseTags(b.tags));
   res.json({ video: fullVideo(v.id, req.user) });
@@ -475,16 +506,23 @@ videosRouter.delete('/:id/edit', requireAuth, (req, res) => {
 
 // ---- views, history, likes --------------------------------------------------
 
+/** Whether to record watch history for this request (not in anonymous mode, not while paused). */
+function recordsHistory(req) {
+  if (!req.user || req.body?.anonymous === true) return false;
+  return !db.prepare('SELECT history_paused FROM users WHERE id = ?').get(req.user.id)?.history_paused;
+}
+
 videosRouter.post('/:id/view', (req, res) => {
   const v = getViewable(req.params.id, req.user);
-  const key = req.user ? `u:${req.user.id}` : `a:${sha256(`${req.ip || ''}|${req.get('user-agent') || ''}`)}`;
+  const anonymous = req.body?.anonymous === true;
+  const key = req.user && !anonymous ? `u:${req.user.id}` : `a:${sha256(`${req.ip || ''}|${req.get('user-agent') || ''}`)}`;
   const t = now();
   const prev = db.prepare('SELECT viewed_at FROM views WHERE video_id = ? AND viewer_key = ?').get(v.id, key);
   if (!prev || t - prev.viewed_at > 6 * 3600 * 1000) {
     db.prepare('INSERT INTO views (video_id, viewer_key, viewed_at) VALUES (?, ?, ?) ON CONFLICT(video_id, viewer_key) DO UPDATE SET viewed_at = excluded.viewed_at').run(v.id, key, t);
     db.prepare('UPDATE videos SET views = views + 1 WHERE id = ?').run(v.id);
   }
-  if (req.user) {
+  if (recordsHistory(req)) {
     db.prepare(
       'INSERT INTO history (user_id, video_id, watched_at, position) VALUES (?, ?, ?, 0) ON CONFLICT(user_id, video_id) DO UPDATE SET watched_at = excluded.watched_at',
     ).run(req.user.id, v.id, t);
@@ -496,6 +534,7 @@ videosRouter.post('/:id/progress', requireAuth, (req, res) => {
   const v = getViewable(req.params.id, req.user);
   const pos = Number(req.body?.position);
   if (!Number.isFinite(pos) || pos < 0) throw new HttpError(400, 'Bad position');
+  if (!recordsHistory(req)) return res.json({ ok: true, recorded: false });
   db.prepare(
     'INSERT INTO history (user_id, video_id, watched_at, position) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, video_id) DO UPDATE SET position = excluded.position, watched_at = excluded.watched_at',
   ).run(req.user.id, v.id, now(), pos);
@@ -526,21 +565,58 @@ videosRouter.post('/:id/like', requireAuth, (req, res) => {
 const COMMENT_SELECT =
   'SELECT c.*, u.username, u.display_name, u.avatar, u.remote_instance_id, u.remote_avatar_url, u.remote_profile_url FROM comments c JOIN users u ON u.id = c.user_id';
 
+const canModerateComments = (v, viewer) => !!viewer && (viewer.id === v.user_id || viewer.is_moderator);
+
 function serializeComment(c, viewer, v) {
+  const mine = !!viewer && viewer.id === c.user_id;
+  const mod = canModerateComments(v, viewer);
   return {
-    ...publicComment(c, v.user_id),
-    can_delete: !!viewer && (viewer.id === c.user_id || viewer.is_moderator || viewer.id === v.user_id),
+    ...publicComment(c, v.user_id, v.pinned_comment_id),
+    held_reason: c.status === 'held' && (mine || mod) ? c.held_reason || null : null,
+    can_delete: mine || mod,
+    can_moderate: mod,
+    can_pin: !!viewer && viewer.id === v.user_id,
   };
 }
 
 videosRouter.get('/:id/comments', (req, res) => {
   const v = getViewable(req.params.id, req.user);
-  const rows = db.prepare(`${COMMENT_SELECT} WHERE c.video_id = ? ORDER BY c.created_at ASC`).all(v.id);
+  // Held comments show only to their author, the uploader and moderators.
+  const rows = db
+    .prepare(`${COMMENT_SELECT} WHERE c.video_id = ? AND (c.status = 'visible' OR c.user_id = ? OR ?) ORDER BY c.created_at ASC`)
+    .all(v.id, req.user?.id || '', canModerateComments(v, req.user) ? 1 : 0);
+  const owner = db.prepare('SELECT comment_mode FROM users WHERE id = ?').get(v.user_id);
+  const comments = rows.map((c) => serializeComment(c, req.user, v));
+  // The pinned comment always comes first.
+  const pin = comments.findIndex((c) => c.id === v.pinned_comment_id);
+  if (pin > 0) comments.unshift(...comments.splice(pin, 1));
   res.json({
-    comments: rows.map((c) => serializeComment(c, req.user, v)),
+    comments,
+    comment_mode: effectiveCommentMode(v, owner),
     // Lets other instances know whether their people can comment here.
     network_accepts: networkActive() ? acceptsFromNetwork() : null,
   });
+});
+
+/** Approve a held comment (uploader or moderator), pin or heart one (uploader). */
+videosRouter.patch('/:id/comments/:cid', requireAuth, (req, res) => {
+  const v = getViewable(req.params.id, req.user);
+  const c = db.prepare('SELECT * FROM comments WHERE id = ? AND video_id = ?').get(String(req.params.cid), v.id);
+  if (!c) throw new HttpError(404, 'Comment not found');
+  const b = req.body || {};
+  if (b.status !== undefined) {
+    if (!canModerateComments(v, req.user)) throw new HttpError(403, 'Only the uploader and moderators can approve comments');
+    if (b.status !== 'visible') throw new HttpError(400, 'Comments can only be approved; delete them to remove');
+    db.prepare("UPDATE comments SET status = 'visible', held_reason = NULL WHERE id = ?").run(c.id);
+    if (req.user.id !== v.user_id) logAction(req.user, 'comment.approve', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });
+  }
+  if (b.pinned !== undefined || b.hearted !== undefined) {
+    if (req.user.id !== v.user_id) throw new HttpError(403, 'Only the uploader can pin or heart comments');
+    if (b.pinned !== undefined) db.prepare('UPDATE videos SET pinned_comment_id = ? WHERE id = ?').run(b.pinned ? c.id : null, v.id);
+    if (b.hearted !== undefined) db.prepare('UPDATE comments SET hearted = ? WHERE id = ?').run(b.hearted ? 1 : 0, c.id);
+  }
+  const fresh = loadVideo(v.id);
+  res.json({ comment: serializeComment(db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(c.id), req.user, fresh) });
 });
 
 videosRouter.post('/:id/comments', requireAuth, (req, res) => {
@@ -556,9 +632,11 @@ videosRouter.post('/:id/comments', requireAuth, (req, res) => {
   const verdict = intakeComment({ video: v, author: req.user, body, parentId, remote: false, instance: null });
   if (verdict.status === 'rejected') throw new HttpError(400, verdict.reason || 'Comment not accepted');
   const id = newId();
-  db.prepare('INSERT INTO comments (id, video_id, user_id, parent_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, v.id, req.user.id, parentId, body, now());
+  db.prepare('INSERT INTO comments (id, video_id, user_id, parent_id, body, status, held_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+    id, v.id, req.user.id, parentId, body, verdict.status, verdict.status === 'held' ? verdict.reason : null, now(),
+  );
   const c = db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(id);
-  res.status(201).json({ comment: serializeComment(c, req.user, v) });
+  res.status(201).json({ comment: serializeComment(c, req.user, v), held: verdict.status === 'held', held_reason: verdict.status === 'held' ? verdict.reason : null });
 });
 
 videosRouter.delete('/:id/comments/:cid', requireAuth, (req, res) => {
@@ -567,7 +645,40 @@ videosRouter.delete('/:id/comments/:cid', requireAuth, (req, res) => {
   if (!c) throw new HttpError(404, 'Comment not found');
   if (!(req.user.id === c.user_id || req.user.is_moderator || req.user.id === v.user_id)) throw new HttpError(403, 'You cannot delete that comment');
   db.prepare('DELETE FROM comments WHERE id = ?').run(c.id);
+  if (req.user.is_moderator && req.user.id !== c.user_id && req.user.id !== v.user_id) {
+    logAction(req.user, 'comment.delete', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });
+  }
   res.json({ ok: true });
+});
+
+/** Uploader's response to a copyright removal. */
+videosRouter.post('/:id/counter-notice', requireAuth, (req, res) => {
+  const v = getViewable(req.params.id, req.user);
+  const statement = str(req.body?.statement, 5000).trim();
+  if (v.user_id !== req.user.id) throw new HttpError(403, 'Only the uploader can respond');
+  // A counter-notice for copyright removals, an appeal for anything else the moderators did.
+  if (!v.moderation_status) throw new HttpError(400, 'This video has not been hidden or removed');
+  if (statement.length < 20) throw new HttpError(400, 'Explain why the removal was a mistake (at least a sentence)');
+  if (db.prepare("SELECT 1 FROM counter_notices WHERE video_id = ? AND status = 'pending'").get(v.id)) throw new HttpError(409, 'A counter-notice for this video is already waiting');
+  const notice = db.prepare('SELECT id FROM takedown_notices WHERE video_id = ? ORDER BY received_at DESC LIMIT 1').get(v.id);
+  db.prepare('INSERT INTO counter_notices (id, notice_id, video_id, user_id, statement, contact, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    newId(), notice?.id || null, v.id, req.user.id, statement, str(req.body?.contact, 300), now(),
+  );
+  if (notice) db.prepare("UPDATE takedown_notices SET status = 'countered' WHERE id = ?").run(notice.id);
+  logAction(req.user, 'counter_notice.submit', { targetType: 'video', targetId: v.id, targetLabel: v.title });
+  res.status(201).json({ ok: true });
+});
+
+/** The uploader's view of their own video's moderation (reason, counter-notice state). */
+videosRouter.get('/:id/moderation', requireAuth, (req, res) => {
+  const v = getViewable(req.params.id, req.user);
+  if (v.user_id !== req.user.id && !req.user.is_moderator) throw new HttpError(403, 'Not your video');
+  res.json({
+    status: v.moderation_status || null,
+    reason: v.moderation_reason || null,
+    moderated_at: v.moderated_at || null,
+    counter_notice: db.prepare('SELECT status, created_at, decided_at FROM counter_notices WHERE video_id = ? ORDER BY created_at DESC LIMIT 1').get(v.id) || null,
+  });
 });
 
 export { touchVideo };

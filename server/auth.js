@@ -28,7 +28,7 @@ export function userToPublic(u) {
 }
 
 export const ROLES = ['user', 'moderator', 'admin'];
-export const STATUSES = ['active', 'suspended', 'banned'];
+export const STATUSES = ['active', 'pending', 'suspended', 'banned'];
 
 export function attachUser(req, res, next) {
   req.user = null;
@@ -102,15 +102,37 @@ export function ensureSetupCode() {
 
 export const authRouter = Router();
 
+export function registrationMode() {
+  const s = getSettings();
+  const mode = s.registration_mode || (s.allow_registration === 'false' ? 'closed' : 'open');
+  return ['open', 'approval', 'invite', 'closed'].includes(mode) ? mode : 'open';
+}
+
+/** Returns the invite row if the code can still be used, else throws. */
+export function checkInvite(code) {
+  const inv = db.prepare('SELECT * FROM invites WHERE code = ?').get(String(code || '').trim());
+  if (!inv) throw new HttpError(403, 'That invite code is not valid');
+  if (inv.expires_at && inv.expires_at < now()) throw new HttpError(403, 'That invite has expired');
+  if (inv.max_uses > 0 && inv.uses >= inv.max_uses) throw new HttpError(403, 'That invite has already been used');
+  return inv;
+}
+
 authRouter.post('/register', async (req, res) => {
-  const { username, password, display_name, setup_code } = req.body || {};
+  const { username, password, display_name, setup_code, invite, accept_terms } = req.body || {};
   const first = userCount() === 0;
-  if (!first && getSettings().allow_registration !== 'true') throw new HttpError(403, 'Registration is closed on this site');
+  const mode = registrationMode();
+  let inv = null;
   if (first) {
     const code = ensureSetupCode();
     if (String(setup_code || '').trim().toLowerCase() !== code.toLowerCase()) {
       throw new HttpError(403, 'Wrong setup code. The code is printed in the server console when it starts (for Docker: docker logs cliptube).');
     }
+  } else {
+    if (mode === 'closed') throw new HttpError(403, 'Registration is closed on this site');
+    // An invite works in every open mode, and skips approval.
+    if (invite) inv = checkInvite(invite);
+    if (mode === 'invite' && !inv) throw new HttpError(403, 'This site is invite-only. Ask someone here for an invite link.');
+    if (getSettings().legal_terms.trim() && !accept_terms) throw new HttpError(400, "Please read and accept the site's rules to create an account");
   }
   if (!USERNAME_RE.test(username || '')) throw new HttpError(400, 'Username must be 3-20 letters, numbers or underscores');
   if (typeof password !== 'string' || password.length < 6) throw new HttpError(400, 'Password must be at least 6 characters');
@@ -118,9 +140,14 @@ authRouter.post('/register', async (req, res) => {
 
   const id = newId();
   const hash = await bcrypt.hash(password, 10);
-  db.prepare('INSERT INTO users (id, username, display_name, password_hash, is_admin, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-    id, username, str(display_name, 50).trim() || username, hash, first ? 1 : 0, first ? 'admin' : 'user', now(),
-  );
+  const status = !first && mode === 'approval' && !inv ? 'pending' : 'active';
+  db.prepare(
+    'INSERT INTO users (id, username, display_name, password_hash, is_admin, role, status, terms_accepted_at, invited_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, username, str(display_name, 50).trim() || username, hash, first ? 1 : 0, first ? 'admin' : 'user', status, accept_terms ? now() : null, inv?.created_by || null, now());
+  if (inv) db.prepare('UPDATE invites SET uses = uses + 1 WHERE code = ?').run(inv.code);
+  if (status === 'pending') {
+    return res.status(202).json({ pending: true, message: 'Thanks! An admin needs to approve your account before you can sign in.' });
+  }
   startSession(req, res, id);
   res.status(201).json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(id)) });
 });
@@ -129,6 +156,7 @@ authRouter.post('/login', async (req, res) => {
   const { username, password } = req.body || {};
   const u = db.prepare('SELECT * FROM users WHERE username = ? AND remote_instance_id IS NULL').get(String(username || ''));
   if (!u || !(await bcrypt.compare(String(password || ''), u.password_hash))) throw new HttpError(401, 'Wrong username or password');
+  if (u.status === 'pending') throw new HttpError(403, 'This account is waiting for an admin to approve it');
   if (u.status && u.status !== 'active') {
     throw new HttpError(403, `This account is ${u.status}${u.status_reason ? `: ${u.status_reason}` : ''}`);
   }

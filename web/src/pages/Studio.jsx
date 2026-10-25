@@ -17,6 +17,13 @@ export function VisibilityBadge({ value }) {
 }
 
 export function StatusBadge({ video }) {
+  if (video.moderation_status) {
+    return (
+      <span className="badge err" title={video.moderation_reason || ''}>
+        <Icon name="gavel" /> {video.moderation_status === 'removed' ? 'Removed' : 'Hidden'} by moderators
+      </span>
+    );
+  }
   if (video.status === 'ready' && (video.render_status === 'queued' || video.render_status === 'rendering')) {
     return <span className="badge warn">Rendering edit {video.render_progress || 0}%</span>;
   }
@@ -51,11 +58,15 @@ export default function Studio() {
   const toast = useToast();
   const [videos, setVideos] = useState(null);
   const [error, setError] = useState(null);
+  const [held, setHeld] = useState(0);
   useTitle('Studio');
 
   const load = useCallback(() => api('/me/videos').then((r) => setVideos(r.videos)).catch(setError), []);
   useEffect(() => {
     load();
+    api('/me/comments/held')
+      .then((r) => setHeld(r.comments.length))
+      .catch(() => {});
   }, [load]);
 
   const busy = videos?.some((v) => v.status === 'queued' || v.status === 'processing' || v.render_status === 'queued' || v.render_status === 'rendering');
@@ -90,9 +101,15 @@ export default function Studio() {
     <div className="page page-wide">
       <div className="page-head">
         <h1>Your videos</h1>
-        <Link to="/upload" className="btn btn-primary">
-          <Icon name="upload" /> Upload
-        </Link>
+        <div className="row-actions">
+          <Link to="/studio/comments" className="btn btn-ghost">
+            <Icon name="comment" /> Comments to review
+            {held > 0 && <span className="tab-count">{held}</span>}
+          </Link>
+          <Link to="/upload" className="btn btn-primary">
+            <Icon name="upload" /> Upload
+          </Link>
+        </div>
       </div>
       {error && <div className="error">{error.message}</div>}
       {videos === null ? (

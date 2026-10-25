@@ -9,6 +9,7 @@ import { Avatar } from '../components/Avatar.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { Description } from './Watch.jsx';
+import { ReportButton } from '../components/ReportDialog.jsx';
 import { compact, formatDate, copyText } from '../util.js';
 
 /**
@@ -188,6 +189,7 @@ export default function RemoteWatch() {
             <a className="btn btn-icon" href={r.watch_url} target="_blank" rel="noopener noreferrer" title={`Open on ${r.peer_url}`}>
               <Icon name="open" />
             </a>
+            <ReportButton target={{ type: 'remote_video', id: `${peerId}:${remoteId}`, label: video.title }} className="btn btn-icon" iconOnly />
             <button className={`btn btn-icon ${theater ? 'active' : ''}`} onClick={toggleTheater} title="Theater mode (t)">
               <Icon name="theater" />
             </button>
@@ -249,7 +251,15 @@ export default function RemoteWatch() {
         </div>
 
         {can.comments ? (
-          <Comments base={`/network/videos/${peerId}/${encodeURIComponent(remoteId)}`} />
+          <Comments
+            base={`/network/videos/${peerId}/${encodeURIComponent(remoteId)}`}
+            reportTarget={(c) => ({
+              type: 'remote_comment',
+              id: `${peerId}:${remoteId}:${c.id}`,
+              label: `"${c.body.slice(0, 120)}" by @${c.author.username}`,
+              extra: { comment_excerpt: c.body.slice(0, 200), comment_author: c.author.username },
+            })}
+          />
         ) : (
           <p className="muted top-gap">Comments between instances are turned off on this network.</p>
         )}

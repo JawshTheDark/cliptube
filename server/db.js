@@ -34,8 +34,30 @@ export function touchVideo(id) {
 
 export const DEFAULT_SETTINGS = {
   site_name: 'ClipTube',
-  allow_registration: 'true',
+  allow_registration: 'true', // legacy; registration_mode replaces it
+  registration_mode: 'open', // open | approval | invite | closed
   max_upload_mb: '8192',
+  default_quota_mb: '0', // per-user storage quota, 0 = unlimited
+
+  // Legal and abuse handling.
+  legal_contact_email: '',
+  legal_dmca_agent: '',
+  legal_rules: '',
+  legal_terms: '',
+  legal_transparency_public: 'true',
+  removed_retention_days: '30', // removed videos' files are kept this long in case of a counter-notice
+  strike_threshold: '3', // active strikes that suspend an account
+  strike_expiry_days: '365',
+  strike_on_takedown: 'true',
+
+  // Comment spam controls (apply to people from other instances too).
+  spam_hold_first_comments: 'true',
+  spam_new_account_hours: '24',
+  spam_hold_links_new_accounts: 'true',
+  spam_check_impersonation: 'true',
+  spam_rate_per_10min: '20',
+  spam_rate_new_per_10min: '5',
+
   max_height: '1080',
   encoder: 'libx264',
   delete_originals: 'false',

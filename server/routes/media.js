@@ -5,6 +5,7 @@ import { db } from '../db.js';
 import { DIRS } from '../config.js';
 import { HttpError } from '../util.js';
 import { editorDir } from '../media.js';
+import { canPlay } from './videos.js';
 
 export const mediaRouter = Router();
 
@@ -17,9 +18,9 @@ function editorOnly(req, v) {
 }
 
 mediaRouter.get('/videos/:file', (req, res) => {
-  const v = db.prepare('SELECT id, user_id, title, visibility, status, file_path FROM videos WHERE id = ?').get(idFrom(req.params.file));
+  const v = db.prepare('SELECT id, user_id, title, visibility, status, file_path, moderation_status FROM videos WHERE id = ?').get(idFrom(req.params.file));
   if (!v || v.status !== 'ready' || !v.file_path) throw new HttpError(404, 'Not found');
-  if (v.visibility === 'private' && !(req.user && (req.user.id === v.user_id || req.user.is_admin))) throw new HttpError(404, 'Not found');
+  if (!canPlay(v, req.user)) throw new HttpError(404, 'Not found');
   // URLs carry ?v=<edit version>, so a long cache is safe; unversioned URLs get a short one.
   const versioned = req.query.v !== undefined;
   const opts = { acceptRanges: true, cacheControl: true, maxAge: versioned ? '30d' : '10m', headers: { 'Content-Type': 'video/mp4' } };

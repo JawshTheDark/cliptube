@@ -5,6 +5,7 @@ import { useAuth } from '../auth.jsx';
 import { Avatar } from './Avatar.jsx';
 import { Icon } from './Icons.jsx';
 import { useToast } from './Toast.jsx';
+import { ReportButton } from './ReportDialog.jsx';
 import { timeAgo } from '../util.js';
 
 function autoGrow(el) {
@@ -99,34 +100,68 @@ function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel,
   );
 }
 
-function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, isReply = false }) {
+function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpdate, reportTarget, isReply = false }) {
   const [replying, setReplying] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+  const held = c.status === 'held';
   return (
-    <div className={`comment ${isReply ? 'reply' : ''}`}>
+    <div className={`comment ${isReply ? 'reply' : ''} ${held ? 'held' : ''}`} id={`c-${c.id}`}>
       <AuthorLink author={c.author}>
         <Avatar user={c.author} size={isReply ? 24 : 40} />
       </AuthorLink>
       <div className="cbody">
+        {c.pinned && (
+          <div className="cpinned">
+            <Icon name="pin" size={14} /> Pinned by the uploader
+          </div>
+        )}
         <div className="chead">
           <AuthorLink author={c.author} className={`cauthor ${c.is_uploader ? 'uploader' : ''}`}>
             @{c.author.username}
           </AuthorLink>
           {c.author.remote && <Icon name="public" className="inline-icon muted" title="From another instance" />}
           <span className="ctime">{timeAgo(c.created_at)}</span>
+          {held && (
+            <span className="badge warn" title={c.held_reason || ''}>
+              <Icon name="hourglass" /> Held for review{c.held_reason ? `: ${c.held_reason}` : ''}
+            </span>
+          )}
         </div>
         <div className="ctext">{c.body}</div>
         <div className="cfoot">
-          {user && canPost && (
+          {held && c.can_moderate && (
+            <button className="btn approve" onClick={() => onUpdate(c, { status: 'visible' }, 'Comment approved')}>
+              <Icon name="check" size={16} /> Approve
+            </button>
+          )}
+          {user && canPost && !held && (
             <button className="btn" onClick={() => setReplying((r) => !r)}>
               Reply
             </button>
+          )}
+          {c.hearted && (
+            <span className="cheart" title="The uploader loved this">
+              <Icon name="heart" size={14} />
+            </span>
+          )}
+          {c.can_pin && !held && (
+            <>
+              <button className={`btn ${c.hearted ? 'active' : ''}`} onClick={() => onUpdate(c, { hearted: !c.hearted })} title={c.hearted ? 'Remove heart' : 'Heart this comment'}>
+                <Icon name="heart" size={16} />
+              </button>
+              {!isReply && (
+                <button className="btn" onClick={() => onUpdate(c, { pinned: !c.pinned }, c.pinned ? 'Comment unpinned' : 'Comment pinned')} title={c.pinned ? 'Unpin' : 'Pin to the top'}>
+                  <Icon name="pin" size={16} /> {c.pinned ? 'Unpin' : 'Pin'}
+                </button>
+              )}
+            </>
           )}
           {c.can_delete && (
             <button className="btn" onClick={() => onDelete(c)} title="Delete comment">
               <Icon name="delete" size={16} /> Delete
             </button>
           )}
+          {reportTarget && user && !c.can_delete && <ReportButton target={reportTarget(c)} className="btn" label="Report" />}
         </div>
         {replying && user && (
           <CommentForm
@@ -149,7 +184,7 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, isRepl
             {showReplies && (
               <div className="replies">
                 {replies.map((r) => (
-                  <CommentItem key={r.id} c={r} user={user} canPost={canPost} onReply={onReply} onDelete={onDelete} isReply />
+                  <CommentItem key={r.id} c={r} user={user} canPost={canPost} onReply={onReply} onDelete={onDelete} onUpdate={onUpdate} reportTarget={reportTarget} isReply />
                 ))}
               </div>
             )}
@@ -164,11 +199,11 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, isRepl
  * Comment thread. `base` is the API path that owns the comments: `/videos/<id>` for local videos,
  * `/network/videos/<instance>/<id>` for videos on other instances (comments are stored there).
  */
-export function Comments({ base, initialCount = 0 }) {
+export function Comments({ base, initialCount = 0, reportTarget, isOwner = false }) {
   const { user } = useAuth();
   const toast = useToast();
   const [comments, setComments] = useState(null);
-  const [meta, setMeta] = useState({ can_post: true, host_name: null, error: null });
+  const [meta, setMeta] = useState({ can_post: true, host_name: null, error: null, mode: 'open' });
 
   useEffect(() => {
     setComments(null);
@@ -177,7 +212,7 @@ export function Comments({ base, initialCount = 0 }) {
       .then((r) => {
         if (dead) return;
         setComments(r.comments);
-        setMeta({ can_post: r.can_post !== false, host_name: r.host_name || null, error: null });
+        setMeta({ can_post: r.can_post !== false && r.comment_mode !== 'off', host_name: r.host_name || null, error: null, mode: r.comment_mode || 'open' });
       })
       .catch((e) => {
         if (dead) return;
@@ -190,8 +225,30 @@ export function Comments({ base, initialCount = 0 }) {
   }, [base]);
 
   const add = async (body, parentId) => {
-    const { comment } = await api(`${base}/comments`, { method: 'POST', body: { body, parent_id: parentId } });
-    setComments((cs) => [...(cs || []), comment]);
+    const r = await api(`${base}/comments`, { method: 'POST', body: { body, parent_id: parentId } });
+    if (r.held) {
+      toast(`Your comment is held for review${r.held_reason ? ` (${r.held_reason})` : ''}. Only you can see it until it's approved.`);
+      // Held comments on other instances can't be shown here, so only keep local ones.
+      if (r.comment.status !== 'held' || r.comment.can_delete) setComments((cs) => [...(cs || []), { ...r.comment, status: 'held', held_reason: r.held_reason }]);
+      return;
+    }
+    setComments((cs) => [...(cs || []), r.comment]);
+  };
+
+  const update = async (c, body, message) => {
+    try {
+      const r = await api(`${base}/comments/${c.id}`, { method: 'PATCH', body });
+      setComments((cs) =>
+        cs.map((x) => {
+          if (x.id === c.id) return { ...x, ...r.comment };
+          if (body.pinned && x.pinned) return { ...x, pinned: false };
+          return x;
+        }),
+      );
+      if (message) toast(message);
+    } catch (e) {
+      toast(e.message);
+    }
   };
 
   const remove = async (c) => {
@@ -206,18 +263,24 @@ export function Comments({ base, initialCount = 0 }) {
   };
 
   const list = comments || [];
-  const roots = list.filter((c) => !c.parent_id).sort((a, b) => b.created_at - a.created_at);
+  const roots = list
+    .filter((c) => !c.parent_id)
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.created_at - a.created_at);
   const repliesOf = (id) => list.filter((c) => c.parent_id === id);
-  const count = comments ? comments.length : initialCount;
+  const count = comments ? comments.filter((c) => c.status !== 'held').length : initialCount;
+  const heldCount = comments ? comments.filter((c) => c.status === 'held' && c.can_moderate).length : 0;
 
   return (
     <section className="comments">
       <div className="comments-head">
         {count} {count === 1 ? 'Comment' : 'Comments'}
         {meta.host_name && <span className="comments-host">on {meta.host_name}</span>}
+        {heldCount > 0 && <span className="badge warn comments-held">{heldCount} waiting for review</span>}
       </div>
       {meta.error && <div className="error">{meta.error}</div>}
-      {!meta.can_post ? (
+      {meta.mode === 'off' ? (
+        <p className="comment-login">Comments are turned off for this video.</p>
+      ) : !meta.can_post ? (
         <p className="comment-login">Comments from other instances are turned off for this video.</p>
       ) : user ? (
         <CommentForm user={user} placeholder="Add a comment..." onSubmit={(body) => add(body, null)} />
@@ -235,12 +298,15 @@ export function Comments({ base, initialCount = 0 }) {
             c={c}
             replies={repliesOf(c.id)}
             user={user}
-            canPost={meta.can_post}
+            canPost={meta.can_post && meta.mode !== 'off'}
             onDelete={remove}
+            onUpdate={update}
+            reportTarget={reportTarget}
             onReply={(body) => add(body, c.id)}
           />
         ))
       )}
+      {isOwner && meta.mode === 'hold_all' && <p className="hint">You review every comment on this video before it appears.</p>}
     </section>
   );
 }

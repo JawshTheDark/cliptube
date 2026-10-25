@@ -9,20 +9,24 @@ Work order follows the suggested order below. Updated as each milestone lands.
 | Milestone | Status | Released |
 | --- | --- | --- |
 | M0 Foundations | Done | v0.4.0, 2026-10-25 |
-| M1 Trust and safety | In progress | |
-| M3 Gaming clip tools | Not started | |
+| M1 Trust and safety | Done | v0.5.0, 2026-10-25 |
+| M3 Gaming clip tools | In progress | |
 | M2 Hub-optional network | Not started | |
 | M4 Watching upgrades | Not started | |
 | M5 Feeds, notifications, search, analytics | Not started | |
 | M6 ActivityPub and PeerTube | Not started | |
 | M7 Mastodon, moves, export and import | Not started | |
 | M8 One federation protocol | Not started | |
-| Servers linked (clips.irc.so hub, laptop member) | Not started | |
+| Servers linked (clips.irc.so hub, laptop member) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you
 
 - Auto-continue: creating a scheduled task to resume after a usage limit was refused by Claude Code's
   safety check, so if a limit stops the work it waits until you restart it.
+- Legal (M1): fill in Admin → Legal on clips.irc.so (contact email, rules, DMCA agent once you register
+  one with the US Copyright Office). Until then `/legal` says no rules are published.
+- Sign-up (M1): both servers still allow open sign-up. The plan suggested invite-only until moderation tools
+  existed; they exist now, so I left it open. Switch it in Admin → Overview → Sign-up if you prefer.
 
 ## How this plan works
 
@@ -112,46 +116,46 @@ both servers.
 
 ### Legal and abuse
 
-- **`/legal` page** per instance with contact email, DMCA agent details and rules, edited in a new
+- ✅ **`/legal` page** per instance with contact email, DMCA agent details and rules, edited in a new
   Admin → Legal tab. Linked from the sidebar footer, every watch page and the sign-up form. (S)
-- **Registration modes**: open, approval required, invite-only (invite links with expiry and use limits),
+- ✅ **Registration modes**: open, approval required, invite-only (invite links with expiry and use limits),
   closed. Terms are shown and accepted at sign-up. (M)
-- **Report button** on videos, comments and channels, local and remote, with reasons (copyright, spam,
+- ✅ **Report button** on videos, comments and channels, local and remote, with reasons (copyright, spam,
   harassment, illegal content, other). Reports about another instance's content are forwarded to it as a
   signed `report` request, and as an ActivityPub `Flag` once M6 lands. (M)
-- **Moderation queue** (Admin → Moderation): open reports with context, one-click actions (hide or remove
+- ✅ **Moderation queue** (Admin → Moderation): open reports with context, one-click actions (hide or remove
   video, delete comment, suspend or ban user, block or ban instance, dismiss), moderator notes, resolved
   state, and an audit log of every action. (L)
-- **Video moderation status**: hidden or removed, with a reason the uploader can see. Removed files are kept
+- ✅ **Video moderation status**: hidden or removed, with a reason the uploader can see. Removed files are kept
   for a set period in case of a counter-notice. (S)
-- **Takedown log**: admins record notices (claimant, work, URL, date, action taken). Optional public
+- ✅ **Takedown log**: admins record notices (claimant, work, URL, date, action taken). Optional public
   transparency page with counts. (S)
-- **Counter-notice flow**: the uploader submits a counter-notice from the removed video; the admin sees it
+- ✅ **Counter-notice flow**: the uploader submits a counter-notice from the removed video; the admin sees it
   next to the original notice and restores the video or keeps it down. (M)
-- **Repeat-infringer policy**: strikes per account with a configurable threshold that suspends the account
+- ✅ **Repeat-infringer policy**: strikes per account with a configurable threshold that suspends the account
   automatically. (S)
-- **Storage quotas**: a default per-user quota with per-user overrides. (S)
-- Docs: background on what the DMCA safe harbors and Section 230 require, pointing to real legal advice. (S)
+- ✅ **Storage quotas**: a default per-user quota with per-user overrides. (S)
+- ✅ Docs: background on what the DMCA safe harbors and Section 230 require, pointing to real legal advice. (S)
 
 ### Comments
 
 These live here because they share the moderation queue.
 
-- **Anti-spam**: rate limits by account age, hold first-time commenters for review, no links from new
+- ✅ **Anti-spam**: rate limits by account age, hold first-time commenters for review, no links from new
   accounts, and hold names that imitate the video's uploader (lookalike-character check). (M)
-- **Never silently dropped**: held comments show to their author as "held for review". Comments from other
+- ✅ **Never silently dropped**: held comments show to their author as "held for review". Comments from other
   instances get the same treatment, and the sending instance is told the comment is held. (S)
-- **Creator tools**: keyword filters, hold everything for review, pin, creator heart, and turning comments
+- ✅ **Creator tools**: keyword filters, hold everything for review, pin, creator heart, and turning comments
   off per video. (M)
 
 ### Privacy
 
-- **Pause watch history**, and an anonymous mode that records nothing while it's on. (S)
-- **Personal data export** (JSON plus your uploads) and **self-serve account deletion** with a 7-day grace
+- ✅ **Pause watch history**, and an anonymous mode that records nothing while it's on. (S)
+- ✅ **Personal data export** (JSON plus your uploads) and **self-serve account deletion** with a 7-day grace
   period. Deletion is announced to the network so other instances drop the person's comments and likes. (M)
 
 **Schema:** `reports`, `mod_actions`, `takedown_notices`, `counter_notices`, `invites`, `strikes`,
-`comment_filters`; `videos.moderation_status`, `videos.moderation_reason`, `videos.removed_at`;
+`comment_filters`; `videos.moderation_status`, `videos.moderation_reason`, `videos.moderated_at`;
 `comments.status`; `users.quota_bytes`, `users.history_paused`.
 **Done when:** a report filed on one instance about a video on another reaches that instance's queue, and
 the action taken there removes the video everywhere.

@@ -21,6 +21,7 @@ export const DIRS = {
   thumbs: path.join(DATA_DIR, 'thumbs'),
   avatars: path.join(DATA_DIR, 'avatars'),
   editor: path.join(DATA_DIR, 'editor'),
+  exports: path.join(DATA_DIR, 'exports'),
   tmp: path.join(DATA_DIR, 'tmp'),
 };
 
