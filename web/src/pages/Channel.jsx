@@ -9,6 +9,7 @@ import { plural, formatDate, usePaged } from '../util.js';
 import { ReportButton } from '../components/ReportDialog.jsx';
 import { SupportLinks } from '../components/WatchExtras.jsx';
 import { FeedButton } from '../components/FeedLink.jsx';
+import { FediverseHandles } from '../components/Fediverse.jsx';
 
 const SORTS = [
   ['new', 'Latest'],
@@ -147,6 +148,7 @@ export default function Channel() {
               ))}
             </>
           )}
+          <FediverseHandles username={channel.username} />
           <h2>Stats</h2>
           <p>Joined {formatDate(channel.created_at)}</p>
           <p>{channel.total_views.toLocaleString()} views</p>

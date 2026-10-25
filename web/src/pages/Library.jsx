@@ -7,6 +7,7 @@ import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { VideoGrid, InfiniteScroll, Empty } from '../components/VideoCard.jsx';
 import { usePaged } from '../util.js';
+import { FediverseFollow } from '../components/Fediverse.jsx';
 
 export function Subscriptions() {
   const [channels, setChannels] = useState(null);
@@ -48,6 +49,9 @@ export function Subscriptions() {
         <VideoGrid videos={items} />
       )}
       <InfiniteScroll hasMore={hasMore} loading={loading} onMore={loadMore} />
+      <div className="page page-narrow">
+        <FediverseFollow />
+      </div>
     </>
   );
 }

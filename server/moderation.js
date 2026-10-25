@@ -16,6 +16,7 @@ import { createReport, logAction, REPORT_REASONS } from './reports.js';
 import { onLocalVideosChanged, sendNetworkReport } from './network.js';
 import { removeVideoFiles } from './routes/videos.js';
 import { notifyModeration } from './notify.js';
+import { actorUri, apVideoChanged, sendTo } from './ap/deliver.js';
 
 const DAY = 24 * 3600_000;
 
@@ -33,6 +34,7 @@ export function setVideoModeration(video, status, reason, actor, reportId = null
   logAction(actor, action, { targetType: 'video', targetId: video.id, targetLabel: video.title, details: reason || null, reportId });
   const what = status === 'hidden' ? 'was hidden by the moderators' : status === 'removed' ? 'was removed by the moderators' : 'was restored';
   notifyModeration(video.user_id, `"${video.title}" ${what}`, { body: status ? reason || null : null, url: `/watch/${video.id}` });
+  apVideoChanged(video.id); // hidden or removed videos are withdrawn from the fediverse, restored ones come back
   if (status === 'removed') {
     const days = Math.max(1, Number(getSettings().removed_retention_days) || 30);
     enqueueJob('video.purge', { id: video.id, removed_at: t }, { delay: days * DAY });
@@ -130,7 +132,14 @@ reportsRouter.post('/', async (req, res) => {
     });
     // Tell the instance that hosts it too (best effort; the local report stands either way).
     try {
-      await sendNetworkReport(Number(iid), { target_type: targetType === 'remote_video' ? 'video' : 'comment', target_id: targetType === 'remote_video' ? rid : cid, video_id: rid, reason, details }, req.user);
+      if (nv.origin_type === 'activitypub') {
+        // Fediverse servers get a Flag from this instance, without saying who reported it.
+        const comment = targetType === 'remote_comment' ? db.prepare('SELECT ap_id FROM network_comments WHERE id = ?').get(String(cid)) : null;
+        const objects = [nv.ap_id, comment?.ap_id].filter(Boolean);
+        sendTo('i', { type: 'Flag', actor: actorUri('i'), object: objects, content: `${REPORT_REASONS[reason] || reason}${details ? `: ${details}` : ''}` }, [nv.ap_actor]);
+      } else {
+        await sendNetworkReport(Number(iid), { target_type: targetType === 'remote_video' ? 'video' : 'comment', target_id: targetType === 'remote_video' ? rid : cid, video_id: rid, reason, details }, req.user);
+      }
     } catch (e) {
       console.warn(`[moderation] forwarding report to instance ${iid} failed: ${e.message}`);
     }

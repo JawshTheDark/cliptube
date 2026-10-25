@@ -17,6 +17,7 @@ import { canDownloadOriginal, communityFor, originalFile, publishedCaptions, pub
 import { maybeNotifyUpload, notifyComment } from '../notify.js';
 import { indexVideo } from '../search.js';
 import { recordView, recordWatch, viewSource } from '../stats.js';
+import { apCommentCreated, apVideoChanged, sendCommentDelete, sendVideoDelete } from '../ap/deliver.js';
 
 export const videosRouter = Router();
 
@@ -420,6 +421,7 @@ videosRouter.patch('/:id', requireAuth, (req, res) => {
     'UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, game_id = ?, allow_clips = ?, allow_original_download = ?, updated_at = ? WHERE id = ?',
   ).run(title, description, visibility, federate, commentMode, gameId, allowClips, allowOriginal, now(), v.id);
   if (visibility === 'public') maybeNotifyUpload(v.id);
+  apVideoChanged(v.id);
   if (b.tags !== undefined) setTags(v.id, parseTags(b.tags));
   indexVideo(v.id);
   res.json({ video: fullVideo(v.id, req.user) });
@@ -467,6 +469,7 @@ videosRouter.post('/:id/thumbnail/frame', requireAuth, async (req, res) => {
 
 videosRouter.delete('/:id', requireAuth, (req, res) => {
   const v = getEditable(req.params.id, req.user);
+  sendVideoDelete({ id: v.id, user_id: v.user_id, username: v.username, ap_published_at: v.ap_published_at });
   db.prepare('DELETE FROM videos WHERE id = ?').run(v.id);
   removeFiles(v);
   res.json({ ok: true });
@@ -548,6 +551,7 @@ function revertEdit(v) {
   ).run(size, t, v.id);
   if (v.file_path && v.file_path !== v.base_path) try { fs.unlinkSync(path.join(DIRS.videos, v.file_path)); } catch {}
   queueRenditions(v.id);
+  apVideoChanged(v.id);
 }
 
 videosRouter.get('/:id/editor', requireAuth, (req, res) => {
@@ -711,6 +715,7 @@ videosRouter.patch('/:id/comments/:cid', requireAuth, (req, res) => {
     if (b.status !== 'visible') throw new HttpError(400, 'Comments can only be approved; delete them to remove');
     db.prepare("UPDATE comments SET status = 'visible', held_reason = NULL WHERE id = ?").run(c.id);
     notifyComment(c.id);
+    apCommentCreated(c.id);
     if (req.user.id !== v.user_id) logAction(req.user, 'comment.approve', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });
   }
   if (b.pinned !== undefined || b.hearted !== undefined) {
@@ -739,7 +744,10 @@ videosRouter.post('/:id/comments', requireAuth, (req, res) => {
     id, v.id, req.user.id, parentId, body, verdict.status, verdict.status === 'held' ? verdict.reason : null, now(),
   );
   const c = db.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).get(id);
-  if (verdict.status === 'visible') notifyComment(id);
+  if (verdict.status === 'visible') {
+    notifyComment(id);
+    apCommentCreated(id);
+  }
   res.status(201).json({ comment: serializeComment(c, req.user, v), held: verdict.status === 'held', held_reason: verdict.status === 'held' ? verdict.reason : null });
 });
 
@@ -749,6 +757,8 @@ videosRouter.delete('/:id/comments/:cid', requireAuth, (req, res) => {
   if (!c) throw new HttpError(404, 'Comment not found');
   if (!(req.user.id === c.user_id || req.user.is_moderator || req.user.id === v.user_id)) throw new HttpError(403, 'You cannot delete that comment');
   db.prepare('DELETE FROM comments WHERE id = ?').run(c.id);
+  const author = db.prepare('SELECT username, remote_instance_id FROM users WHERE id = ?').get(c.user_id);
+  if (author && !author.remote_instance_id) sendCommentDelete(c, author.username, v.user_id);
   if (req.user.is_moderator && req.user.id !== c.user_id && req.user.id !== v.user_id) {
     logAction(req.user, 'comment.delete', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });
   }

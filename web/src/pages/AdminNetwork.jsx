@@ -5,6 +5,7 @@ import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { AdminTabs } from './Admin.jsx';
 import { AdmissionPanel, BlocklistsPanel, PeersPanel } from '../components/NetworkPeers.jsx';
+import { FediverseAdmin } from '../components/Fediverse.jsx';
 import { timeAgo } from '../util.js';
 
 const MEMBER_STATUS = {
@@ -421,6 +422,8 @@ export default function AdminNetwork() {
           </div>
         </div>
       )}
+
+      <FediverseAdmin />
 
       {/* ---- blocking ---- */}
       <section className="card-panel">

@@ -8,6 +8,7 @@ import { DIRS } from './config.js';
 import { onLocalVideosChanged } from './network.js';
 import { defineJob, enqueueJob, jobStats, jobPending } from './jobs.js';
 import { maybeNotifyUpload } from './notify.js';
+import { apVideoChanged } from './ap/deliver.js';
 
 // Bundled binaries by default; set FFMPEG_PATH / FFPROBE_PATH to use a system build (e.g. one with NVENC).
 export const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
@@ -270,6 +271,7 @@ async function renderEdit(id) {
   console.log(`[media] ${id}: edit v${version} rendered (${encoder}, ${edit.segments.length} part(s), ${duration.toFixed(1)}s)`);
   onLocalVideosChanged();
   queueRenditions(id);
+  apVideoChanged(id);
 }
 
 /** HLS and federation renditions are built by their own job (see renditions.js). */
@@ -369,6 +371,7 @@ export async function processVideo(id) {
   onLocalVideosChanged();
   queueRenditions(id);
   maybeNotifyUpload(id);
+  apVideoChanged(id);
 }
 
 /**

@@ -3502,3 +3502,37 @@ th.num {
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
 }
+
+/* ---- fediverse (M6) ------------------------------------------------------- */
+.fedi-handles {
+  margin: 16px 0;
+}
+.fedi-handle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+  flex-wrap: wrap;
+}
+.fedi-handle code {
+  background: var(--surface-2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  word-break: break-all;
+}
+.fedi-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.fedi-preview .grow {
+  flex: 1;
+  min-width: 0;
+}
+.fedi-follow {
+  margin-top: 24px;
+}

@@ -595,6 +595,83 @@ CREATE VIRTUAL TABLE network_search USING fts5(instance_id UNINDEXED, remote_id 
         FROM network_videos r`);
     },
   },
+  {
+    version: 8,
+    name: 'ActivityPub: actors and keys, follows both ways, remote comments, seen activities',
+    up(db) {
+      db.exec(`
+CREATE TABLE ap_actors (
+  id TEXT PRIMARY KEY,                 -- the actor's URI
+  type TEXT NOT NULL,                  -- Person | Group | Application | Service | Organization
+  username TEXT NOT NULL,
+  domain TEXT NOT NULL,
+  name TEXT,
+  summary TEXT,
+  inbox TEXT,
+  shared_inbox TEXT,
+  outbox TEXT,
+  followers_url TEXT,
+  url TEXT,
+  icon_url TEXT,
+  key_id TEXT,
+  public_key TEXT,
+  attributed_to TEXT,                  -- a channel's owning account
+  instance_id INTEGER,
+  user_id TEXT,                        -- placeholder account for interactions
+  fetched_at INTEGER NOT NULL
+);
+CREATE INDEX idx_ap_actors_key ON ap_actors(key_id);
+CREATE TABLE ap_seen (
+  id TEXT PRIMARY KEY,
+  seen_at INTEGER NOT NULL
+);
+-- Remote actors following ours: local_actor is u:<user id> (Person), c:<user id> (channel Group) or i (instance).
+CREATE TABLE ap_followers (
+  local_actor TEXT NOT NULL,
+  remote_actor TEXT NOT NULL,
+  follow_id TEXT,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (local_actor, remote_actor)
+);
+-- Our actors following remote ones.
+CREATE TABLE ap_follows (
+  local_actor TEXT NOT NULL,
+  remote_actor TEXT NOT NULL,
+  follow_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | accepted | rejected
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (local_actor, remote_actor)
+);
+-- Comments on videos from the fediverse (threads live on the video's own server).
+CREATE TABLE network_comments (
+  id TEXT PRIMARY KEY,
+  instance_id INTEGER NOT NULL,
+  remote_id TEXT NOT NULL,
+  ap_id TEXT UNIQUE,
+  in_reply_to TEXT,
+  parent_id TEXT,
+  user_id TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_network_comments_video ON network_comments(instance_id, remote_id);
+`);
+      addColumn(db, 'users', 'ap_public_key', 'TEXT');
+      addColumn(db, 'users', 'ap_private_key', 'TEXT');
+      addColumn(db, 'users', 'ap_actor', 'TEXT'); // set on placeholder accounts made for fediverse actors
+      addColumn(db, 'network_videos', 'ap_id', 'TEXT');
+      addColumn(db, 'network_videos', 'origin_type', "TEXT NOT NULL DEFAULT 'cliptube'"); // cliptube | activitypub
+      addColumn(db, 'network_videos', 'hls_url', 'TEXT');
+      addColumn(db, 'network_videos', 'ap_actor', 'TEXT'); // the channel (Group) or account that posted it
+      addColumn(db, 'network_videos', 'comments_enabled', 'INTEGER NOT NULL DEFAULT 1');
+      addColumn(db, 'comments', 'ap_id', 'TEXT');
+      addColumn(db, 'videos', 'ap_shares', 'INTEGER NOT NULL DEFAULT 0');
+      addColumn(db, 'videos', 'ap_published_at', 'INTEGER'); // when Create(Video) went out
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_network_videos_ap ON network_videos(ap_id) WHERE ap_id IS NOT NULL');
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_comments_ap ON comments(ap_id) WHERE ap_id IS NOT NULL');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_users_ap_actor ON users(ap_actor)');
+    },
+  },
 ];
 
 export function currentVersion(db) {

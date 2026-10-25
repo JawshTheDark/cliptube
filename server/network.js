@@ -61,6 +61,8 @@ export function participating() {
 export function networkActive() {
   const s = S();
   if (s.hub_enabled === 'true') return true;
+  // Following channels or servers in the fediverse brings their videos in too.
+  if (s.activitypub_enabled === 'true' && db.prepare("SELECT 1 FROM ap_follows WHERE status = 'accepted' LIMIT 1").get()) return true;
   if (s.network_enabled !== 'true') return false;
   if (s.network_status === 'approved') return true;
   return !!db.prepare("SELECT 1 FROM instances WHERE is_self = 0 AND blocked = 0 AND peer_status = 'approved' AND remote_status = 'approved' LIMIT 1").get();
@@ -485,6 +487,8 @@ export function serializeRemote(r) {
     game: r.game_slug ? { id: r.game_slug, name: r.game_name || r.game_slug } : null,
     thumbnail_url: r.thumbnail_url,
     video_url: r.video_url,
+    hls_url: r.hls_url || null,
+    origin_type: r.origin_type || 'cliptube',
     uploader: {
       id: null,
       username: r.uploader_username,
@@ -574,6 +578,9 @@ function upsertVideo(instanceId, c, t, instanceUrl = null) {
     .get(`${url}|${c.remote_id}`);
   if (hide) db.prepare('UPDATE network_videos SET hidden = 1, hidden_by = ? WHERE instance_id = ? AND remote_id = ? AND hidden = 0').run(hide.url, instanceId, c.remote_id);
 }
+
+/** Adds or updates a network video (also used for videos that arrive over ActivityPub). */
+export const upsertNetworkVideo = (instanceId, item, t, instanceUrl) => upsertVideo(instanceId, item, t, instanceUrl);
 
 // ---- shared block lists --------------------------------------------------------------------------------
 
@@ -778,7 +785,7 @@ networkProtocolRouter.get('/api/network/feed/ids', async (req, res) => {
 function knownPeers(exclude = '') {
   return db
     .prepare(
-      `SELECT url, name FROM instances p WHERE p.is_self = 0 AND p.blocked = 0 AND p.listed = 1 AND p.url != ?
+      `SELECT url, name FROM instances p WHERE p.is_self = 0 AND p.blocked = 0 AND p.listed = 1 AND p.url != ? AND COALESCE(p.source, '') != 'activitypub'
         AND (p.peer_status = 'approved' OR p.hub_status = 'approved') AND COALESCE(p.hub_status, '') NOT IN ('suspended', 'banned', 'pending')
         AND p.last_ok_at > ? ORDER BY p.last_ok_at DESC LIMIT 500`,
     )
@@ -1840,12 +1847,16 @@ networkRouter.get('/videos/:iid/:rid', (req, res) => {
   const u = req.user;
   const policy = networkPolicy();
   const can = !!inst.allow_interactions;
+  // Videos from the fediverse aren't covered by the ClipTube network's switches.
+  const ap = row.origin_type === 'activitypub';
   res.json({
     video: serializeRemote(row),
     related: related.map(serializeRemote),
     my_like: u ? db.prepare('SELECT value FROM network_likes WHERE user_id = ? AND instance_id = ? AND remote_id = ?').get(u.id, inst.id, row.remote_id)?.value || 0 : 0,
     subscribed: u ? !!db.prepare('SELECT 1 FROM network_subscriptions WHERE user_id = ? AND instance_id = ? AND username = ?').get(u.id, inst.id, row.uploader_username) : false,
-    interactions: { likes: can && policy.likes, comments: can && policy.comments, subscriptions: can && policy.subscriptions },
+    interactions: ap
+      ? { likes: true, comments: !!row.comments_enabled, subscriptions: true }
+      : { likes: can && policy.likes, comments: can && policy.comments, subscriptions: can && policy.subscriptions },
     can_moderate: !!u?.is_admin,
     role: networkRole(),
   });

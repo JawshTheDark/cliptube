@@ -22,6 +22,7 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 - **Clip tools**: clip a moment into a new video, GIF and MP4 export, looping share links, games with their own pages, side-by-side compare
 - **Watching**: adaptive streaming with a source-quality rung, captions, skippable sponsor and intro parts, community titles and thumbnails, original downloads, support links
 - **Discovery**: RSS/Atom feeds, notifications (in-app, web push, optional email), a "For you" feed that explains itself, a vertical clips tab, full-text search with filters, creator analytics
+- **Fediverse**: ActivityPub, so Mastodon and PeerTube can follow channels, watch, like and comment, and people here can follow PeerTube channels
 - Keyboard shortcuts: `k` play/pause, `j`/`l` seek 10s, arrows seek 5s, `f` fullscreen, `t` theater, `m` mute, `0-9` jump
 
 ## Run it
@@ -184,6 +185,32 @@ The v2 hub protocol still works alongside, so older instances keep working durin
 register with `POST /api/hub/join` (nonce callback to `/api/network/verify`), the hub pulls their feeds with a
 token and serves `/api/hub/index`, `/api/hub/index/ids` and `/api/hub/directory`. Members use the hub's index
 only for instances they can't pull directly.
+
+## Fediverse (ActivityPub)
+
+ClipTube also speaks ActivityPub, the protocol of Mastodon, PeerTube and the rest of the fediverse
+(on by default; Admin → Network → *Fediverse*). It needs the Public URL set to the site's https:// address.
+
+- **Being followed.** Every account is a fediverse account and has a channel, in PeerTube's style: search
+  for `@name_channel@your.site` (the channel) or `@name@your.site` (the account) from Mastodon or PeerTube.
+  Each channel's About tab lists both. Followers count as subscribers.
+- **Videos go out** to followers when they're published (Create, plus an Announce from the channel), and
+  edits and removals follow (Update, Delete). The video object uses PeerTube's vocabulary, so PeerTube plays
+  the MP4s, and Mastodon gets a video attachment (the small 720p copy when there is one). Pasting a
+  `/watch/...` or `/c/...` link into Mastodon or PeerTube search finds the video or channel.
+- **Coming back:** replies from the fediverse land in the comment thread (through the same spam checks as
+  everyone else's), likes and dislikes count, shares are counted, and replies here go back to the person
+  you answered.
+- **Following out.** Subscriptions → *Follow from the fediverse* takes a handle or a link. The channel's
+  recent videos are imported once it accepts, new ones arrive as they're posted, and they appear in Network,
+  search and your subscriptions with notifications. You can like and comment on them here; the comments go
+  to their server. Admins can follow a whole PeerTube server, the way PeerTube servers mirror each other.
+- **Moderation:** blocked instances are blocked for ActivityPub too, reports about fediverse videos go to
+  their server as a `Flag` from this instance (not from the person who reported), and incoming reports join
+  the moderation queue.
+- **Under the hood:** WebFinger, NodeInfo and host-meta for discovery; RSA HTTP Signatures (draft-cavage,
+  rsa-sha256) on every delivery and fetch, checked on every incoming activity; deliveries retried over three
+  days through the job queue.
 
 ## Moderation and legal
 

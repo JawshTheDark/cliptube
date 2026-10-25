@@ -15,6 +15,7 @@ import { writeTar } from './tar.js';
 import { announceAccountDeletion } from './network.js';
 import { removeVideoFiles } from './routes/videos.js';
 import { logAction } from './reports.js';
+import { sendActorDelete } from './ap/deliver.js';
 
 const DAY = 24 * 3600_000;
 export const DELETE_GRACE_DAYS = 7;
@@ -143,6 +144,9 @@ export async function deleteAccount(userId, actor = null) {
   if (!u) return;
   try {
     await announceAccountDeletion(userToPublic(u));
+  } catch {}
+  try {
+    sendActorDelete(u); // fediverse followers of the account and its channel
   } catch {}
   const videos = db.prepare('SELECT * FROM videos WHERE user_id = ?').all(userId);
   db.prepare('DELETE FROM users WHERE id = ?').run(userId);

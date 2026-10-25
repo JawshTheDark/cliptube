@@ -15,8 +15,8 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | M2 Hub-optional network | Done | v0.7.0, 2026-10-25 |
 | M4 Watching upgrades | Done | v0.8.0, 2026-10-25 |
 | M5 Feeds, notifications, search, analytics | Done | v0.9.0, 2026-10-25 |
-| M6 ActivityPub and PeerTube | In progress | |
-| M7 Mastodon, moves, export and import | Not started | |
+| M6 ActivityPub and PeerTube | Done (live PeerTube check pending) | v1.0.0, 2026-10-25 |
+| M7 Mastodon, moves, export and import | In progress | |
 | M8 One federation protocol | Not started | |
 | Servers linked (clips.irc.so hub, laptop member) | Done | Linked 2026-10-25, checked after every deploy |
 
@@ -29,6 +29,11 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 - Streaming (M4): adaptive streaming is off on both servers, because it costs CPU once per video and 50 to 100%
   more disk. Turn it on under Admin → Overview → Adaptive streaming; existing videos are rebuilt in the
   background. I tested the ladder, quality switching and skipping in a browser, not playback on a throttled link.
+- Fediverse sandbox (M6, M7): checking against a real PeerTube and GoToSocial needs test subdomains of irc.so
+  (DNS records plus Nginx Proxy Manager hosts), which I can't create. ActivityPub is on and tested against a
+  stand-in server; once you have the subdomains, a short real-world check would finish the "Done when".
+  You can also try it straight away: from any Mastodon account, search for @Jawsh_channel@clips.irc.so
+  (your channel's handle) and follow it.
 - Email (M5): no SMTP server is set up, so notifications are in-app and web push only, and there are no
   password-reset emails. Add one under Admin → Overview → Email (any provider's SMTP details work).
 - Sign-up (M1): both servers still allow open sign-up. The plan suggested invite-only until moderation tools
@@ -258,26 +263,27 @@ and search finds clips by game, length and phrase.
 
 **Setup:** the fediverse sandbox from decision 3, plus a staging ClipTube.
 
-- **Discovery**: WebFinger, NodeInfo and host-meta. (S)
-- **Actors**: an instance `Application` actor, and each user as a `Person` plus a default channel `Group`,
+- ✅ **Discovery**: WebFinger, NodeInfo and host-meta. (S)
+- ✅ **Actors**: an instance `Application` actor, and each user as a `Person` plus a default channel `Group`,
   each with inbox, outbox, followers and following collections. (M)
-- **HTTP Signatures**: an RSA key per actor, because Mastodon and PeerTube sign with RSA. Outgoing requests
+- ✅ **HTTP Signatures**: an RSA key per actor, because Mastodon and PeerTube sign with RSA. Outgoing requests
   are signed; incoming ones are verified against a cached key fetch. Signed GETs from the instance actor
   cover servers that require them. (M)
-- **Videos as `Video` objects** in PeerTube's vocabulary: duration, `url` entries for the MP4 renditions
-  and the HLS playlist, thumbnails, tags, sensitive flag, comments-enabled flag and view counts. (M)
-- **Follows**: Follow, Accept, Reject and Undo, for channels (subscriptions) and for the instance actor
+- ✅ **Videos as `Video` objects** in PeerTube's vocabulary: duration, `url` entries for the MP4 renditions
+  and the HLS playlist, thumbnails, tags, sensitive flag, comments-enabled flag and view counts. (M) As built:
+  HLS is left out of the object, because PeerTube needs per-segment hashes for it; PeerTube plays the MP4s.
+- ✅ **Follows**: Follow, Accept, Reject and Undo, for channels (subscriptions) and for the instance actor
   (whole-instance mirroring, the way PeerTube servers follow each other). Remote followers become placeholder
   accounts, as they do today. (M)
-- **Delivery**: Create, Update and Delete for videos, sent to followers' shared inboxes through the job
+- ✅ **Delivery**: Create, Update and Delete for videos, sent to followers' shared inboxes through the job
   queue, retried over several days, with per-host limits. (M)
-- **Interactions**: Like, Dislike, Announce and Undo are counted. Comments travel as `Note` objects with
+- ✅ **Interactions**: Like, Dislike, Announce and Undo are counted. Comments travel as `Note` objects with
   `inReplyTo`, threaded both ways. (M)
-- **Moderation**: instance blocks and blocklists apply to ActivityPub traffic; reports go out as `Flag`;
+- ✅ **Moderation**: instance blocks and blocklists apply to ActivityPub traffic; reports go out as `Flag`;
   remote accounts can be silenced or suspended. (S)
-- **Remote video ingestion**: ActivityPub videos go into the same network index, so Network, search and
+- ✅ **Remote video ingestion**: ActivityPub videos go into the same network index, so Network, search and
   feeds show them, and the player picks the best MP4 or HLS source. (M)
-- **PeerTube interop**: ClipTube follows PeerTube channels and whole instances; PeerTube follows ClipTube
+- ◐ **PeerTube interop** (built to PeerTube's vocabulary and tested against a stand-in server in the tests, with object shapes taken from a live PeerTube; not yet checked against a real PeerTube, see Needs you): ClipTube follows PeerTube channels and whole instances; PeerTube follows ClipTube
   channels and plays their videos; comments and likes flow both ways. Checked against the sandbox. (M)
 
 **Schema:** `ap_actors` (cache of remote actors and keys), `ap_objects` (seen activity and object ids, for
