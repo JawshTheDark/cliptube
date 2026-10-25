@@ -86,14 +86,22 @@ export async function grabFrame(input, t, output) {
   await run(ffmpegBin, ['-y', '-v', 'error', '-ss', t.toFixed(3), '-i', input, '-frames:v', '1', '-vf', "scale='min(1280,iw)':-2", '-q:v', '3', output]);
 }
 
-/** Normalise an uploaded image: thumbnails become 1280-wide JPEGs, avatars 256x256 squares. */
+/**
+ * Normalise an image: thumbnails become 1280-wide JPEGs, avatars 256x256 squares, game covers 600x900
+ * (2:3, like SteamGridDB's), banners up to 1920 wide, and logos stay transparent PNGs up to 800 wide.
+ */
 export async function convertImage(input, output, kind) {
   const vf = kind === 'avatar'
     ? 'scale=256:256:force_original_aspect_ratio=increase,crop=256:256'
     : kind === 'cover'
-      ? 'scale=600:800:force_original_aspect_ratio=increase,crop=600:800'
-      : "scale='min(1280,iw)':-2";
-  await run(ffmpegBin, ['-y', '-v', 'error', '-i', input, '-frames:v', '1', '-vf', vf, '-q:v', '3', output]);
+      ? 'scale=600:900:force_original_aspect_ratio=increase,crop=600:900'
+      : kind === 'logo'
+        ? "scale='min(800,iw)':-2,format=rgba"
+        : kind === 'hero'
+          ? "scale='min(1920,iw)':-2"
+          : "scale='min(1280,iw)':-2";
+  const quality = kind === 'logo' ? [] : ['-q:v', '3'];
+  await run(ffmpegBin, ['-y', '-v', 'error', '-i', input, '-frames:v', '1', '-vf', vf, ...quality, output]);
 }
 
 function parseOutTime(line) {
@@ -357,7 +365,7 @@ export async function processVideo(id) {
   const t = Date.now();
   db.prepare(
     `UPDATE videos SET status = 'ready', progress = 100, file_path = ?, base_path = ?, base_duration = ?, size_bytes = ?, duration = ?,
-       width = ?, height = ?, fps = ?, published_at = COALESCE(published_at, ?), updated_at = ? WHERE id = ?`,
+       width = ?, height = ?, fps = ?, published_at = CASE WHEN draft = 1 THEN published_at ELSE COALESCE(published_at, ?) END, updated_at = ? WHERE id = ?`,
   ).run(outName, outName, duration, size, duration, outInfo?.width || info.width, outInfo?.height || info.height, outInfo?.fps || info.fps, t, t, id);
 
   // A remux is lossless, so the original is redundant. Transcodes keep the original unless configured otherwise.

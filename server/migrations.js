@@ -733,6 +733,21 @@ CREATE INDEX idx_channel_imports_user ON channel_imports(user_id, created_at);
       addColumn(db, 'games', 'artwork_url', 'TEXT');
     },
   },
+  {
+    version: 11,
+    name: 'game artwork from SteamGridDB: title logos and banners',
+    up(db) {
+      addColumn(db, 'games', 'logo', 'TEXT'); // transparent PNG in DIRS.thumbs
+      addColumn(db, 'games', 'hero', 'TEXT'); // banner in DIRS.thumbs
+      addColumn(db, 'games', 'logo_url', 'TEXT'); // the hub's, for games from its catalog
+      addColumn(db, 'games', 'hero_url', 'TEXT');
+      addColumn(db, 'games', 'sgdb_id', 'INTEGER'); // the game on SteamGridDB
+      addColumn(db, 'games', 'art_credits', 'TEXT'); // JSON: { cover|logo|hero: { source, author } }
+      // Uploads from the upload page wait as drafts (private) until their details are saved.
+      addColumn(db, 'videos', 'draft', 'INTEGER NOT NULL DEFAULT 0');
+      addColumn(db, 'videos', 'draft_visibility', 'TEXT'); // what it becomes when published
+    },
+  },
 ];
 
 export function currentVersion(db) {

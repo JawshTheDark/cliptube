@@ -6,7 +6,8 @@ Node.js + Express + SQLite on the backend, React on the frontend, ffmpeg bundled
 
 ## Features
 
-- Upload clips (drag and drop, multiple files, progress bar), fill in details while they upload
+- Upload clips (drag and drop, multiple files, progress bar), fill in details while they upload; nothing is
+  published until you click **Save details** (until then the clip is a draft only you can see)
 - Automatic thumbnails, duration, resolution; custom thumbnails
 - Smart processing: H.264 MP4s are remuxed losslessly in seconds, everything else (MKV, HEVC, WebM, ...) is
   transcoded to browser-friendly MP4 with an optional GPU encoder (NVENC / QuickSync / AMF)
@@ -117,6 +118,12 @@ Open it from Studio (scissors icon), the video details page, or the Editor butto
   Uploads and video details have a Game field; each game has a page at `/g/<id>` and all of them are under
   Games in the sidebar. The game travels with the video across the network, and aliases match it to the
   same game on other instances.
+- **Game artwork from SteamGridDB.** With an API key from a [SteamGridDB](https://www.steamgriddb.com) account
+  (Admin → Games; get one under its Preferences, API), new games get SteamGridDB's best-rated cover, title
+  logo and banner on their own, and moderators can pick others per game (*Artwork*) or fill in what's missing
+  for every game. Game pages show the banner and logo and credit the artists. Members of a network get the
+  hub's games with their artwork, so only the hub needs the key. From the command line:
+  `docker exec -i cliptube node server/cli.js settings set-secret steamgriddb_api_key < keyfile`.
 - **Compare.** The compare button on a watch page opens `/compare` with that clip on one side. Pick the
   other, line up the same moment with each side's start buttons (down to one frame), then play both on one
   transport bar at up to 1/10 speed. "Copy link" shares the lined-up comparison.

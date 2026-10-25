@@ -1068,6 +1068,16 @@ networkProtocolRouter.get('/api/hub/games', requireHub, (req, res) => {
     short_name: g.short_name || null,
     aliases: String(g.aliases || '').split(',').filter(Boolean),
     artwork_url: g.artwork ? `${self}/media/thumbs/${g.artwork}` : g.artwork_url || null,
+    logo_url: g.logo ? `${self}/media/thumbs/${g.logo}` : g.logo_url || null,
+    hero_url: g.hero ? `${self}/media/thumbs/${g.hero}` : g.hero_url || null,
+    sgdb_id: g.sgdb_id || null,
+    credits: (() => {
+      try {
+        return JSON.parse(g.art_credits || 'null');
+      } catch {
+        return null;
+      }
+    })(),
   }));
   res.json({ games });
 });

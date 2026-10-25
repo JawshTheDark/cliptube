@@ -16,6 +16,8 @@ import { logAction } from './reports.js';
 import { NETWORK_VISIBLE, isHub, networkRole, onHubGames, onLocalVideosChanged } from './network.js';
 import { indexVideo } from './search.js';
 import { getSettings } from './db.js';
+import { ART, applyImage, autoArtwork, clearImage, listImages, queueArtwork, searchGames, sgdbAuto, sgdbConfigured } from './steamgriddb.js';
+import { enqueueJob } from './jobs.js';
 
 export function slugify(s) {
   return String(s || '')
@@ -65,9 +67,22 @@ export function serializeGame(g, withCounts = false) {
     short_name: g.short_name || null,
     aliases: aliasList(g),
     artwork_url: g.artwork ? `/media/thumbs/${g.artwork}` : g.artwork_url || null,
+    logo_url: g.logo ? `/media/thumbs/${g.logo}` : g.logo_url || null, // the title as a transparent logo
+    hero_url: g.hero ? `/media/thumbs/${g.hero}` : g.hero_url || null, // a wide banner
+    sgdb_id: g.sgdb_id || null,
+    credits: artCredits(g),
     from_hub: g.source === 'hub', // managed by the network hub's catalog
     ...(withCounts ? counts(g) : {}),
   };
+}
+
+function artCredits(g) {
+  try {
+    const c = JSON.parse(g.art_credits || 'null');
+    return c && typeof c === 'object' ? c : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Removes a game: its clips stay, without a game. */
@@ -76,7 +91,7 @@ function deleteGame(g) {
   db.prepare('UPDATE videos SET game_id = NULL WHERE game_id = ?').run(g.id);
   for (const vid of affected) indexVideo(vid);
   db.prepare('DELETE FROM games WHERE id = ?').run(g.id);
-  if (g.artwork) try { fs.unlinkSync(path.join(DIRS.thumbs, g.artwork)); } catch {}
+  for (const f of [g.artwork, g.logo, g.hero]) if (f) try { fs.unlinkSync(path.join(DIRS.thumbs, f)); } catch {}
 }
 
 /**
@@ -109,12 +124,20 @@ onHubGames((list, hubUrl) => {
     const short = str(raw.short_name, 30).trim() || null;
     const aliases = cleanAliases(raw.aliases, id);
     const artwork = art(raw.artwork_url);
+    const logo = art(raw.logo_url);
+    const hero = art(raw.hero_url);
+    const sgdb = Number.isInteger(Number(raw.sgdb_id)) && Number(raw.sgdb_id) > 0 ? Number(raw.sgdb_id) : null;
+    const credits = raw.credits && typeof raw.credits === 'object' ? JSON.stringify(raw.credits).slice(0, 2000) : null;
     const g = db.prepare('SELECT * FROM games WHERE id = ?').get(id);
+    const vals = [name, short, aliases, artwork, logo, hero, sgdb, credits];
     if (!g) {
-      db.prepare("INSERT INTO games (id, name, short_name, aliases, artwork_url, source, created_at) VALUES (?, ?, ?, ?, ?, 'hub', ?)").run(id, name, short, aliases, artwork, now());
+      db.prepare("INSERT INTO games (name, short_name, aliases, artwork_url, logo_url, hero_url, sgdb_id, art_credits, id, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'hub', ?)").run(...vals, id, now());
       changed++;
-    } else if (g.source !== 'hub' || g.name !== name || (g.short_name || null) !== short || (g.aliases || '') !== aliases || (g.artwork_url || null) !== artwork) {
-      db.prepare("UPDATE games SET name = ?, short_name = ?, aliases = ?, artwork_url = ?, source = 'hub' WHERE id = ?").run(name, short, aliases, artwork, id);
+    } else if (
+      g.source !== 'hub' || g.name !== name || (g.short_name || null) !== short || (g.aliases || '') !== aliases || (g.artwork_url || null) !== artwork ||
+      (g.logo_url || null) !== logo || (g.hero_url || null) !== hero || (g.sgdb_id || null) !== sgdb || (g.art_credits || null) !== credits
+    ) {
+      db.prepare("UPDATE games SET name = ?, short_name = ?, aliases = ?, artwork_url = ?, logo_url = ?, hero_url = ?, sgdb_id = ?, art_credits = ?, source = 'hub' WHERE id = ?").run(...vals, id);
       if (g.name !== name || (g.aliases || '') !== aliases) for (const vid of touchGameVideos(id)) indexVideo(vid);
       changed++;
     }
@@ -168,6 +191,7 @@ export function createGame(b, user) {
     id, name, str(b.short_name, 30).trim() || null, cleanAliases(b.aliases, id), user?.id || null, now(),
   );
   logAction(user, 'game.create', { targetType: 'game', targetId: id, targetLabel: name });
+  queueArtwork(id); // covers, logo and banner from SteamGridDB, when it's set up
   return db.prepare('SELECT * FROM games WHERE id = ?').get(id);
 }
 
@@ -197,7 +221,69 @@ gamesRouter.get('/', (req, res) => {
   const games = db.prepare('SELECT * FROM games ORDER BY name COLLATE NOCASE').all().map((g) => serializeGame(g, true));
   const s = getSettings();
   // Where the catalog comes from: this instance (and, on a hub, the whole network) or a hub.
-  res.json({ games, catalog: { is_hub: isHub(), hub_url: networkRole() === 'member' ? s.network_hub_url || null : null } });
+  res.json({
+    games,
+    catalog: { is_hub: isHub(), hub_url: networkRole() === 'member' ? s.network_hub_url || null : null },
+    steamgriddb: { configured: sgdbConfigured(), auto: sgdbAuto() },
+  });
+});
+
+// ---- artwork from SteamGridDB (moderators; an admin saves the API key) ------------------------------------
+
+gamesRouter.get('/steamgriddb/search', requireModerator, async (req, res) => {
+  res.json({ results: await searchGames(req.query.q) });
+});
+
+// Fills in missing artwork for every game of this site's own (not the hub's), in the background.
+gamesRouter.post('/steamgriddb/fill', requireModerator, (req, res) => {
+  if (!sgdbConfigured()) throw new HttpError(400, 'Add a SteamGridDB API key first (Admin → Games)');
+  const rows = db.prepare("SELECT id FROM games WHERE COALESCE(source, '') != 'hub' AND (artwork IS NULL OR logo IS NULL OR hero IS NULL)").all();
+  for (const g of rows) enqueueJob('games.artwork', { id: g.id }, { dedupe: `games-artwork:${g.id}` });
+  res.status(202).json({ queued: rows.length });
+});
+
+const ownGameRow = (req) => {
+  const g = db.prepare('SELECT * FROM games WHERE id = ?').get(String(req.params.id));
+  if (!g) throw new HttpError(404, 'Game not found');
+  ownGame(g);
+  return g;
+};
+
+// The covers, logos or banners SteamGridDB has for this game (or for the SteamGridDB game picked).
+gamesRouter.get('/:id/steamgriddb', requireModerator, async (req, res) => {
+  const g = ownGameRow(req);
+  const kind = ART[req.query.kind] ? String(req.query.kind) : 'cover';
+  let sgdbId = Number(req.query.sgdb_id) || g.sgdb_id;
+  if (!sgdbId) {
+    const found = await searchGames(g.name);
+    sgdbId = (found.find((x) => x.name.toLowerCase() === g.name.toLowerCase()) || found[0])?.id || null;
+  }
+  res.json({ sgdb_id: sgdbId, kind, images: sgdbId ? await listImages(kind, sgdbId) : [] });
+});
+
+gamesRouter.post('/:id/steamgriddb', requireModerator, async (req, res) => {
+  const g = ownGameRow(req);
+  const b = req.body || {};
+  const kind = String(b.kind || '');
+  if (!ART[kind]) throw new HttpError(400, 'Artwork is cover, logo or hero');
+  // Looked up again, so what gets saved (and credited) is SteamGridDB's, not the browser's.
+  const image = (await listImages(kind, b.sgdb_id)).find((x) => x.id === Number(b.image_id));
+  if (!image) throw new HttpError(404, 'That image is no longer on SteamGridDB');
+  await applyImage(g, kind, image, b.sgdb_id);
+  logAction(req.user, 'game.update', { targetType: 'game', targetId: g.id, targetLabel: `${g.name}: ${kind} from SteamGridDB` });
+  res.json({ game: serializeGame(db.prepare('SELECT * FROM games WHERE id = ?').get(g.id), true) });
+});
+
+gamesRouter.post('/:id/steamgriddb/auto', requireModerator, async (req, res) => {
+  const g = ownGameRow(req);
+  const r = await autoArtwork(g.id, { force: req.body?.force === true });
+  res.json({ applied: r.applied, game: serializeGame(db.prepare('SELECT * FROM games WHERE id = ?').get(g.id), true) });
+});
+
+gamesRouter.delete('/:id/art/:kind', requireModerator, (req, res) => {
+  const g = ownGameRow(req);
+  clearImage(g, String(req.params.kind));
+  res.json({ game: serializeGame(db.prepare('SELECT * FROM games WHERE id = ?').get(g.id), true) });
 });
 
 gamesRouter.get('/:id', (req, res) => {

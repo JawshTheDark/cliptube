@@ -1,14 +1,113 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
-import { useTitle } from '../auth.jsx';
+import { useAuth, useTitle } from '../auth.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { reloadGames } from '../components/GameField.jsx';
+import { SteamGridPicker } from '../components/SteamGridPicker.jsx';
 import { AdminTabs } from './Admin.jsx';
 
-function GameRow({ game, onChange, onDelete, hubName }) {
+/** The SteamGridDB API key (admins) and filling in artwork (moderators). */
+function SteamGridSettings({ sgdb, onChanged }) {
+  const { user } = useAuth();
   const toast = useToast();
+  const [s, setS] = useState(null);
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (user?.is_admin) api('/admin/settings').then((r) => setS(r.settings)).catch(() => {});
+  }, [user?.is_admin]);
+  const save = async (body, message) => {
+    setBusy(true);
+    try {
+      setS((await api('/admin/settings', { method: 'PATCH', body })).settings);
+      setKey('');
+      if (message) toast(message);
+      onChanged();
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const fill = async () => {
+    setBusy(true);
+    try {
+      const r = await api('/games/steamgriddb/fill', { method: 'POST' });
+      toast(r.queued ? `Finding artwork for ${r.queued} game${r.queued === 1 ? '' : 's'}; it shows up in a minute or two` : 'Every game already has its artwork');
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card-panel">
+      <h2>
+        <Icon name="image" /> Artwork from SteamGridDB
+      </h2>
+      <p className="hint">
+        Covers, title logos and banners from <a href="https://www.steamgriddb.com" target="_blank" rel="noopener noreferrer">SteamGridDB</a>, picked per game or filled in
+        on their own. Its artists are credited on each game&apos;s page.
+      </p>
+      {user?.is_admin && s && (
+        <>
+          <form
+            className="follow-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              save({ steamgriddb_api_key: key }, 'API key saved');
+            }}
+          >
+            <input
+              className="input"
+              type="password"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder={s.steamgriddb_key_set ? 'A key is saved; paste a new one to replace it' : 'SteamGridDB API key'}
+              autoComplete="off"
+              aria-label="SteamGridDB API key"
+            />
+            <button className="btn" disabled={busy || !key.trim()}>
+              Save key
+            </button>
+            {s.steamgriddb_key_set && (
+              <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => save({ steamgriddb_api_key: null }, 'API key removed')}>
+                Remove
+              </button>
+            )}
+          </form>
+          <p className="hint small">
+            Get one from your SteamGridDB account under{' '}
+            <a href="https://www.steamgriddb.com/profile/preferences/api" target="_blank" rel="noopener noreferrer">
+              Preferences, API
+            </a>
+            . It is never shown again here.
+          </p>
+          <label className="toggle-row">
+            <span className="toggle-text">
+              <b>Fill in artwork for new games</b>
+              <span className="hint">Takes SteamGridDB&apos;s best-rated cover, logo and banner when a game is added.</span>
+            </span>
+            <input type="checkbox" className="switch" checked={s.steamgriddb_auto !== 'false'} disabled={busy} onChange={(e) => save({ steamgriddb_auto: e.target.checked })} />
+          </label>
+        </>
+      )}
+      {sgdb.configured ? (
+        <button className="btn top-gap" disabled={busy} onClick={fill}>
+          <Icon name="refresh" /> Fill in missing artwork
+        </button>
+      ) : (
+        !user?.is_admin && <p className="muted small">An admin needs to add a SteamGridDB API key first.</p>
+      )}
+    </section>
+  );
+}
+
+function GameRow({ game, onChange, onDelete, hubName, sgdb }) {
+  const toast = useToast();
+  const [picking, setPicking] = useState(false);
   // Games from the hub's catalog are kept up to date by the hub and changed there.
   const locked = game.from_hub;
   const fileRef = useRef(null);
@@ -47,7 +146,14 @@ function GameRow({ game, onChange, onDelete, hubName }) {
           e.target.value = '';
         }}
       />
+      {picking && <SteamGridPicker game={game} onClose={() => setPicking(false)} onChange={onChange} />}
       <div className="game-row-fields">
+        {(game.logo_url || game.hero_url) && (
+          <div className="game-row-art">
+            {game.hero_url && <img className="game-row-hero" src={game.hero_url} alt="" />}
+            {game.logo_url && <img className="game-row-logo" src={game.logo_url} alt={`${game.name} logo`} />}
+          </div>
+        )}
         <div className="field-row">
           <div className="field">
             <label>Name</label>
@@ -78,6 +184,11 @@ function GameRow({ game, onChange, onDelete, hubName }) {
             </span>
           ) : (
             <span className="row-actions end">
+              {sgdb.configured && (
+                <button type="button" className="btn btn-sm" onClick={() => setPicking(true)} title="Cover, title logo and banner from SteamGridDB">
+                  <Icon name="image" size={16} /> Artwork
+                </button>
+              )}
               <button className="btn btn-sm btn-primary" disabled={!dirty}>
                 Save
               </button>
@@ -96,6 +207,7 @@ export default function AdminGames() {
   const toast = useToast();
   const [games, setGames] = useState(null);
   const [catalog, setCatalog] = useState({});
+  const [sgdb, setSgdb] = useState({ configured: false, auto: false });
   const [draft, setDraft] = useState({ name: '', short_name: '', aliases: '' });
   useTitle('Games');
   const load = () =>
@@ -103,6 +215,7 @@ export default function AdminGames() {
       .then((r) => {
         setGames(r.games);
         setCatalog(r.catalog || {});
+        setSgdb(r.steamgriddb || { configured: false, auto: false });
       })
       .catch((e) => toast(e.message));
   const hubName = catalog.hub_url ? new URL(catalog.hub_url).host : null;
@@ -146,6 +259,7 @@ export default function AdminGames() {
       </p>
       {catalog.is_hub && <p className="hint">This list is the network&apos;s catalog: members get these games automatically, and a game deleted here goes from theirs too.</p>}
       {hubName && <p className="hint">Games marked &ldquo;From {hubName}&rdquo; come from the network hub&apos;s catalog and stay in step with it. Games you add here are this site&apos;s own.</p>}
+      <SteamGridSettings sgdb={sgdb} onChanged={load} />
       <section className="card-panel">
         <h2>Add a game</h2>
         <form onSubmit={create} className="field-row align-end">
@@ -180,6 +294,7 @@ export default function AdminGames() {
               }}
               onDelete={remove}
               hubName={hubName}
+              sgdb={sgdb}
             />
           ))}
           {games.length === 0 && <p className="muted">No games yet.</p>}

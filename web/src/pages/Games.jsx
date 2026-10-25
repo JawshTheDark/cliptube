@@ -8,12 +8,29 @@ import { plural, usePaged } from '../util.js';
 import { FeedButton } from '../components/FeedLink.jsx';
 
 function Cover({ game, size = 'md' }) {
-  return game.artwork_url ? (
-    <img className={`game-cover ${size}`} src={game.artwork_url} alt="" loading="lazy" />
-  ) : (
+  if (game.artwork_url) return <img className={`game-cover ${size}`} src={game.artwork_url} alt="" loading="lazy" />;
+  // No cover: the title logo on a plain tile, or the short name.
+  return (
     <div className={`game-cover ${size} placeholder`}>
-      <span>{(game.short_name || game.name).slice(0, 4)}</span>
+      {game.logo_url ? <img className="game-cover-logo" src={game.logo_url} alt="" loading="lazy" /> : <span>{(game.short_name || game.name).slice(0, 4)}</span>}
     </div>
+  );
+}
+
+/** "Artwork from SteamGridDB by …", with the artists' names. */
+function ArtCredit({ game }) {
+  const c = game.credits;
+  if (!c) return null;
+  const authors = [...new Set(Object.values(c).map((x) => x?.author).filter(Boolean))];
+  if (!Object.values(c).some((x) => x?.source === 'SteamGridDB')) return null;
+  return (
+    <p className="hint small art-credit">
+      Artwork from{' '}
+      <a href={game.sgdb_id ? `https://www.steamgriddb.com/game/${game.sgdb_id}` : 'https://www.steamgriddb.com'} target="_blank" rel="noopener noreferrer">
+        SteamGridDB
+      </a>
+      {authors.length ? ` by ${authors.join(', ')}` : ''}
+    </p>
   );
 }
 
@@ -79,17 +96,26 @@ export function GamePage() {
   const total = game.video_count + (site.federation ? game.network_count : 0);
   return (
     <div className="page page-wide">
-      <div className="game-head">
+      <div className={`game-head ${game.hero_url ? 'with-hero' : ''}`} style={game.hero_url ? { '--hero': `url("${game.hero_url}")` } : undefined}>
         <Cover game={game} size="lg" />
-        <div>
+        <div className="game-head-text">
           <h1>
-            {game.name} {!game.remote_only && <FeedButton href={`/feeds/game/${game.id}.atom`} title={`${game.name} clips`} />}
+            {game.logo_url ? (
+              <>
+                <img className="game-logo" src={game.logo_url} alt="" />
+                <span className="sr-only">{game.name}</span>
+              </>
+            ) : (
+              game.name
+            )}{' '}
+            {!game.remote_only && <FeedButton href={`/feeds/game/${game.id}.atom`} title={`${game.name} clips`} />}
           </h1>
           <div className="muted">
             {plural(total, 'clip')}
             {site.federation && game.network_count > 0 && ` · ${game.network_count} from other instances`}
           </div>
           {game.remote_only && <p className="hint">This game comes from other instances in the network.</p>}
+          <ArtCredit game={game} />
           <div className="chips flat top-gap">
             {[
               ['new', 'Newest'],

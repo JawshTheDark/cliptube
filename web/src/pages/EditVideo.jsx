@@ -26,7 +26,7 @@ export default function EditVideo() {
     title: v.title,
     description: v.description,
     tags: v.tags.join(', '),
-    visibility: v.visibility,
+    visibility: v.draft ? v.draft_visibility || 'public' : v.visibility,
     federate: v.federate,
     comment_mode: v.comment_mode || 'inherit',
     game: v.game?.name || '',
@@ -64,7 +64,7 @@ export default function EditVideo() {
   const dirty =
     form.title !== video.title ||
     form.description !== video.description ||
-    form.visibility !== video.visibility ||
+    form.visibility !== (video.draft ? video.draft_visibility || 'public' : video.visibility) ||
     form.tags !== video.tags.join(', ') ||
     form.federate !== video.federate ||
     form.comment_mode !== (video.comment_mode || 'inherit') ||
@@ -76,10 +76,11 @@ export default function EditVideo() {
     e?.preventDefault();
     setBusy(true);
     try {
-      const r = await api(`/videos/${id}`, { method: 'PATCH', body: form });
+      // Saving a draft's details publishes it.
+      const r = await api(`/videos/${id}`, { method: 'PATCH', body: { ...form, publish: !!video.draft } });
       setVideo(r.video);
       setForm(toForm(r.video));
-      toast('Changes saved');
+      toast(video.draft ? 'Saved and published' : 'Changes saved');
     } catch (err) {
       toast(err.message);
     } finally {
@@ -133,11 +134,12 @@ export default function EditVideo() {
               <Icon name="cut" /> Open editor
             </Link>
           )}
-          <button className="btn btn-primary" onClick={save} disabled={busy || !dirty}>
-            {busy ? 'Saving…' : 'Save'}
+          <button className="btn btn-primary" onClick={save} disabled={busy || (!dirty && !video.draft)}>
+            {busy ? 'Saving…' : video.draft ? 'Save and publish' : 'Save'}
           </button>
         </div>
       </div>
+      {video.draft && <div className="notice warn-box">Not published yet: only you can see it until you save its details.</div>}
 
       <div className="edit-grid">
         <form onSubmit={save} className="edit-form">

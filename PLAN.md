@@ -19,6 +19,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | M7 Mastodon, moves, export and import | Done (live Mastodon check pending) | v1.1.0, 2026-10-25 |
 | M8 One federation protocol | Done: the network runs over ActivityPub (see docs/federation.md) | v1.2.0 decision, v1.3.0 switch, 2026-10-25 |
 | After M8: game catalog from the hub, verticals toggle moved to Settings | Done | v1.3.0, 2026-10-25 |
+| After M8: SteamGridDB artwork, uploads as drafts until saved | Done | v1.4.0, 2026-10-25 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

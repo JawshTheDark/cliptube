@@ -70,6 +70,9 @@ export const DEFAULT_SETTINGS = {
   smtp_user: '',
   smtp_password: '',
   smtp_from: '',
+  // Game artwork from SteamGridDB (needs an API key from a SteamGridDB account).
+  steamgriddb_api_key: '',
+  steamgriddb_auto: 'true', // fill in covers, logos and banners for new games
   vapid_public_key: '',
   vapid_private_key: '',
   // ActivityPub (Mastodon, PeerTube and the rest of the fediverse).
@@ -110,7 +113,7 @@ export const DEFAULT_SETTINGS = {
 
 /** Settings that must never be sent to a browser, even an admin's. */
 export const SECRET_SETTINGS = new Set([
-  'instance_private_key', 'network_hub_token', 'network_feed_token_hash', 'network_join_nonce', 'smtp_password', 'vapid_private_key',
+  'instance_private_key', 'network_hub_token', 'network_feed_token_hash', 'network_join_nonce', 'smtp_password', 'vapid_private_key', 'steamgriddb_api_key',
   'ap_instance_private_key',
 ]);
 

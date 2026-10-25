@@ -66,6 +66,9 @@ export function serializeVideo(v) {
     title: v.title,
     description: v.description,
     visibility: v.visibility,
+    // Not published yet: hidden until its details are saved, then it becomes draft_visibility.
+    draft: !!v.draft,
+    draft_visibility: v.draft ? v.draft_visibility || 'public' : null,
     status: v.status,
     progress: v.progress,
     error: v.error,
@@ -373,10 +376,15 @@ videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
     throw e;
   }
   const allowClips = req.body.allow_clips === 'true' || req.body.allow_clips === true ? 1 : 0;
+  // The upload page sends drafts: nothing is published until its details are saved.
+  const draft = req.body.draft === 'true' || req.body.draft === true ? 1 : 0;
 
   db.prepare(
-    "INSERT INTO videos (id, user_id, title, description, visibility, status, original_name, original_path, size_bytes, created_at, updated_at, game_id, allow_clips) VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?)",
-  ).run(id, req.user.id, title, str(req.body.description), visibility, req.file.originalname.slice(0, 255), originalName, req.file.size, t, t, gameId, allowClips);
+    "INSERT INTO videos (id, user_id, title, description, visibility, status, original_name, original_path, size_bytes, created_at, updated_at, game_id, allow_clips, draft, draft_visibility) VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    id, req.user.id, title, str(req.body.description), draft ? 'private' : visibility, req.file.originalname.slice(0, 255), originalName, req.file.size, t, t, gameId, allowClips,
+    draft, draft ? visibility : null,
+  );
   setTags(id, parseTags(req.body.tags));
   indexVideo(id);
   enqueue(id);
@@ -408,8 +416,11 @@ videosRouter.patch('/:id', requireAuth, (req, res) => {
   const title = b.title !== undefined ? str(b.title, 120).trim() : v.title;
   if (!title) throw new HttpError(400, 'Title is required');
   const description = b.description !== undefined ? str(b.description, 5000) : v.description;
-  const visibility = b.visibility !== undefined ? b.visibility : v.visibility;
-  if (!VISIBILITIES.includes(visibility)) throw new HttpError(400, 'Visibility must be public, unlisted or private');
+  // A draft stays private until it is saved with `publish`; until then the choice is kept for later.
+  const publishing = !!v.draft && b.publish === true;
+  const wanted = b.visibility !== undefined ? b.visibility : v.draft ? v.draft_visibility || 'public' : v.visibility;
+  if (!VISIBILITIES.includes(wanted)) throw new HttpError(400, 'Visibility must be public, unlisted or private');
+  const visibility = v.draft && !publishing ? 'private' : wanted;
   const federate = b.federate !== undefined ? (b.federate ? 1 : 0) : v.federate;
   const commentMode = b.comment_mode !== undefined ? b.comment_mode : v.comment_mode || 'inherit';
   if (!['inherit', 'open', 'hold_all', 'off'].includes(commentMode)) throw new HttpError(400, 'Comment mode must be inherit, open, hold_all or off');
@@ -417,9 +428,14 @@ videosRouter.patch('/:id', requireAuth, (req, res) => {
   const gameId = game === undefined ? v.game_id : game;
   const allowClips = b.allow_clips !== undefined ? (b.allow_clips ? 1 : 0) : v.allow_clips || 0;
   const allowOriginal = b.allow_original_download !== undefined ? (b.allow_original_download ? 1 : 0) : v.allow_original_download || 0;
+  const t = now();
   db.prepare(
-    'UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, game_id = ?, allow_clips = ?, allow_original_download = ?, updated_at = ? WHERE id = ?',
-  ).run(title, description, visibility, federate, commentMode, gameId, allowClips, allowOriginal, now(), v.id);
+    `UPDATE videos SET title = ?, description = ?, visibility = ?, federate = ?, comment_mode = ?, game_id = ?, allow_clips = ?, allow_original_download = ?, updated_at = ?,
+       draft = ?, draft_visibility = ?, published_at = CASE WHEN ? THEN (CASE WHEN status = 'ready' THEN ? ELSE NULL END) ELSE published_at END WHERE id = ?`,
+  ).run(
+    title, description, visibility, federate, commentMode, gameId, allowClips, allowOriginal, t,
+    v.draft && !publishing ? 1 : 0, v.draft && !publishing ? wanted : null, publishing ? 1 : 0, t, v.id,
+  );
   if (visibility === 'public') maybeNotifyUpload(v.id);
   apVideoChanged(v.id);
   if (b.tags !== undefined) setTags(v.id, parseTags(b.tags));

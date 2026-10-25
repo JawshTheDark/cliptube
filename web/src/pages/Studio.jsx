@@ -164,7 +164,13 @@ export default function Studio() {
                     </div>
                   </td>
                   <td>
-                    <VisibilityBadge value={v.visibility} />
+                    {v.draft ? (
+                      <Link to={`/studio/edit/${v.id}`} className="badge warn" title="Not published yet: save its details to publish it">
+                        Draft
+                      </Link>
+                    ) : (
+                      <VisibilityBadge value={v.visibility} />
+                    )}
                   </td>
                   <td>
                     <StatusBadge video={v} />

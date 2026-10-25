@@ -58,18 +58,19 @@ export default function Upload() {
     ]);
   };
 
+  // Saving the details is what publishes a clip; until then it waits as a draft only you can see.
   const saveDetails = useCallback(
-    async (key) => {
+    async (key, { publish = true } = {}) => {
       const it = itemsRef.current.find((x) => x.key === key);
       if (!it?.video) return;
       update(key, { saving: true });
       try {
         const { video } = await api(`/videos/${it.video.id}`, {
           method: 'PATCH',
-          body: { title: it.title, description: it.description, tags: it.tags, visibility: it.visibility, game: it.game, allow_clips: it.allow_clips },
+          body: { title: it.title, description: it.description, tags: it.tags, visibility: it.visibility, game: it.game, allow_clips: it.allow_clips, publish },
         });
         update(key, { video, dirty: false, saving: false });
-        toast('Details saved');
+        if (publish) toast(it.visibility === 'private' ? 'Details saved' : 'Details saved and published');
       } catch (e) {
         update(key, { saving: false });
         toast(e.message);
@@ -89,6 +90,7 @@ export default function Upload() {
       fd.append('visibility', it.visibility);
       fd.append('game', it.game);
       fd.append('allow_clips', it.allow_clips ? 'true' : 'false');
+      fd.append('draft', 'true');
       fd.append('file', it.file);
       update(key, { status: 'uploading', progress: 0, error: null });
       const { promise, abort } = uploadWithProgress('/videos', fd, (loaded, total) => update(key, { progress: Math.round((loaded / total) * 100) }));
@@ -96,8 +98,9 @@ export default function Upload() {
       promise
         .then(async ({ video }) => {
           update(key, { status: video.status === 'ready' ? 'ready' : 'processing', video, progress: 100 });
+          // Details typed during the upload are kept, but the clip stays a draft until Save details.
           const cur = itemsRef.current.find((x) => x.key === key);
-          if (cur?.dirty) await saveDetails(key);
+          if (cur?.dirty) await saveDetails(key, { publish: false });
         })
         .catch((e) => update(key, { status: 'failed', error: e.message }))
         .finally(() => delete aborters.current[key]);
@@ -204,7 +207,13 @@ export default function Upload() {
 
       {items.length > 0 && items.every((it) => it.status === 'ready' || it.status === 'failed') && (
         <p className="muted center">
-          All done. <Link to="/studio">Open Studio</Link> to manage your videos.
+          {items.some((it) => it.video?.draft) ? (
+            <>Click Save details on each clip to publish it.</>
+          ) : (
+            <>
+              All done. <Link to="/studio">Open Studio</Link> to manage your videos.
+            </>
+          )}
         </p>
       )}
     </div>
@@ -232,7 +241,7 @@ function UploadItem({ it, onChange, onSave, onCancel, onRemove }) {
       pct = v?.progress ?? 0;
       break;
     case 'ready':
-      statusText = 'Ready to watch';
+      statusText = v?.draft ? 'Ready, not published yet' : 'Ready to watch';
       pct = 100;
       barClass = 'done';
       break;
@@ -277,10 +286,10 @@ function UploadItem({ it, onChange, onSave, onCancel, onRemove }) {
           </span>
         </label>
         <div className="row-actions">
-          <button className="btn btn-primary" disabled={!v || !it.dirty || it.saving} onClick={onSave}>
-            {it.saving ? 'Saving…' : v ? (it.dirty ? 'Save details' : 'Saved') : 'Save details'}
+          <button className="btn btn-primary" disabled={!v || (!it.dirty && !v.draft) || it.saving} onClick={onSave}>
+            {it.saving ? 'Saving…' : v && !it.dirty && !v.draft ? 'Saved' : 'Save details'}
           </button>
-          {!v && it.dirty && <span className="hint">Changes are applied when the upload finishes.</span>}
+          {(!v || v.draft) && <span className="hint">Nothing is published until you click Save details.</span>}
           {v && (
             <Link to={`/watch/${v.id}`} className="btn">
               View

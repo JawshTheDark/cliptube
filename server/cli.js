@@ -21,6 +21,9 @@
  *   user status <username> <active|suspended|banned> [reason]
  *   settings get <key>
  *   settings set <key> <value>
+ *   settings set-secret <steamgriddb_api_key|smtp_password>
+ *                                           Reads the value from standard input (keeps it out of the
+ *                                           command line and shell history), e.g. ... < keyfile
  */
 import { db, getSettings, setSetting, SECRET_SETTINGS } from './db.js';
 import { setUserRole, setUserStatus } from './auth.js';
@@ -141,6 +144,15 @@ async function main() {
       case 'settings get':
         if (SECRET_SETTINGS.has(rest[0])) usage('That setting is secret');
         return console.log(getSettings()[rest[0]] ?? '');
+      case 'settings set-secret': {
+        if (!['steamgriddb_api_key', 'smtp_password'].includes(rest[0])) usage('Secrets that can be set: steamgriddb_api_key, smtp_password');
+        const chunks = [];
+        for await (const c of process.stdin) chunks.push(c);
+        const value = Buffer.concat(chunks).toString('utf8').trim();
+        if (!value) usage('Give the value on standard input');
+        setSetting(rest[0], value);
+        return console.log(`${rest[0]} set`);
+      }
       case 'settings set':
         if (SECRET_SETTINGS.has(rest[0]) || rest[0]?.startsWith('instance_')) usage('That setting cannot be set here');
         setSetting(rest[0], rest.slice(1).join(' '));
