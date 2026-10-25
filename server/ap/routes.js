@@ -44,17 +44,31 @@ apWellKnownRouter.get('/.well-known/webfinger', requireAp, (req, res) => {
     const u = /\/ap\/(users|channels)\/([A-Za-z0-9_]+)$/.exec(resource);
     if (u) name = u[1] === 'channels' ? `${u[2]}_channel` : u[2];
   } else if (String(m[2]).toLowerCase() !== host) throw new HttpError(404, 'Not found');
+  // Answer with the canonical spelling, so servers that re-check the subject find the same account.
   let href = null;
-  if (name === host) href = urls(base).instance();
-  else if (localUser(name)) href = urls(base).person(localUser(name).username);
-  else if (/_channel$/i.test(name || '') && localUser(name.replace(/_channel$/i, ''))) href = urls(base).group(localUser(name.replace(/_channel$/i, '')).username);
+  let canonical = name;
+  let profile = `${base}/`;
+  const person = name && name !== host ? localUser(name) : null;
+  const owner = !person && /_channel$/i.test(name || '') ? localUser(name.replace(/_channel$/i, '')) : null;
+  if (name && name.toLowerCase() === host) {
+    href = urls(base).instance();
+    canonical = host;
+  } else if (person) {
+    href = urls(base).person(person.username);
+    canonical = person.username;
+    profile = `${base}/c/${encodeURIComponent(person.username)}`;
+  } else if (owner) {
+    href = urls(base).group(owner.username);
+    canonical = `${owner.username}_channel`;
+    profile = `${base}/c/${encodeURIComponent(owner.username)}`;
+  }
   if (!href) throw new HttpError(404, 'Not found');
   res.type('application/jrd+json').set('Access-Control-Allow-Origin', '*').json({
-    subject: `acct:${name}@${host}`,
-    aliases: [href],
+    subject: `acct:${canonical}@${host}`,
+    aliases: [href, profile],
     links: [
       { rel: 'self', type: AP_CONTENT_TYPE, href },
-      { rel: 'http://webfinger.net/rel/profile-page', type: 'text/html', href: href.includes('/ap/actor') ? `${base}/` : `${base}/c/${(name || '').replace(/_channel$/, '')}` },
+      { rel: 'http://webfinger.net/rel/profile-page', type: 'text/html', href: profile },
     ],
   });
 });

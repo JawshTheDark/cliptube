@@ -156,6 +156,10 @@ test('discovery: WebFinger, NodeInfo, actors and content negotiation', async () 
   const wfc = await (await fetch(`${base}/.well-known/webfinger?resource=acct:bob_channel@${host}`)).json();
   assert.equal(wfc.links.find((l) => l.rel === 'self').href, `${base}/ap/channels/bob`);
   assert.equal((await fetch(`${base}/.well-known/webfinger?resource=acct:nobody@${host}`)).status, 404);
+  // Handles match whatever the case, and the answer carries the canonical spelling.
+  const wfu = await (await fetch(`${base}/.well-known/webfinger?resource=acct:BOB_Channel@${host}`)).json();
+  assert.equal(wfu.subject, `acct:bob_channel@${host}`);
+  assert.equal(wfu.links.find((l) => l.rel === 'self').href, `${base}/ap/channels/bob`);
 
   const person = await ap('/ap/users/bob');
   assert.match(person.type, /activity\+json/);
