@@ -1,5 +1,6 @@
 import { useMemo, type ReactElement } from 'react';
-import { FlatList, RefreshControl, View, useWindowDimensions } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
+import { useLayout } from '@/lib/layout';
 import { colors } from '@/lib/theme';
 import type { Video } from '@/lib/types';
 import { ShortCard, VideoCard, VideoRow } from './VideoCard';
@@ -16,11 +17,12 @@ type Paged = {
   loadMore: () => void;
 };
 
-type Item = { kind: 'video'; v: Video } | { kind: 'slot' };
+type Item = { kind: 'row'; key: string; videos: Video[] } | { kind: 'slot' };
 
 /**
- * A pull-to-refresh, endlessly scrolling list of videos: full cards, compact rows, or Shorts two to a row.
- * `slot` (the Shorts shelf on the home page) goes after the first `slotAfter` cards.
+ * A pull-to-refresh, endlessly scrolling list of videos: full cards, compact rows, or Shorts. As many fit across as
+ * the screen allows (one card on a phone held upright, up to four on a tablet on its side). `slot` (the Shorts shelf
+ * on the home page) goes across the whole width after about `slotAfter` cards.
  */
 export function VideoList({
   paged,
@@ -43,31 +45,43 @@ export function VideoList({
   slot?: ReactElement | null;
   slotAfter?: number;
 }) {
-  // Two Shorts to a row, 12 on each side and 10 between.
-  const shortWidth = (useWindowDimensions().width - 34) / 2;
+  const layout = useLayout();
+  const cols = shorts ? layout.shortColumns : rows ? (layout.width >= 900 ? 2 : 1) : layout.columns;
+  // Shorts sit 12 from the edges and 10 apart; cards carry their own padding.
+  const gap = shorts ? 10 : 0;
+  const cellWidth = shorts ? (layout.width - 24 - gap * (cols - 1)) / cols : (layout.width - (cols > 1 ? 8 : 0)) / cols;
+
   const data = useMemo<Item[]>(() => {
-    const list: Item[] = paged.items.map((v) => ({ kind: 'video', v }));
-    if (slot && !shorts && list.length) list.splice(Math.min(slotAfter, list.length), 0, { kind: 'slot' });
-    return list;
-  }, [paged.items, slot, shorts, slotAfter]);
+    const out: Item[] = [];
+    for (let i = 0; i < paged.items.length; i += cols) {
+      const videos = paged.items.slice(i, i + cols);
+      out.push({ kind: 'row', key: videos.map((v) => v.id).join(' '), videos });
+    }
+    if (slot && !shorts && out.length) out.splice(Math.min(Math.max(1, Math.round(slotAfter / cols)), out.length), 0, { kind: 'slot' });
+    return out;
+  }, [paged.items, slot, shorts, slotAfter, cols]);
 
   return (
     <FlatList
-      // FlatList can't change its column count in place.
-      key={shorts ? 'shorts' : 'cards'}
       data={data}
-      numColumns={shorts ? 2 : 1}
-      columnWrapperStyle={shorts ? { gap: 10, paddingHorizontal: 12 } : undefined}
-      keyExtractor={(x) => (x.kind === 'video' ? x.v.id : 'slot')}
+      keyExtractor={(x) => (x.kind === 'row' ? `${cols}:${x.key}` : 'slot')}
       renderItem={({ item }) =>
         item.kind === 'slot' ? (
           slot
-        ) : shorts ? (
-          <ShortCard v={item.v} scope={shortsScope} style={{ width: shortWidth, marginBottom: 18 }} />
-        ) : rows ? (
-          <VideoRow v={item.v} />
         ) : (
-          <VideoCard v={item.v} showChannel={showChannel} />
+          <View style={[{ flexDirection: 'row' }, shorts ? { gap, paddingHorizontal: 12 } : cols > 1 ? { paddingHorizontal: 4 } : null]}>
+            {item.videos.map((v) =>
+              shorts ? (
+                <ShortCard key={v.id} v={v} scope={shortsScope} style={{ width: cellWidth, marginBottom: 18 }} />
+              ) : rows ? (
+                <View key={v.id} style={{ width: cellWidth }}>
+                  <VideoRow v={v} />
+                </View>
+              ) : (
+                <VideoCard key={v.id} v={v} showChannel={showChannel} width={cols > 1 ? cellWidth : undefined} />
+              ),
+            )}
+          </View>
         )
       }
       ListHeaderComponent={

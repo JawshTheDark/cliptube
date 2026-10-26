@@ -13,6 +13,7 @@ import { Api } from '@/lib/api';
 import { ago, compact, hostOf } from '@/lib/format';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
+import { useLayout } from '@/lib/layout';
 import { useOnePlayerAtATime } from '@/lib/playback';
 import { openEvents } from '@/lib/sse';
 import { colors, fonts } from '@/lib/theme';
@@ -34,6 +35,8 @@ export default function LiveScreen() {
   const base = foreign || session.server;
   const insets = useSafeAreaInsets();
   const typing = useKeyboardState((k) => k.isVisible);
+  const layout = useLayout();
+  const wide = layout.wide;
   const storeKey = `live_${`${base}_${username}`.replace(/[^A-Za-z0-9]/g, '_')}`;
 
   const [page, setPage] = useState<LivePage | null>(null);
@@ -203,10 +206,12 @@ export default function LiveScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={s.screen} behavior="padding">
+    // Wide: the stream and its details on the left, the chat on the right.
+    <KeyboardAvoidingView style={[s.screen, wide && { flexDirection: 'row' }]} behavior="padding">
+      <View style={wide ? { width: layout.leftPane } : null}>
       {top}
       <View>
-        <LivePlayer key={stream.id} stream={stream} api={api} compact={typing} />
+        <LivePlayer key={stream.id} stream={stream} api={api} compact={typing && !wide} width={wide ? layout.leftPane : undefined} />
         <View style={s.bubbles} pointerEvents="none">
           {bubbles.map((b) => (
             <Text key={b.key} style={[s.bubble, { left: `${b.left}%` }]}>
@@ -216,7 +221,7 @@ export default function LiveScreen() {
         </View>
       </View>
 
-      {!typing && (
+      {(!typing || wide) && (
         <View style={s.info}>
           <View style={s.liveRow}>
             <LiveBadge />
@@ -236,7 +241,9 @@ export default function LiveScreen() {
           </ApiScope>
         </View>
       )}
+      </View>
 
+      <View style={[{ flex: 1 }, wide && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.hairline, paddingTop: insets.top }]}>
       <FlatList
         ref={list}
         style={{ flex: 1 }}
@@ -278,13 +285,16 @@ export default function LiveScreen() {
           {!foreign && <IconButton name="login" label="Sign in" onPress={() => router.push('/login')} />}
         </View>
       )}
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 /** The live player: low-latency HLS from the channel's server, with the native controls. */
-function LivePlayer({ stream, api, compact }: { stream: LiveStream; api: Api; compact: boolean }) {
-  const { width, height } = useWindowDimensions();
+function LivePlayer({ stream, api, compact, width: paneWidth }: { stream: LiveStream; api: Api; compact: boolean; width?: number }) {
+  const window = useWindowDimensions();
+  const width = paneWidth ?? window.width;
+  const height = window.height;
   const url = api.abs(stream.hls_url)!;
   const source = useMemo<VideoSource>(
     () => ({ uri: url, headers: api.authFor(url), contentType: 'hls', metadata: { title: stream.title, artist: stream.channel.display_name } }),
@@ -292,7 +302,7 @@ function LivePlayer({ stream, api, compact }: { stream: LiveStream; api: Api; co
   );
   const player = useVideoPlayer(source, (p) => p.play());
   useOnePlayerAtATime(player);
-  const h = Math.min(width * (9 / 16), height * (compact ? 0.2 : 0.4));
+  const h = Math.min(width * (9 / 16), height * (compact ? 0.2 : paneWidth ? 0.6 : 0.4));
   return (
     <View style={{ width, height: h, backgroundColor: '#000' }}>
       <VideoView player={player} style={{ width: '100%', height: '100%' }} nativeControls contentFit="contain" allowsPictureInPicture fullscreenOptions={{ enable: true, orientation: 'landscape' }} />

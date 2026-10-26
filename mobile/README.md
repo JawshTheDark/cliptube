@@ -40,6 +40,7 @@ Watching and browsing work on any version.
 | Watch parties | Synced playback with chat, reactions, a shared queue and host controls, over the server's event stream (1.8+) |
 | Live streams | Who's live on Home, live pages with the HLS stream, live chat (signed in or as a guest), reactions and chat moderation (1.9+) |
 | Inbox | Notifications with an unread badge on the tab, checked every minute while the app is open |
+| Tablets | Turns with the device; wide screens put the player beside the details (watch) or the chat (live, parties), and feeds show up to four cards across. Density (Comfortable, Compact, Dense) in App settings fits more videos with smaller cards |
 | Servers | Pick your main server on first launch (the app opens on it; change it under You → App settings), keep more servers with a sign-in for each, and switch between them |
 | Links | `https://<server>/watch/…`, `/shorts/…`, `/c/…` and `/n/…` links for the three known servers can open in the app |
 

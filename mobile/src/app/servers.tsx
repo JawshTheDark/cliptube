@@ -9,6 +9,7 @@ import { hostLabel, normalizeServerUrl } from '@/lib/api';
 import { useOurTubePeers } from '@/lib/profiles';
 import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
+import { readable } from '@/lib/layout';
 
 /**
  * Each OurTube server is its own site with its own accounts. The app keeps a sign-in per server and
@@ -24,7 +25,7 @@ export default function Servers() {
   // Suggestions: the open server's network peers that aren't saved yet.
   // Only the ones running OurTube: the list also holds the PeerTube instances the server follows.
   const peers = (site?.network_peers || [])
-    .map((p) => ({ url: safeUrl(p.url) as string, name: p.name }))
+    .map((p) => ({ url: safeUrl(p.url) as string, name: p.name, software: p.software }))
     .filter((p, i, all) => p.url && !saved.has(p.url) && all.findIndex((x) => x.url === p.url) === i);
   const suggestions = useOurTubePeers(peers);
 
@@ -82,7 +83,7 @@ export default function Servers() {
     );
 
   return (
-    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 12 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
+    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={[{ padding: 16, gap: 12 }, readable]} keyboardShouldPersistTaps="handled" bottomOffset={24}>
         <Text style={s.section}>Your servers</Text>
         <Text style={s.hint}>Tap a server to switch to it for now. The app opens on your main server.</Text>
         {servers.map((x) => (

@@ -7,6 +7,7 @@ import { useScope, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
 import { videoHref } from '@/lib/api';
 import { ago, duration, plural } from '@/lib/format';
+import { useDensity } from '@/lib/density';
 import { colors, thumbRadius } from '@/lib/theme';
 import type { Video } from '@/lib/types';
 import { ServerTag } from './ServerTag';
@@ -61,25 +62,28 @@ function useOpenChannel(v: Video) {
   };
 }
 
-/** Feed card: a rounded thumbnail, the creator's avatar on its bottom-left corner, title and details below. */
-export const VideoCard = memo(function VideoCard({ v, showChannel = true }: { v: Video; showChannel?: boolean }) {
+/** Feed card: a rounded thumbnail, the creator's avatar on its bottom-left corner, title and details below. `width` puts it in a column. */
+export const VideoCard = memo(function VideoCard({ v, showChannel = true, width }: { v: Video; showChannel?: boolean; width?: number }) {
   const { api, foreign } = useScope();
   const openChannel = useOpenChannel(v);
+  // Compact and Dense (App settings) shrink the text and avatar along with the card.
+  const { scale } = useDensity();
+  const small = scale < 1 ? { title: { fontSize: 15 * scale, lineHeight: 20 * scale }, meta: { fontSize: 12.5 * scale } } : null;
   const meta = [showChannel ? v.uploader.display_name : null, plural(v.views, 'view'), when(v)].filter(Boolean).join(' · ');
   return (
-    <Pressable onPress={() => router.push(withServer(videoHref(v), foreign) as any)} style={({ pressed }) => [s.card, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={titleOf(v)}>
+    <Pressable onPress={() => router.push(withServer(videoHref(v), foreign) as any)} style={({ pressed }) => [s.card, width ? { width, paddingHorizontal: 8 } : null, scale < 1 && { marginBottom: 20 * scale }, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={titleOf(v)}>
       <Thumb v={v} style={s.cardThumb} />
       <View style={s.cardBody}>
         {showChannel && (
           <Pressable onPress={openChannel} hitSlop={6} style={s.cardAvatar} accessibilityRole="link" accessibilityLabel={`${v.uploader.display_name}'s channel`}>
-            <Avatar uri={api.abs(v.uploader.avatar_url)} name={v.uploader.display_name} size={38} />
+            <Avatar uri={api.abs(v.uploader.avatar_url)} name={v.uploader.display_name} size={Math.round(38 * scale)} />
           </Pressable>
         )}
-        <View style={{ flex: 1, paddingTop: 8 }}>
-          <Text style={s.title} numberOfLines={2}>
+        <View style={{ flex: 1, paddingTop: 8 * scale }}>
+          <Text style={[s.title, small?.title]} numberOfLines={2}>
             {titleOf(v)}
           </Text>
-          <Text style={s.meta} numberOfLines={1}>
+          <Text style={[s.meta, small?.meta]} numberOfLines={1}>
             {meta}
             {v.visibility && v.visibility !== 'public' ? ` · ${v.draft ? 'draft' : v.visibility}` : ''}
           </Text>
@@ -105,13 +109,14 @@ export const VideoCard = memo(function VideoCard({ v, showChannel = true }: { v:
  */
 export const ShortCard = memo(function ShortCard({ v, style, scope }: { v: Video; style?: StyleProp<ViewStyle>; scope?: 'all' | 'local' }) {
   const { foreign } = useScope();
+  const { scale } = useDensity();
   return (
     <Pressable onPress={() => router.push(shortsHref(v, { scope, foreign }) as any)} style={({ pressed }) => [style, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={titleOf(v)}>
       <Thumb v={v} style={s.shortThumb} small />
-      <Text style={s.shortTitle} numberOfLines={2}>
+      <Text style={[s.shortTitle, scale < 1 && { fontSize: 14 * scale, lineHeight: 19 * scale }]} numberOfLines={2}>
         {titleOf(v)}
       </Text>
-      <Text style={s.shortMeta} numberOfLines={1}>
+      <Text style={[s.shortMeta, scale < 1 && { fontSize: 12 * scale }]} numberOfLines={1}>
         {plural(v.views, 'view')}
       </Text>
     </Pressable>
@@ -121,6 +126,7 @@ export const ShortCard = memo(function ShortCard({ v, style, scope }: { v: Video
 /** Compact row: small thumbnail on the left. Used for related videos, history and your own videos. */
 export const VideoRow = memo(function VideoRow({ v, onPress, right, extra }: { v: Video; onPress?: () => void; right?: React.ReactNode; extra?: string }) {
   const { foreign } = useScope();
+  const { scale } = useDensity();
   return (
     <Pressable
       onPress={onPress || (() => router.push(withServer(videoHref(v), foreign) as any))}
@@ -128,9 +134,9 @@ export const VideoRow = memo(function VideoRow({ v, onPress, right, extra }: { v
       accessibilityRole="button"
       accessibilityLabel={titleOf(v)}
     >
-      <Thumb v={v} style={s.rowThumb} small />
+      <Thumb v={v} style={[s.rowThumb, scale < 1 && { width: 160 * scale }]} small />
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={[s.title, { fontSize: 14, lineHeight: 19 }]} numberOfLines={2}>
+        <Text style={[s.title, { fontSize: 14 * scale, lineHeight: 19 * scale }]} numberOfLines={2}>
           {titleOf(v)}
         </Text>
         <Text style={s.meta} numberOfLines={1}>

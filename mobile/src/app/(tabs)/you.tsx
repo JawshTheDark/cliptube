@@ -7,6 +7,7 @@ import { Avatar, Button, Icon, type IconName } from '@/components/ui';
 import { useSession } from '@/lib/session';
 import { hostLabel } from '@/lib/api';
 import { colors } from '@/lib/theme';
+import { readable } from '@/lib/layout';
 
 function Row({ icon, label, onPress, hint }: { icon: IconName; label: string; onPress: () => void; hint?: string }) {
   return (
@@ -33,7 +34,7 @@ export default function You() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppHeader title="You" right={<View />} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView contentContainerStyle={[{ paddingBottom: 32 }, readable]}>
         {user ? (
           <Pressable style={s.profile} onPress={() => router.push(`/c/${encodeURIComponent(user.username)}`)}>
             <Avatar uri={api.abs(user.avatar_url)} name={user.display_name} size={64} />

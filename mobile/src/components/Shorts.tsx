@@ -111,11 +111,11 @@ function ShortPlayer({ v, api, active, muted }: { v: Video; api: Api; active: bo
   );
 }
 
-function Action({ icon, label, onPress, active, disabled }: { icon: any; label: string; onPress: () => void; active?: boolean; disabled?: boolean }) {
+function Action({ icon, label, onPress, active, disabled, small }: { icon: any; label: string; onPress: () => void; active?: boolean; disabled?: boolean; small?: boolean }) {
   return (
     <Pressable onPress={onPress} disabled={disabled} style={[s.action, disabled && { opacity: 0.45 }]} accessibilityRole="button" accessibilityLabel={label} hitSlop={4}>
-      <View style={[s.actionIcon, active && { backgroundColor: colors.accent }]}>
-        <Icon name={icon} size={26} color="#fff" />
+      <View style={[s.actionIcon, small && { width: 40, height: 40, borderRadius: 20 }, active && { backgroundColor: colors.accent }]}>
+        <Icon name={icon} size={small ? 22 : 26} color="#fff" />
       </View>
       <Text style={s.actionLabel} numberOfLines={1}>
         {label}
@@ -151,6 +151,8 @@ const ShortSlide = memo(function ShortSlide({ v, api, W, H, active, near, muted,
     fw = H * aspect;
   }
   const thumb = api.abs(v.community?.thumbnail_url || v.thumbnail_url);
+  // A short screen (a phone on its side): smaller buttons, lower down, beside the frame rather than over the title.
+  const tight = H < 640;
   const title = v.community?.title || v.title;
   const u = v.uploader;
   return (
@@ -161,12 +163,12 @@ const ShortSlide = memo(function ShortSlide({ v, api, W, H, active, near, muted,
       </View>
       {active && (
         <>
-          <View style={[s.actions, { bottom: bottomInset + 96 }]}>
-            <Action icon={detail?.my_like === 1 ? 'thumb-up' : 'thumb-up-off-alt'} label={compact(detail ? detail.likes : v.likes)} active={detail?.my_like === 1} disabled={!!detail && !detail.can_like} onPress={() => onLike(1)} />
-            <Action icon={detail?.my_like === -1 ? 'thumb-down' : 'thumb-down-off-alt'} label="Dislike" active={detail?.my_like === -1} disabled={!!detail && !detail.can_like} onPress={() => onLike(-1)} />
-            <Action icon="chat-bubble-outline" label={detail?.comments ? compact(detail.comments) : 'Comments'} disabled={!!detail && !detail.can_comment} onPress={onComments} />
-            <Action icon="share" label="Share" onPress={onShare} />
-            <Action icon="open-in-full" label="Full page" onPress={onFull} />
+          <View style={[s.actions, { bottom: bottomInset + (tight ? 12 : 96) }, tight && { gap: 6 }]}>
+            <Action icon={detail?.my_like === 1 ? 'thumb-up' : 'thumb-up-off-alt'} label={compact(detail ? detail.likes : v.likes)} small={tight} active={detail?.my_like === 1} disabled={!!detail && !detail.can_like} onPress={() => onLike(1)} />
+            <Action icon={detail?.my_like === -1 ? 'thumb-down' : 'thumb-down-off-alt'} label="Dislike" small={tight} active={detail?.my_like === -1} disabled={!!detail && !detail.can_like} onPress={() => onLike(-1)} />
+            <Action icon="chat-bubble-outline" label={detail?.comments ? compact(detail.comments) : 'Comments'} small={tight} disabled={!!detail && !detail.can_comment} onPress={onComments} />
+            <Action icon="share" label="Share" small={tight} onPress={onShare} />
+            <Action icon="open-in-full" label="Full page" small={tight} onPress={onFull} />
           </View>
           <View style={[s.info, { paddingBottom: bottomInset + 18 }]} pointerEvents="box-none">
             <View style={s.channelRow}>
@@ -216,6 +218,7 @@ export function ShortsScreen({ id, peer, remote, server, scope: scopeParam }: Pr
   const [muted, setMuted] = useState(false);
   const [size, setSize] = useState<{ W: number; H: number } | null>(null);
   const counted = useRef(new Set<string>());
+  const listRef = useRef<FlatList<Video>>(null);
   const anchor = useRef<number | null>(null);
 
   useEffect(() => {
@@ -301,6 +304,12 @@ export function ShortsScreen({ id, peer, remote, server, scope: scopeParam }: Pr
     } else if (current.uploader.username) router.push(withServer(`/c/${encodeURIComponent(current.uploader.username)}`, foreign) as any);
   }, [current, foreign, session.servers, session.site]);
 
+  // Turning the device changes the page height: stay on the same Short.
+  useEffect(() => {
+    if (size) listRef.current?.scrollToOffset({ offset: active * size.H, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size?.W, size?.H]);
+
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     if (!size || size.W !== width || size.H !== height) setSize({ W: width, H: height });
@@ -318,6 +327,7 @@ export function ShortsScreen({ id, peer, remote, server, scope: scopeParam }: Pr
           </Empty>
         ) : (
           <FlatList
+            ref={listRef}
             data={list}
             keyExtractor={shortKey}
             renderItem={({ item, index }) => (
@@ -352,7 +362,8 @@ export function ShortsScreen({ id, peer, remote, server, scope: scopeParam }: Pr
         )}
         <View style={[s.top, { paddingTop: insets.top + 4 }]} pointerEvents="box-none">
           <IconButton name="arrow-back" label="Back" onPress={back} color="#fff" />
-          <View style={{ flex: 1 }} />
+          {/* On a short screen the side buttons reach the top: mute sits next to Back instead. */}
+          {!(size && size.H < 640) && <View style={{ flex: 1 }} />}
           <IconButton name={muted ? 'volume-off' : 'volume-up'} label={muted ? 'Turn the sound on' : 'Mute'} onPress={() => setMuted((m) => !m)} color="#fff" />
         </View>
       </View>

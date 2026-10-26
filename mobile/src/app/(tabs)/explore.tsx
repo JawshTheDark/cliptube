@@ -82,7 +82,7 @@ function Games() {
   const { width } = useWindowDimensions();
   const [games, setGames] = useState<Game[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const cols = width > 700 ? 4 : 2;
+  const cols = Math.max(2, Math.min(6, Math.floor(width / 210)));
   const tile = (width - 12 * (cols + 1)) / cols;
 
   const load = () => {

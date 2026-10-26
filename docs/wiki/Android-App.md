@@ -17,6 +17,7 @@ the website, so nothing needs setting up on the server beyond running version 1.
 - [Servers and signing in](#servers-and-signing-in)
 - [What you can do](#what-you-can-do)
 - [Which server a video is on](#which-server-a-video-is-on)
+- [Tablets, turning and density](#tablets-turning-and-density)
 - [Shorts](#shorts)
 - [Comments and times](#comments-and-times)
 - [Playlists and Watch later](#playlists-and-watch-later)
@@ -36,7 +37,7 @@ the website, so nothing needs setting up on the server beyond running version 1.
    network. The app opens on your main server from then on.
 
 Newer releases install over older ones and keep your servers and sign-ins, including over the ClipTube-named
-releases before 1.4.0. The app needs Android 7 or newer.
+releases before 1.4.0. The app needs Android 7 or newer, and works on phones and tablets.
 
 ## Servers and signing in
 
@@ -104,6 +105,29 @@ colored dot and the name of the server the video lives on, this server's own vid
 pages and live cards show the same tag. The color comes from the server's address, so a server has the same color
 in the app and on every server's website (see [Network](Network.md)). A server that isn't in a network shows no
 tags, except on videos and streams from other servers.
+
+## Tablets, turning and density
+
+The app turns with the device (since 1.6.0), and turning keeps the video playing where it was.
+
+- **Held upright,** it looks as it always has: the player on top and everything else below it.
+- **On its side, or on a tablet held sideways,** the watch page puts the player and its details on the left and
+  *More videos* on the right. Live streams and watch parties put the video on the left and the chat (and the
+  party's queue and people) on the right. A phone on its side gets the same split, with a smaller player.
+- **Feeds fill the width.** Home, channel and game pages show more cards side by side as the screen gets wider: one
+  on a phone held upright, two on a tablet held upright, three or four on a tablet on its side. Shorts fit as many
+  as the width allows. Forms and settings stay a comfortable width in the middle of a wide screen.
+
+**Density** under **You → App settings** chooses how much fits on the screen, with the same three choices as the
+website's *Layout density*:
+
+| Density | What changes |
+| --- | --- |
+| **Comfortable** | The default: big cards, one across a phone held upright |
+| **Compact** | Slightly smaller cards and text, and more across a tablet or a phone on its side |
+| **Dense** | The smallest cards and text: two across a phone held upright, up to six across a tablet |
+
+It applies to Home, channel and game pages, Shorts and lists like History, and the app remembers it.
 
 ## Shorts
 

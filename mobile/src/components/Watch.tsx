@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Api } from '@/lib/api';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
+import { useLayout } from '@/lib/layout';
 import { seekCurrent, useOnePlayerAtATime } from '@/lib/playback';
 import { ago, compact, hostOf, plural } from '@/lib/format';
 import { colors, fonts } from '@/lib/theme';
@@ -41,6 +42,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
   const base = foreign || session.server;
   const isRemote = !!peer && !!remote;
   const insets = useSafeAreaInsets();
+  const layout = useLayout();
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -337,18 +339,27 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
         <Text style={s.meta}>{data.can.comments ? 'Tap to read and add comments' : 'Tap to read comments'}</Text>
       </Pressable>
 
-      {data.related.length > 0 && <Text style={s.sectionTitle}>More videos</Text>}
     </View>
   );
+  const relatedTitle = data.related.length > 0 ? <Text style={s.sectionTitle}>More videos</Text> : null;
+  const wide = layout.wide;
 
   return (
     <ApiScope value={scope}>
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <View style={{ paddingTop: insets.top, backgroundColor: '#000' }}>
+      {/*
+        Upright: the player on top, then the details and more videos below. Wide (a tablet, or a phone on its side):
+        the player and details on the left, more videos on the right. The player keeps its place in the tree either
+        way, so turning the device doesn't restart the video.
+      */}
+      <View style={{ flex: 1, flexDirection: wide ? 'row' : 'column', backgroundColor: colors.bg }}>
+        <View style={wide ? { width: layout.leftPane } : null}>
+          <View style={{ paddingTop: insets.top, backgroundColor: '#000' }}>
           <Player
             key={v.id}
             video={v}
             api={api}
+            width={wide ? layout.leftPane : undefined}
+            maxHeight={wide ? layout.height * 0.8 : undefined}
             resumeAt={signedIn && !list ? v.resume_at || 0 : 0}
             onTime={reportProgress}
             onEnd={() => {
@@ -357,12 +368,20 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
             }}
           />
           {back}
+          </View>
+          {wide && (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}>
+              {info}
+            </ScrollView>
+          )}
         </View>
         <FlatList
+          style={wide ? { flex: 1, borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.hairline } : undefined}
+          contentContainerStyle={wide ? { paddingTop: insets.top, paddingRight: insets.right } : undefined}
           data={data.related}
           keyExtractor={(x) => x.id}
           renderItem={({ item }) => <VideoRow v={item} />}
-          ListHeaderComponent={info}
+          ListHeaderComponent={wide ? (relatedTitle ?? undefined) : <>{info}{relatedTitle}</>}
           ListFooterComponent={<View style={{ height: 24 + insets.bottom }} />}
         />
       </View>
@@ -371,8 +390,26 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
 }
 
 /** The native player (Media3 on Android). Sends the sign-in header only to the video's own server. */
-function Player({ video, api, resumeAt, onTime, onEnd }: { video: Video; api: Api; resumeAt: number; onTime: (t: number) => void; onEnd?: () => void }) {
-  const { width, height } = useWindowDimensions();
+function Player({
+  video,
+  api,
+  resumeAt,
+  onTime,
+  onEnd,
+  width: paneWidth,
+  maxHeight,
+}: {
+  video: Video;
+  api: Api;
+  resumeAt: number;
+  onTime: (t: number) => void;
+  onEnd?: () => void;
+  width?: number;
+  maxHeight?: number;
+}) {
+  const window = useWindowDimensions();
+  const width = paneWidth ?? window.width;
+  const height = window.height;
   const url = api.abs(video.hls_url || video.video_url);
   const source = useMemo<VideoSource>(
     () =>
@@ -409,7 +446,7 @@ function Player({ video, api, resumeAt, onTime, onEnd }: { video: Video; api: Ap
   });
 
   const aspect = video.width && video.height ? video.width / video.height : 16 / 9;
-  const h = Math.min(width / aspect, height * 0.62);
+  const h = Math.min(width / aspect, maxHeight ?? height * 0.62);
 
   if (!url) {
     const processing = video.status !== 'ready';

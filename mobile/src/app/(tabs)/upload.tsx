@@ -11,6 +11,7 @@ import { emptyFields, VideoForm, type VideoFields } from '@/components/VideoForm
 import { useSession } from '@/lib/session';
 import { bytes } from '@/lib/format';
 import { colors } from '@/lib/theme';
+import { readable } from '@/lib/layout';
 import type { Video } from '@/lib/types';
 
 type Picked = { uri: string; name: string; size: number | null; type: string; lastModified: number | null };
@@ -169,7 +170,7 @@ export default function Upload() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppHeader title="Upload" />
-      <KeyboardAwareScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
+      <KeyboardAwareScrollView contentContainerStyle={[{ padding: 16, gap: 16 }, readable]} keyboardShouldPersistTaps="handled" bottomOffset={24}>
         {file ? (
           <View style={s.fileCard}>
             <Icon name="movie" size={28} color={colors.text} />

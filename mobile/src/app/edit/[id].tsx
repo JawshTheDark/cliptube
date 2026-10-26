@@ -7,6 +7,7 @@ import { Button, ErrorBox, Loading, toast } from '@/components/ui';
 import { VideoForm, type VideoFields } from '@/components/VideoForm';
 import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
+import { readable } from '@/lib/layout';
 import type { Video } from '@/lib/types';
 
 export default function EditVideo() {
@@ -81,7 +82,7 @@ export default function EditVideo() {
     ]);
 
   return (
-    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
+    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={[{ padding: 16, gap: 16 }, readable]} keyboardShouldPersistTaps="handled" bottomOffset={24}>
         {video.draft && <Text style={{ color: colors.warn }}>This video is a draft. Saving publishes it.</Text>}
         <VideoForm value={fields} onChange={setFields} />
         <Button title={video.draft ? 'Publish' : 'Save'} kind="primary" onPress={save} busy={busy} />

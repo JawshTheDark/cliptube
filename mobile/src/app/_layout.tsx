@@ -7,6 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Welcome } from '@/components/Welcome';
+import { DensityProvider } from '@/lib/density';
 import { SessionProvider, useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
 
@@ -80,8 +81,10 @@ export default function RootLayout() {
       <KeyboardProvider>
         <ThemeProvider value={theme}>
           <SessionProvider>
-            <StatusBar style="light" />
-            <Root />
+            <DensityProvider>
+              <StatusBar style="light" />
+              <Root />
+            </DensityProvider>
           </SessionProvider>
         </ThemeProvider>
       </KeyboardProvider>

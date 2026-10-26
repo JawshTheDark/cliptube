@@ -10,6 +10,7 @@ import { ago } from '@/lib/format';
 import { knownServers, openProfile } from '@/lib/profiles';
 import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
+import { readable } from '@/lib/layout';
 import type { LinksState, OwnLink } from '@/lib/types';
 
 /**
@@ -76,7 +77,7 @@ export default function LinkedAccounts() {
   const off = !s.enabled;
 
   return (
-    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
+    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={[{ padding: 16, gap: 14 }, readable]} keyboardShouldPersistTaps="handled" bottomOffset={24}>
       <Text style={s_.hint}>
         Have accounts on other OurTube servers, or on Mastodon? Link them and every server shows them as one person: Also on
         on your channel, your comments from any of them marked as the uploader’s, and one button to subscribe to all of them.

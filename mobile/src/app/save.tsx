@@ -7,6 +7,7 @@ import { Button, Empty, ErrorBox, Icon, Loading, toast } from '@/components/ui';
 import { f } from '@/components/VideoForm';
 import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
+import { readable } from '@/lib/layout';
 import type { PlaylistSummary, Visibility } from '@/lib/types';
 
 /** Save a video to Watch later or a playlist: tick the lists it should be in, or make a new one. */
@@ -75,7 +76,7 @@ export default function SaveSheet() {
   };
 
   return (
-    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 10 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
+    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={[{ padding: 16, gap: 10 }, readable]} keyboardShouldPersistTaps="handled" bottomOffset={24}>
       {!!title && (
         <Text style={s.hint} numberOfLines={2}>
           {title}

@@ -8,12 +8,13 @@ import { Api, hostLabel, normalizeServerUrl } from '@/lib/api';
 import { NETWORK_DIRECTORY, useSession } from '@/lib/session';
 import { isOurTube } from '@/lib/profiles';
 import { colors, fonts } from '@/lib/theme';
+import { readable } from '@/lib/layout';
 import { LogoMark } from './Logo';
 import type { Site } from '@/lib/types';
 import { Button, Icon } from './ui';
 import { f } from './VideoForm';
 
-type Suggestion = { url: string; name: string };
+type Suggestion = { url: string; name: string; software?: string | null };
 
 /**
  * First launch: the user picks their main server (the one they have an account on, or want to browse). The
@@ -33,15 +34,20 @@ export function Welcome() {
       .then((s) => {
         const list: Suggestion[] = [{ url: NETWORK_DIRECTORY, name: s.site_name }];
         for (const p of s.network_peers || []) {
+          if (p.software && p.software !== 'ourtube') continue; // a PeerTube (or other) server the hub follows
           try {
-            list.push({ url: normalizeServerUrl(p.url), name: p.name });
+            list.push({ url: normalizeServerUrl(p.url), name: p.name, software: p.software });
           } catch {
             /* skip */
           }
         }
         // Only OurTube servers: the peer list also holds PeerTube instances the hub follows.
         setSuggestions([list[0]]);
-        for (const x of list.slice(1)) isOurTube(x.url).then((yes) => yes && setSuggestions((cur) => (cur.some((c) => c.url === x.url) ? cur : [...cur, x])));
+        const add = (x: Suggestion) => setSuggestions((cur) => (cur.some((c) => c.url === x.url) ? cur : [...cur, x]));
+        for (const x of list.slice(1)) {
+          if (x.software === 'ourtube') add(x);
+          else isOurTube(x.url).then((yes) => yes && add(x));
+        }
       })
       .catch(() => setSuggestions([]));
   }, []);
@@ -62,7 +68,7 @@ export function Welcome() {
   return (
     <KeyboardAwareScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={[s.page, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}
+      contentContainerStyle={[s.page, readable, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}
       keyboardShouldPersistTaps="handled"
       bottomOffset={24}
     >

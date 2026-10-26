@@ -5,11 +5,14 @@ import { Api } from './api';
 import type { Site } from './types';
 
 /**
- * Addresses the app knows to be OurTube servers: the saved ones. A server's network peers aren't trusted as such any
- * more: since 1.16 the list also holds the PeerTube instances it follows; links to them are checked first.
+ * Addresses the app knows to be OurTube servers: the saved ones, and the network peers the server marks as OurTube
+ * (`software`, 1.19+). Since 1.16 the peer list also holds the PeerTube instances it follows, so unmarked peers
+ * are checked before a link to them opens in the app.
  */
-export function knownServers(saved: { url: string }[], _site?: Site | null): Set<string> {
-  return new Set(saved.map((s) => s.url));
+export function knownServers(saved: { url: string }[], site?: Site | null): Set<string> {
+  const out = new Set(saved.map((s) => s.url));
+  for (const p of site?.network_peers || []) if (p.software === 'ourtube') out.add(p.url.replace(/\/+$/, '').toLowerCase());
+  return out;
 }
 
 /**
@@ -58,12 +61,15 @@ export async function openChannelLink(url: string, known: Set<string>) {
  * The network peers that are OurTube servers, asked once each: the others (PeerTube instances the server follows)
  * can't be added or signed in to. Fills in as the answers arrive.
  */
-export function useOurTubePeers(peers: { url: string; name: string }[]): { url: string; name: string }[] {
+export function useOurTubePeers<P extends { url: string; name: string; software?: string | null }>(peers: P[]): P[] {
   const [ok, setOk] = useState<Set<string>>(new Set());
-  const key = peers.map((p) => p.url).join(' ');
+  const key = peers.map((p) => `${p.url}:${p.software ?? ''}`).join(' ');
   useEffect(() => {
     let live = true;
+    // Marked by the server (1.19+): no need to ask. Unmarked (older servers, or not read yet): ask the peer.
+    setOk(new Set(peers.filter((p) => p.software === 'ourtube').map((p) => p.url)));
     for (const p of peers) {
+      if (p.software) continue;
       isOurTube(p.url).then((yes) => {
         if (yes && live) setOk((x) => (x.has(p.url) ? x : new Set(x).add(p.url)));
       });

@@ -14,6 +14,7 @@ import { duration } from '@/lib/format';
 import { refFromLink } from '@/lib/refs';
 import { useLinkedApi } from '@/lib/scope';
 import { useSession } from '@/lib/session';
+import { useLayout } from '@/lib/layout';
 import { useOnePlayerAtATime } from '@/lib/playback';
 import { openEvents } from '@/lib/sse';
 import { colors } from '@/lib/theme';
@@ -60,6 +61,8 @@ export default function PartyScreen() {
   const stateRef = useRef<PartyState | null>(null);
   // While typing, the player shrinks and the title and tabs step aside, so the chat stays in view.
   const typing = useKeyboardState((k) => k.isVisible);
+  const layout = useLayout();
+  const wide = layout.wide;
 
   // People without an account on this server join as guests, with a token kept per party.
   useEffect(() => {
@@ -222,7 +225,9 @@ export default function PartyScreen() {
   const control = (action: string, extra: Record<string, unknown> = {}) => call('/control', 'POST', { action, ...extra }).catch((e: any) => toast(e.message));
 
   return (
-    <KeyboardAvoidingView style={s.screen} behavior="padding">
+    // Wide: the video and what's playing on the left; chat, queue and people on the right.
+    <KeyboardAvoidingView style={[s.screen, wide && { flexDirection: 'row' }]} behavior="padding">
+      <View style={wide ? { width: layout.leftPane } : null}>
       {top}
       <View>
         {current?.video?.video_url ? (
@@ -238,7 +243,8 @@ export default function PartyScreen() {
             hasNext={index >= 0 && index < party.queue.length - 1}
             onControl={control}
             onStepOut={() => setFollowing((x) => !x)}
-            compact={typing}
+            compact={typing && !wide}
+            width={wide ? layout.leftPane : undefined}
           />
         ) : (
           <View style={s.noVideo}>
@@ -255,15 +261,18 @@ export default function PartyScreen() {
         </View>
       </View>
 
-      {!typing && (
-        <>
+      {(!typing || wide) && (
           <View style={s.infoRow}>
             <Text style={s.nowTitle} numberOfLines={1}>
               {current ? current.video?.community?.title || current.title : 'Nothing playing'}
             </Text>
             <Text style={s.hint}>{`${party.members.length} watching${!following ? ' · you stepped out' : ''}`}</Text>
           </View>
+      )}
+      </View>
 
+      <View style={[{ flex: 1 }, wide && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.hairline, paddingTop: insets.top }]}>
+      {(!typing || wide) && (
           <View style={s.tabs}>
             {(['chat', 'queue', 'people'] as Tab[]).map((t) => (
               <Pressable key={t} onPress={() => setTab(t)} style={[s.tab, tab === t && s.tabOn]}>
@@ -273,7 +282,6 @@ export default function PartyScreen() {
               </Pressable>
             ))}
           </View>
-        </>
       )}
 
       <View style={{ flex: 1 }}>
@@ -284,6 +292,7 @@ export default function PartyScreen() {
         ) : (
           <People party={party} call={call} base={base} onEnded={() => setEnded(true)} />
         )}
+      </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -303,6 +312,7 @@ function PartyPlayer({
   onControl,
   onStepOut,
   compact = false,
+  width: paneWidth,
 }: {
   item: PlaylistItem;
   api: Api;
@@ -315,8 +325,11 @@ function PartyPlayer({
   onControl: (action: string, extra?: Record<string, unknown>) => void;
   onStepOut: () => void;
   compact?: boolean;
+  width?: number;
 }) {
-  const { width, height } = useWindowDimensions();
+  const window = useWindowDimensions();
+  const width = paneWidth ?? window.width;
+  const height = window.height;
   const view = useRef<VideoView>(null);
   const v = item.video!;
   const url = api.abs(v.video_url)!;
@@ -360,7 +373,7 @@ function PartyPlayer({
   }, [following, ready, player, item.id, stateRef, offset]);
 
   const aspect = v.width && v.height ? v.width / v.height : 16 / 9;
-  const h = Math.min(width / aspect, height * (compact ? 0.2 : 0.42));
+  const h = Math.min(width / aspect, height * (compact ? 0.2 : paneWidth ? 0.6 : 0.42));
   const total = player.duration || v.duration || 0;
   const seek = (to: number) => onControl('seek', { position: Math.max(0, Math.min(total || to, to)) });
   // Out of step: the viewer's own play button.

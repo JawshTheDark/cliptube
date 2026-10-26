@@ -8,6 +8,7 @@ import { Field, f } from '@/components/VideoForm';
 import { hostLabel, isInsecure } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
+import { readable } from '@/lib/layout';
 
 export default function Login() {
   const { server, site, signIn, register } = useSession();
@@ -46,7 +47,7 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
+    <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={[{ padding: 20, gap: 16 }, readable]} keyboardShouldPersistTaps="handled" bottomOffset={24}>
         <View style={s.server}>
           <Icon name="dns" size={20} color={colors.text2} />
           <View style={{ flex: 1 }}>

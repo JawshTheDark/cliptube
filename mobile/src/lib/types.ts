@@ -22,7 +22,8 @@ export type Site = {
   needs_setup: boolean;
   has_terms: boolean;
   federation: boolean;
-  network_peers?: { id: number; name: string; url: string }[];
+  // software (1.19+): 'ourtube', or the NodeInfo name of a fediverse server it follows ('peertube'...); null until read.
+  network_peers?: { id: number; name: string; url: string; software?: string | null }[];
   ap_host?: string | null; // the address other servers know this one by
 };
 

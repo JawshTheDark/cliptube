@@ -11,6 +11,8 @@ import { compact } from '@/lib/format';
 import { liveHref } from '@/lib/refs';
 import { useSession } from '@/lib/session';
 import { usePaged } from '@/lib/usePaged';
+import { useDensity } from '@/lib/density';
+import { useLayout } from '@/lib/layout';
 import { colors } from '@/lib/theme';
 import type { LiveNow, LiveStream, Video } from '@/lib/types';
 
@@ -31,6 +33,9 @@ export default function Home() {
   const [tags, setTags] = useState<string[]>([]);
   const [live, setLive] = useState<LiveStream[]>([]);
   const [shorts, setShorts] = useState<Video[]>([]);
+  const { scale } = useDensity();
+  // A phone on its side is short: the top bar scrolls away with the feed instead of staying put.
+  const short = useLayout().height < 500;
 
   // Who's live, here and on the rest of the network (OurTube 1.9; older servers have none).
   const loadLive = useCallback(() => {
@@ -106,6 +111,7 @@ export default function Home() {
 
   const header = (
     <View>
+      {short && <AppHeader />}
       <View style={s.formats}>
         <Segmented options={FORMATS} value={kind} onChange={pickFormat} />
       </View>
@@ -153,7 +159,7 @@ export default function Home() {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 12 }}>
         {shorts.map((v) => (
-          <ShortCard key={v.id} v={v} scope={shelfScope} style={{ width: 140 }} />
+          <ShortCard key={v.id} v={v} scope={shelfScope} style={{ width: Math.round(140 * scale) }} />
         ))}
       </ScrollView>
     </View>
@@ -178,7 +184,7 @@ export default function Home() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppHeader />
+      {!short && <AppHeader />}
       {!!siteError && <ErrorBox message={siteError} onRetry={refresh} />}
       <VideoList paged={paged} header={header} empty={empty} shorts={kind === 'shorts'} shortsScope={shelfScope} slot={shelf ? shelfView : null} slotAfter={SHELF_AFTER} />
     </View>
