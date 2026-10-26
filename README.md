@@ -50,6 +50,18 @@ around what a video streaming site needs:
   </tr>
 </table>
 
+<table>
+  <tr>
+    <td width="25%"><img src="docs/images/app-home.png" alt="OurTube for Android: Home, with each video tagged with its server"></td>
+    <td width="25%"><img src="docs/images/app-shorts.png" alt="OurTube for Android: the Shorts tab"></td>
+    <td width="25%"><img src="docs/images/app-watch.png" alt="OurTube for Android: a watch page"></td>
+    <td width="25%"><img src="docs/images/app-channel.png" alt="OurTube for Android: a channel page"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="4"><sub>OurTube for Android: the same servers and network on your phone (<a href="docs/wiki/Android-App.md">get the app</a>)</sub></td>
+  </tr>
+</table>
+
 ## Features
 
 <table>
@@ -283,7 +295,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 | [Upgrading and Backups](docs/wiki/Upgrading-and-Backups.md) | Updates, rollbacks, backups, moving servers |
 | [Uploading and Editing](docs/wiki/Uploading-and-Editing.md) | Uploads, drafts, processing, the timeline editor, captions |
 | [Watching and Discovery](docs/wiki/Watching-and-Discovery.md) | The player, streaming, feeds, notifications, search, analytics |
-| [Clip Tools and Games](docs/wiki/Clip-Tools-and-Games.md) | Clipping a moment, exports, compare, the game catalog, SteamGridDB |
+| [Video Tools and Games](docs/wiki/Video-Tools-and-Games.md) | Clipping a moment, exports, compare, the game catalog, SteamGridDB |
 | [Watch Parties](docs/wiki/Watch-Parties.md) | Watching with friends in sync, the queue, chat and reactions |
 | [Live Streaming](docs/wiki/Live-Streaming.md) | Going live from OBS, the live chat, recordings, turning it on |
 | [Webhooks](docs/wiki/Webhooks.md) | Telling a bot, a bridge or a chat channel when you post or go live |

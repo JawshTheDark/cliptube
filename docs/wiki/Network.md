@@ -34,7 +34,7 @@ flowchart TB
   same everywhere. That server answers each comment (shown, held for review, or refused). People from elsewhere
   appear as `name@their.host` and link back to their home server.
 - **The hub is optional.** It is the easy way in, keeps the directory of servers, the network's
-  [game catalog](Clip-Tools-and-Games.md#the-networks-game-catalog) and a block list the members follow, and
+  [game catalog](Video-Tools-and-Games.md#the-networks-game-catalog) and a block list the members follow, and
   it can moderate the whole network. If the hub goes offline, gets a legal notice or shuts down, the other
   servers keep seeing each other and keep liking and commenting.
 - **Only public, ready clips with *Share with the network* ticked are ever listed.**
@@ -113,7 +113,7 @@ can't rejoin), **stop its likes and comments**, **hide its clips**, or **remove*
 can be hidden too. Bans and hides go out through the hub's block list, so they reach every member.
 
 The hub also keeps the network's game catalog, and with a SteamGridDB key its artwork (see
-[Clip Tools and Games](Clip-Tools-and-Games.md#game-artwork-from-steamgriddb)).
+[Video Tools and Games](Video-Tools-and-Games.md#game-artwork-from-steamgriddb)).
 
 ## Under the hood
 

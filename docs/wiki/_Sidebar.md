@@ -13,7 +13,7 @@
 
 - [Uploading and Editing](Uploading-and-Editing.md)
 - [Watching and Discovery](Watching-and-Discovery.md)
-- [Clip Tools and Games](Clip-Tools-and-Games.md)
+- [Video Tools and Games](Video-Tools-and-Games.md)
 - [Watch Parties](Watch-Parties.md)
 - [Live Streaming](Live-Streaming.md)
 - [Webhooks](Webhooks.md)

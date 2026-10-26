@@ -1,4 +1,4 @@
-# Clip Tools and Games
+# Video Tools and Games
 
 - [Clip a moment](#clip-a-moment)
 - [GIF and MP4 export](#gif-and-mp4-export)

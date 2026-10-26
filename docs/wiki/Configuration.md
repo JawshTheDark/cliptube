@@ -97,7 +97,7 @@ The game catalog, and game artwork from SteamGridDB:
 
 Get a key from a free SteamGridDB account (its Preferences, API). On a server in a network, the hub's catalog
 brings its own artwork, so the key is only needed on the hub. More in
-[Clip Tools and Games](Clip-Tools-and-Games.md#game-artwork-from-steamgriddb).
+[Video Tools and Games](Video-Tools-and-Games.md#game-artwork-from-steamgriddb).
 
 ## Admin → Legal
 

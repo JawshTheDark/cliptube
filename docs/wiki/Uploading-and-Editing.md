@@ -17,7 +17,7 @@ progress bar, and you can fill in its details while it uploads:
 - **Title**, **description** and **tags**
 - **Visibility**: *public* (listed on the site and, if you allow it, in the network), *unlisted* (anyone with
   the link) or *private* (only you)
-- **Game**, from the site's catalog (see [Clip Tools and Games](Clip-Tools-and-Games.md#games))
+- **Game**, from the site's catalog (see [Video Tools and Games](Video-Tools-and-Games.md#games))
 - **Let others clip this video**
 
 Accepted formats: MP4, MKV, MOV, WebM, AVI, M4V, TS, WMV, FLV, MPG/MPEG, 3GP, MTS and M2TS. The size limit per
@@ -100,7 +100,7 @@ page.
   redo.
 - Volume goes up to 300%, **mute** removes the audio track, and fades go to and from black.
 - **Make a clip** cuts the selected range into a new video (see
-  [Clip a moment](Clip-Tools-and-Games.md#clip-a-moment)).
+  [Clip a moment](Video-Tools-and-Games.md#clip-a-moment)).
 - **Save** renders the edit in the background. The old version stays up until the new one is ready, and shared
   links keep working.
 

@@ -91,7 +91,7 @@ Next to it, the chips:
 *Videos* or *Shorts* stays picked while you switch chips. To keep Shorts off the home page (no shelf, and none
 in *Top rated* or other lists), turn on *Keep Shorts off the home page* in Settings → *Watching*. **Trending** in
 the sidebar ranks what's being watched now, and **Games** lists every game with its videos (see
-[Clip Tools and Games](Clip-Tools-and-Games.md#games)).
+[Video Tools and Games](Video-Tools-and-Games.md#games)).
 
 ## Search
 
