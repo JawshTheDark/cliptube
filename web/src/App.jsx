@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './auth.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import { TopBar } from './components/TopBar.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
-import { useMediaQuery } from './util.js';
+import { getPref, useMediaQuery, usePref } from './util.js';
 import Home from './pages/Home.jsx';
 import Watch from './pages/Watch.jsx';
 import Channel from './pages/Channel.jsx';
@@ -38,8 +38,15 @@ import Party from './pages/Party.jsx';
 import Live from './pages/Live.jsx';
 import { Empty } from './components/VideoCard.jsx';
 
+// Layout density (Settings, Watching): set before the first paint, and again when it changes.
+document.documentElement.dataset.density = getPref('density');
+
 function Layout() {
   const location = useLocation();
+  const [density] = usePref('density');
+  useEffect(() => {
+    document.documentElement.dataset.density = density;
+  }, [density]);
   const isWatch = /^\/(watch|n|studio\/editor)\//.test(location.pathname);
   const narrow = useMediaQuery('(max-width: 792px)');
   const medium = useMediaQuery('(max-width: 1312px)');

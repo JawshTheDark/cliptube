@@ -132,6 +132,10 @@ Protocol version 4, in short:
   read its directory, switches and game catalog (`/api/hub/directory`, `/api/hub/status`, `/api/hub/games`).
 - Servers on OurTube 1.2 and earlier (protocol v3) are still understood during the transition: a newer server
   serves its v3 feed to them, reads theirs, and moves each one to ActivityPub once it has upgraded.
+- `GET /api/site` lists the servers whose videos show here in `network_peers`, each with `software`: `ourtube`
+  for OurTube servers, otherwise what the server's NodeInfo says (`peertube`, `mastodon` ...), or `null` until
+  it has been read (each network round reads a few). Apps use it to tell OurTube servers from the rest of the
+  fediverse; the Network page and search list them apart.
 
 Check a server's view of the network at any time:
 

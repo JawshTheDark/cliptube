@@ -418,10 +418,20 @@ function ViewingSettings() {
   const [community, setCommunity] = usePref('community');
   const [captions, setCaptions] = usePref('captions');
   const [hideVertical, setHideVertical] = usePref('hide_vertical');
+  const [density, setDensity] = usePref('density');
   return (
     <section className="card-panel">
       <h2>Watching</h2>
       <p className="hint">Saved in this browser.</p>
+      <div className="field">
+        <label>Layout density</label>
+        <select className="select" value={density} onChange={(e) => setDensity(e.target.value)}>
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact: smaller cards, more on screen</option>
+          <option value="dense">Dense: as many as fit</option>
+        </select>
+        <p className="hint">Changes the size of the video cards on Home, channels, search and the rest.</p>
+      </div>
       <div className="field">
         <label>Sponsor reads, intros and other marked parts</label>
         <select className="select" value={skip} onChange={(e) => setSkip(e.target.value)}>

@@ -47,6 +47,9 @@ test('hub mode, open joining and two-way sync', async () => {
   // They peer over ActivityPub.
   const peers = (await B.get('/api/admin/network')).data.peers;
   assert.equal(peers.find((p) => p.url === hub.url)?.transport, 'activitypub', JSON.stringify(peers));
+  // Apps tell OurTube servers from the rest of the fediverse by this.
+  assert.deepEqual((await B.get('/api/site')).data.network_peers.map((p) => p.software), ['ourtube']);
+  assert.deepEqual((await A.get('/api/site')).data.network_peers.map((p) => p.software), ['ourtube']);
 });
 
 test("a site-wide webhook also hears of the network's new videos, not of what was already there", async () => {

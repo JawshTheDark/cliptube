@@ -191,7 +191,7 @@ export function setAnonymous(on) {
 }
 
 /** Per-browser viewing preferences (skip mode, community titles, quality). */
-const PREF_DEFAULTS = { skip: 'ask', community: 'off', quality: 'auto', captions: 'off', hide_vertical: 'off', hide_watched: 'off' };
+const PREF_DEFAULTS = { skip: 'ask', community: 'off', quality: 'auto', captions: 'off', hide_vertical: 'off', hide_watched: 'off', density: 'comfortable' };
 
 /** Which page of this site the viewer came from (for creator analytics), or null on a fresh page load. */
 export function cameFrom() {

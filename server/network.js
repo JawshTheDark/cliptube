@@ -368,10 +368,10 @@ function recordDescriptor(url, d, source = null) {
   const existing = instByUrl(url);
   if (existing) {
     db.prepare(
-      "UPDATE instances SET name = ?, description = ?, public_key = ?, key_checked_at = ?, protocol = ?, version = ?, ap_actor = ?, source = CASE WHEN source IS NULL OR source = 'activitypub' THEN ? ELSE source END WHERE id = ?",
+      "UPDATE instances SET name = ?, description = ?, public_key = ?, key_checked_at = ?, protocol = ?, version = ?, ap_actor = ?, source = CASE WHEN source IS NULL OR source = 'activitypub' THEN ? ELSE source END, software = 'ourtube' WHERE id = ?",
     ).run(str(d.name, 60) || existing.name || hostOf(url), str(d.description, 500), String(d.public_key), t, protocol, str(d.version, 20), apActor, source, existing.id);
   } else {
-    db.prepare('INSERT INTO instances (url, name, description, public_key, key_checked_at, protocol, version, source, ap_actor, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    db.prepare("INSERT INTO instances (url, name, description, public_key, key_checked_at, protocol, version, source, ap_actor, created_at, software) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ourtube')").run(
       url, str(d.name, 60) || hostOf(url), str(d.description, 500), String(d.public_key), t, protocol, str(d.version, 20), source, apActor, t,
     );
   }
@@ -1022,11 +1022,11 @@ networkProtocolRouter.post('/api/hub/join', requireHub, async (req, res) => {
   const t = now();
   if (existing) {
     db.prepare(
-      'UPDATE instances SET name = ?, description = ?, public_key = ?, feed_token = ?, hub_token_hash = ?, hub_status = ?, version = ?, last_seen_at = ?, is_self = 0 WHERE id = ?',
+      "UPDATE instances SET name = ?, description = ?, public_key = ?, feed_token = ?, hub_token_hash = ?, hub_status = ?, version = ?, last_seen_at = ?, is_self = 0, software = 'ourtube' WHERE id = ?",
     ).run(name, str(b.description, 500), String(b.public_key), feedToken, sha256(token), status, str(b.version, 20), t, existing.id);
   } else {
     db.prepare(
-      'INSERT INTO instances (url, name, description, public_key, feed_token, hub_token_hash, hub_status, version, last_seen_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      "INSERT INTO instances (url, name, description, public_key, feed_token, hub_token_hash, hub_status, version, last_seen_at, created_at, software) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ourtube')",
     ).run(url, name, str(b.description, 500), String(b.public_key), feedToken, sha256(token), status, str(b.version, 20), t, t);
   }
   console.log(`[network] ${url} joined the hub (${status})`);
@@ -1341,7 +1341,7 @@ function mergePeers(list, via) {
     }
     if (url === self || instByUrl(url) || total >= maxPeers()) continue;
     if (admission().https && !url.startsWith('https://') && !ALLOW_PRIVATE_FEDERATION) continue;
-    db.prepare("INSERT INTO instances (url, name, source, created_at) VALUES (?, ?, 'peer', ?)").run(url, str(p?.name, 60) || hostOf(url), now());
+    db.prepare("INSERT INTO instances (url, name, source, created_at, software) VALUES (?, ?, 'peer', ?, 'ourtube')").run(url, str(p?.name, 60) || hostOf(url), now());
     total++;
     added++;
   }
@@ -1594,10 +1594,10 @@ async function refreshDirectory() {
       // The directory's key is only a hint: a key checked at the instance's own address wins.
       if (existing) {
         db.prepare(
-          "UPDATE instances SET name = ?, description = ?, public_key = CASE WHEN key_checked_at IS NULL THEN ? ELSE public_key END, allow_interactions = ?, listed = ?, is_self = ?, video_count = ?, hub_status = 'approved', source = COALESCE(source, 'hub') WHERE id = ?",
+          "UPDATE instances SET name = ?, description = ?, public_key = CASE WHEN key_checked_at IS NULL THEN ? ELSE public_key END, allow_interactions = ?, listed = ?, is_self = ?, video_count = ?, hub_status = 'approved', source = COALESCE(source, 'hub'), software = 'ourtube' WHERE id = ?",
         ).run(...vals, existing.id);
       } else {
-        db.prepare("INSERT INTO instances (name, description, public_key, allow_interactions, listed, is_self, video_count, hub_status, url, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, 'hub', ?)").run(...vals, url, now());
+        db.prepare("INSERT INTO instances (name, description, public_key, allow_interactions, listed, is_self, video_count, hub_status, url, source, created_at, software) VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, 'hub', ?, 'ourtube')").run(...vals, url, now());
       }
     }
     for (const row of db.prepare("SELECT * FROM instances WHERE hub_status = 'approved'").all()) {
@@ -1744,6 +1744,8 @@ export function onLocalVideosChanged() {
 
 /** One round: sync with the hub (if a member), follow block lists, meet new peers, pull everyone. */
 export async function networkTick({ full = false } = {}) {
+  // What the servers we show videos from run; following the fediverse counts, in an OurTube network or not.
+  if (participating() || networkActive()) await readSoftware().catch((e) => console.warn(`[network] reading what servers run: ${e.message}`));
   if (!participating()) return;
   const s = S();
   if (!isHub() && s.network_hub_token) await syncFromHub({ full }).catch(() => {});
@@ -2069,13 +2071,35 @@ export function networkPeers() {
   if (!networkActive()) return [];
   return db
     .prepare(
-      `SELECT p.id, p.name, p.url, (SELECT COUNT(*) FROM network_videos r WHERE r.instance_id = p.id AND r.hidden = 0) AS video_count
+      `SELECT p.id, p.name, p.url, p.software, (SELECT COUNT(*) FROM network_videos r WHERE r.instance_id = p.id AND r.hidden = 0) AS video_count
        FROM instances p WHERE p.is_self = 0 AND p.blocked = 0 AND p.listed = 1 AND (p.peer_status = 'approved' OR p.hub_status = 'approved')
          AND COALESCE(p.hub_status, '') NOT IN ('suspended', 'banned', 'pending') ORDER BY p.name COLLATE NOCASE`,
     )
     .all()
     .filter((p) => p.video_count > 0)
-    .map((p) => ({ id: p.id, name: p.name || hostOf(p.url), url: p.url, video_count: p.video_count }));
+    .map((p) => ({ id: p.id, name: p.name || hostOf(p.url), url: p.url, video_count: p.video_count, software: p.software || null }));
+}
+
+/**
+ * What software the servers we know run (`ourtube`, `peertube`, `mastodon` ...), from their NodeInfo, for the ones
+ * not known through the OurTube network. A few per round; one that doesn't answer is asked again later.
+ */
+async function readSoftware() {
+  const rows = db
+    .prepare('SELECT id, url FROM instances WHERE is_self = 0 AND blocked = 0 AND software IS NULL AND COALESCE(software_checked_at, 0) < ? ORDER BY software_checked_at LIMIT 10')
+    .all(now() - 6 * 3600_000);
+  for (const r of rows) {
+    let software = null;
+    try {
+      const index = await fetchJson(`${r.url}/.well-known/nodeinfo`, { timeout: 8000 });
+      const link = (Array.isArray(index.links) ? index.links : []).filter((l) => /nodeinfo\.diaspora\.software\/ns\/schema\/2\.\d/.test(l?.rel || '')).pop();
+      if (link?.href && new URL(link.href).origin === new URL(r.url).origin) {
+        const name = String((await fetchJson(link.href, { timeout: 8000 })).software?.name || '').toLowerCase().slice(0, 40);
+        software = name === 'cliptube' ? 'ourtube' : name || null;
+      }
+    } catch {}
+    db.prepare('UPDATE instances SET software = ?, software_checked_at = ? WHERE id = ?').run(software, now(), r.id);
+  }
 }
 
 networkRouter.get('/peers', (req, res) => res.json({ ...networkInfo(), peers: networkPeers() }));

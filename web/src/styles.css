@@ -250,6 +250,16 @@ h3 {
   z-index: 5;
   scrollbar-width: none;
 }
+.chips-label {
+  align-self: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .chips::-webkit-scrollbar {
   display: none;
 }
@@ -4816,6 +4826,127 @@ h2,
   font-size: 14px;
   line-height: 19px;
   max-height: 38px;
+}
+
+/* Layout density (Settings, Watching): smaller cards and text, so more fits on a screen. */
+:root[data-density='compact'] .video-grid {
+  grid-template-columns: repeat(auto-fill, minmax(236px, 1fr));
+  gap: 26px 12px;
+  padding: 12px 20px 40px;
+}
+:root[data-density='dense'] .video-grid {
+  grid-template-columns: repeat(auto-fill, minmax(184px, 1fr));
+  gap: 18px 10px;
+  padding: 10px 16px 32px;
+}
+:root[data-density='compact'] .card {
+  gap: 8px;
+}
+:root[data-density='dense'] .card {
+  gap: 6px;
+}
+:root[data-density='compact'] .thumb {
+  border-radius: 12px;
+}
+:root[data-density='dense'] .thumb {
+  border-radius: 10px;
+}
+:root[data-density='dense'] .thumb .duration {
+  right: 6px;
+  bottom: 6px;
+  font-size: 11px;
+}
+:root[data-density='compact'] .card.grid .card-title,
+:root[data-density='compact'] .card.short .card-title {
+  font-size: 14px;
+  line-height: 19px;
+  max-height: 38px;
+}
+:root[data-density='dense'] .card.grid .card-title,
+:root[data-density='dense'] .card.short .card-title {
+  font-size: 13px;
+  line-height: 17px;
+  max-height: 34px;
+  margin-bottom: 2px;
+}
+:root[data-density='compact'] .card.grid .card-channel,
+:root[data-density='compact'] .card.grid .card-meta {
+  font-size: 12.5px;
+  line-height: 17px;
+}
+:root[data-density='dense'] .card .card-channel,
+:root[data-density='dense'] .card .card-meta {
+  font-size: 12px;
+  line-height: 16px;
+  gap: 6px;
+}
+:root[data-density='compact'] .card.grid .card-avatar {
+  margin: -26px 0 0 8px;
+}
+:root[data-density='compact'] .card.grid .card-avatar .avatar {
+  width: 30px !important;
+  height: 30px !important;
+  font-size: 13px !important;
+}
+:root[data-density='dense'] .card.grid .card-avatar {
+  display: none;
+}
+:root[data-density='compact'] .shorts-row {
+  grid-auto-columns: minmax(128px, 160px);
+  gap: 12px;
+}
+:root[data-density='dense'] .shorts-row {
+  grid-auto-columns: minmax(108px, 136px);
+  gap: 10px;
+}
+:root[data-density='compact'] .video-grid.shorts-grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 22px 12px;
+}
+:root[data-density='dense'] .video-grid.shorts-grid {
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 16px 10px;
+}
+:root[data-density='compact'] .card.list .thumb {
+  width: 280px;
+}
+:root[data-density='dense'] .card.list .thumb {
+  width: 210px;
+}
+:root[data-density='compact'] .card.list .card-title {
+  font-size: 16px;
+  line-height: 22px;
+  max-height: 44px;
+}
+:root[data-density='dense'] .card.list .card-title {
+  font-size: 14px;
+  line-height: 19px;
+  max-height: 38px;
+}
+:root[data-density='compact'] .card.compact .thumb {
+  width: 144px;
+}
+:root[data-density='dense'] .card.compact .thumb {
+  width: 120px;
+}
+:root[data-density='dense'] .card.compact .card-title {
+  font-size: 13px;
+  line-height: 17px;
+  max-height: 34px;
+}
+@media (max-width: 792px) {
+  :root[data-density='compact'] .video-grid,
+  :root[data-density='dense'] .video-grid {
+    padding: 12px 12px 40px;
+  }
+  /* Phones: dense shows two videos a row. */
+  :root[data-density='dense'] .video-grid:not(.shorts-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  :root[data-density='compact'] .card.list .thumb,
+  :root[data-density='dense'] .card.list .thumb {
+    width: 160px;
+  }
 }
 
 /* The Shorts viewer: one at a time, full height, snapping from one to the next. Each frame takes its video's

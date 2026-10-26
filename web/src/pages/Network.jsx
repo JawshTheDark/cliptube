@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth, useTitle } from '../auth.jsx';
 import { VideoGrid, InfiniteScroll, Empty } from '../components/VideoCard.jsx';
 import { Icon } from '../components/Icons.jsx';
+import { softwareName } from '../components/ServerTag.jsx';
 import { usePaged } from '../util.js';
 
 /** Videos from the other instances in this site's network. */
@@ -16,7 +17,10 @@ export default function Network() {
   const net = site.network || {};
   useTitle(net.name || 'Network');
 
-  const peers = site.network_peers || [];
+  // OurTube servers in the network first, then the fediverse servers followed from here.
+  const all = site.network_peers || [];
+  const peers = [...all.filter((p) => p.software === 'ourtube'), ...all.filter((p) => p.software !== 'ourtube')];
+  const firstFediverse = peers.find((p) => p.software !== 'ourtube');
   const current = peers.find((p) => String(p.id) === peer);
 
   if (!site.federation) {
@@ -41,7 +45,10 @@ export default function Network() {
       <h1 className="page-title">
         <Icon name="public" /> {net.name || 'Network'}
       </h1>
-      <p className="page-sub">Clips from every instance in the network. Each one is still hosted and streamed by its own server.</p>
+      <p className="page-sub">
+        Videos from the other OurTube servers in the network, and from the fediverse servers and channels followed here. Each one is still
+        hosted and streamed by its own server.
+      </p>
       {net.announcement && <div className="announce page-pad">{net.announcement}</div>}
       <div className="chips">
         <button className={`chip ${!peer && sort === 'new' ? 'active' : ''}`} onClick={() => setParams({})}>
@@ -51,9 +58,16 @@ export default function Network() {
           Most viewed
         </button>
         {peers.map((p) => (
-          <button key={p.id} className={`chip ${peer === String(p.id) ? 'active' : ''}`} onClick={() => setParams({ peer: String(p.id) })} title={p.url}>
-            {p.name}
-          </button>
+          <Fragment key={p.id}>
+            {p === firstFediverse && <span className="chips-label">Fediverse</span>}
+            <button
+              className={`chip ${peer === String(p.id) ? 'active' : ''}`}
+              onClick={() => setParams({ peer: String(p.id) })}
+              title={`${p.url}${p.software ? ` (${softwareName(p.software)})` : ''}`}
+            >
+              {p.name}
+            </button>
+          </Fragment>
         ))}
       </div>
       {current && (

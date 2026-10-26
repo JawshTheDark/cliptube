@@ -968,6 +968,17 @@ CREATE INDEX idx_api_keys_user ON api_keys(user_id);
 `);
     },
   },
+  {
+    version: 21,
+    name: 'what software each server runs',
+    up(db) {
+      addColumn(db, 'instances', 'software', 'TEXT'); // ourtube | peertube | mastodon ... (NodeInfo's name); NULL until known
+      addColumn(db, 'instances', 'software_checked_at', 'INTEGER');
+      // Servers known through the OurTube network run OurTube; the rest are read from their NodeInfo.
+      db.exec(`UPDATE instances SET software = 'ourtube'
+        WHERE is_self = 1 OR key_checked_at IS NOT NULL OR hub_token_hash IS NOT NULL OR source IN ('hub', 'peer', 'inbound')`);
+    },
+  },
 ];
 
 export function currentVersion(db) {

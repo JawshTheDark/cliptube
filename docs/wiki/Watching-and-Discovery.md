@@ -123,7 +123,9 @@ Next to it, the chips:
 | Tag chips | Videos with that tag |
 
 *Videos* or *Shorts* stays picked while you switch chips. To keep Shorts off the home page (no shelf, and none
-in *Top rated* or other lists), turn on *Keep Shorts off the home page* in Settings → *Watching*. **Trending** in
+in *Top rated* or other lists), turn on *Keep Shorts off the home page* in Settings → *Watching*. To fit more
+on a screen, set *Layout density* there to **Compact** (smaller cards and text) or **Dense** (as many as fit,
+two a row even on a phone); it applies to Home, channels, search and every other list. **Trending** in
 the sidebar ranks what's being watched now, and **Games** lists every game with its videos (see
 [Video Tools and Games](Video-Tools-and-Games.md#games)).
 

@@ -38,6 +38,10 @@ function fakeTube() {
       return json(200, { '@context': AS, id: `${F.channel}/outbox`, type: 'OrderedCollection', totalItems: 1, orderedItems: [{ type: 'Create', actor: F.account, object: F.video('old-one', 'An older fake video') }] });
     }
     if (req.method === 'GET' && url.pathname.startsWith('/videos/watch/')) return json(200, F.video(url.pathname.split('/').pop(), 'Fetched fake video'));
+    if (url.pathname === '/.well-known/nodeinfo') {
+      return json(200, { links: [{ rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0', href: `${F.origin}/nodeinfo/2.0.json` }] });
+    }
+    if (url.pathname === '/nodeinfo/2.0.json') return json(200, { version: '2.0', software: { name: 'peertube', version: '7.3.0' } });
     if (req.method === 'GET' && url.pathname === '/api/v1/videos/talked-about/chapters') {
       return json(200, { chapters: [{ timecode: 30, title: 'The trick' }, { timecode: 0, title: 'Start' }] });
     }
@@ -346,6 +350,11 @@ test("a PeerTube video's whole comment thread shows, from before anyone here fol
   assert.equal(mine[0].id, r.data.comment.id);
   assert.equal(mine[0].parent_id, q.id);
   assert.equal(mine[0].can_delete, true);
+
+  // The server shows up among the site's peers as PeerTube (read from its NodeInfo), not as an OurTube server.
+  await admin.post('/api/admin/network/sync');
+  const peer = (await carol.get('/api/site')).data.network_peers.find((p) => p.url === fake.origin);
+  assert.equal(peer?.software, 'peertube', JSON.stringify(peer));
 
   // Chapters set on PeerTube come along for the player, in order.
   const ch = await carol.get(`/api/network/videos/${nv.remote.peer_id}/${nv.remote.remote_id}/chapters`);

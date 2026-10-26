@@ -65,11 +65,20 @@ export default function Search() {
             <option value="">Everywhere</option>
             <option value="local">This site</option>
             <option value="network">Other instances</option>
-            {(site.network_peers || []).map((p) => (
-              <option key={p.id} value={`peer:${p.id}`}>
-                {p.name}
-              </option>
-            ))}
+            {[
+              ['OurTube servers', (site.network_peers || []).filter((p) => p.software === 'ourtube')],
+              ['Fediverse', (site.network_peers || []).filter((p) => p.software !== 'ourtube')],
+            ].map(([label, peers]) =>
+              peers.length ? (
+                <optgroup key={label} label={label}>
+                  {peers.map((p) => (
+                    <option key={p.id} value={`peer:${p.id}`}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null,
+            )}
           </select>
         )}
       </div>
