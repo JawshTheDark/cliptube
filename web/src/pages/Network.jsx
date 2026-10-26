@@ -25,7 +25,7 @@ export default function Network() {
         <p>
           {net.role === 'member'
             ? "This site has asked to join a network and is waiting for the hub's approval."
-            : 'This site is not connected to other ClipTube instances.'}
+            : 'This site is not connected to other OurTube servers.'}
         </p>
         {user?.is_admin && (
           <Link to="/admin/network" className="btn btn-primary">

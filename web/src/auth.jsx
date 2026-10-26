@@ -3,7 +3,7 @@ import { api } from './api.js';
 
 const AuthCtx = createContext(null);
 
-const DEFAULT_SITE = { site_name: 'ClipTube', allow_registration: true, needs_setup: false, max_upload_mb: 8192 };
+const DEFAULT_SITE = { site_name: 'OurTube', allow_registration: true, needs_setup: false, max_upload_mb: 8192 };
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined); // undefined while loading

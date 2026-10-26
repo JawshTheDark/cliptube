@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 import { api } from '../api.js';
 import { Avatar } from './Avatar.jsx';
 import { Icon } from './Icons.jsx';
+import { Logo } from './Logo.jsx';
 
-function Item({ to, icon, label, end }) {
+function Item({ to, icon, label, end, active }) {
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+    <NavLink to={to} end={end} className={({ isActive }) => `nav-item ${(active ?? isActive) ? 'active' : ''}`}>
       <Icon name={icon} />
       <span>{label}</span>
     </NavLink>
@@ -16,6 +17,9 @@ function Item({ to, icon, label, end }) {
 
 export function Sidebar({ mini = false, drawer = false, onClose }) {
   const { user, site } = useAuth();
+  const location = useLocation();
+  // Shorts is the home page filtered to vertical videos, so the two share a path.
+  const shorts = location.pathname === '/' && new URLSearchParams(location.search).get('feed') === 'vertical';
   const [subs, setSubs] = useState([]);
 
   useEffect(() => {
@@ -32,15 +36,11 @@ export function Sidebar({ mini = false, drawer = false, onClose }) {
           <button className="icon-btn" onClick={onClose} aria-label="Close menu">
             <Icon name="menu" />
           </button>
-          <Link to="/" className="logo" onClick={onClose}>
-            <span className="logo-mark">
-              <Icon name="play" />
-            </span>
-            <span className="logo-text">{site.site_name}</span>
-          </Link>
+          <Logo name={site.site_name} onClick={onClose} />
         </div>
       )}
-      <Item to="/" icon="home" label="Home" end />
+      <Item to="/" icon="home" label="Home" end active={location.pathname === '/' && !shorts} />
+      <Item to="/?feed=vertical" icon="shorts" label="Shorts" active={shorts} />
       <Item to="/trending" icon="trending" label="Trending" />
       <Item to="/games" icon="game" label="Games" />
       {site.federation && <Item to="/network" icon="public" label="Network" />}
@@ -63,7 +63,7 @@ export function Sidebar({ mini = false, drawer = false, onClose }) {
       ) : (
         !mini && (
           <div className="nav-signin">
-            <p>Sign in to upload clips, like videos, comment and subscribe.</p>
+            <p>Sign in to upload videos, like them, comment and subscribe.</p>
             <Link to="/login" className="btn btn-outline">
               <Icon name="person" /> Sign in
             </Link>

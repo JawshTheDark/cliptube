@@ -44,7 +44,7 @@ export function LinkedAccounts() {
         <Icon name="link" /> Linked accounts
       </h2>
       <p className="hint">
-        Have accounts on other ClipTube sites, or on Mastodon? Link them and every site shows them as one person: <em>Also on</em> on your channel, your
+        Have accounts on other OurTube sites, or on Mastodon? Link them and every site shows them as one person: <em>Also on</em> on your channel, your
         comments from any of them marked as the uploader&apos;s, and one button to subscribe to all of them. A link counts once both accounts list each other,
         so nobody can claim an account that isn&apos;t theirs.
       </p>

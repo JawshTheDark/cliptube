@@ -73,18 +73,25 @@ each of your videos, and as profile fields on Mastodon.
 
 ## Home
 
-| Tab | What it shows |
-| --- | --- |
-| **All** | Everything, newest first, including clips from the rest of the network |
-| **This site** | Only clips hosted here (when the server is in a network) |
-| **For you** | When signed in: picks from channels you follow and games and tags you like, and says why on every card. Each card has *Not interested*, *More/Less of this game* and *More/Less from this channel*, and there is *Hide watched*. |
-| **Vertical** | Clips taller than they are wide |
-| **Top rated** | The most liked |
-| Tag chips | Clips with that tag |
+At the top, **Everything**, **Videos** and **Shorts** pick what kind of video to show. Shorts are videos taller
+than they are wide. *Everything* shows the landscape videos with the newest Shorts on a shelf of their own after
+the first rows; *Shorts* fills the page with them (so does **Shorts** in the sidebar). Live streams on now sit
+above it all.
 
-To keep vertical clips out of the main feed, turn on *Keep vertical clips in their own tab* in Settings →
-*Watching*. **Trending** in the sidebar ranks what's being watched now, and **Games** lists every game with
-its clips (see [Clip Tools and Games](Clip-Tools-and-Games.md#games)).
+Next to it, the chips:
+
+| Chip | What it shows |
+| --- | --- |
+| **All** | Newest first, including videos from the rest of the network |
+| **This site** | Only videos hosted here (when the server is in a network) |
+| **For you** | When signed in: picks from channels you follow and games and tags you like, and says why on every card. Each card has *Not interested*, *More/Less of this game* and *More/Less from this channel*, and there is *Hide watched*. It mixes every kind of video. |
+| **Top rated** | The most liked |
+| Tag chips | Videos with that tag |
+
+*Videos* or *Shorts* stays picked while you switch chips. To keep Shorts off the home page (no shelf, and none
+in *Top rated* or other lists), turn on *Keep Shorts off the home page* in Settings → *Watching*. **Trending** in
+the sidebar ranks what's being watched now, and **Games** lists every game with its videos (see
+[Clip Tools and Games](Clip-Tools-and-Games.md#games)).
 
 ## Search
 

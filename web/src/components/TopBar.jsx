@@ -5,6 +5,7 @@ import { Avatar } from './Avatar.jsx';
 import { Icon } from './Icons.jsx';
 import { isAnonymous, setAnonymous } from '../util.js';
 import { NotificationBell } from './NotificationBell.jsx';
+import { Logo } from './Logo.jsx';
 
 /** Tracks the per-browser anonymous mode, kept in sync across components. */
 export function useAnonymous() {
@@ -91,12 +92,7 @@ export function TopBar({ onMenu }) {
         <button className="icon-btn" onClick={onMenu} aria-label="Menu">
           <Icon name="menu" />
         </button>
-        <Link to="/" className="logo">
-          <span className="logo-mark">
-            <Icon name="play" />
-          </span>
-          <span className="logo-text">{site.site_name}</span>
-        </Link>
+        <Logo name={site.site_name} />
       </div>
       <div className="topbar-center">{searchForm}</div>
       <div className="topbar-end">
@@ -105,7 +101,7 @@ export function TopBar({ onMenu }) {
         </button>
         {user ? (
           <>
-            <Link to="/upload" className="btn btn-ghost upload-btn" title="Upload a video">
+            <Link to="/upload" className="btn btn-accent upload-btn" title="Upload a video">
               <Icon name="upload" />
               <span className="btn-text">Upload</span>
             </Link>

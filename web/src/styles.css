@@ -1,22 +1,28 @@
 :root {
-  --bg: #0f0f0f;
-  --bg-2: #121212;
-  --surface: #1f1f1f;
-  --surface-2: #272727;
-  --surface-3: #3f3f3f;
-  --hover: rgba(255, 255, 255, 0.1);
-  --border: rgba(255, 255, 255, 0.2);
-  --text: #f1f1f1;
-  --text-2: #aaaaaa;
-  --accent: #ff0033;
-  --link: #3ea6ff;
+  --bg: #0e0d16;
+  --bg-2: #12101c;
+  --surface: #17151f;
+  --surface-2: #24212f;
+  --surface-3: #34314a;
+  --hover: rgba(196, 176, 255, 0.09);
+  --border: rgba(196, 176, 255, 0.16);
+  --text: #f2f0fa;
+  --text-2: #a19db8;
+  --accent: #7c4dff;
+  --accent-hover: #8f66ff;
+  --accent-text: #c4b0ff;
+  --accent-soft: rgba(124, 77, 255, 0.22);
+  --live: #e5283c;
+  --link: #c4b0ff;
   --ok: #6bff9a;
   --warn: #ffd166;
   --err: #ff6b6b;
   --topbar-h: 56px;
   --sidebar-w: 240px;
   --sidebar-mini: 72px;
-  --radius: 12px;
+  --radius: 14px;
+  --font: 'Plus Jakarta Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Plus Jakarta Sans Variable', sans-serif;
   color-scheme: dark;
 }
 
@@ -32,7 +38,7 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  font-family: var(--font);
   font-size: 14px;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
@@ -110,7 +116,7 @@ h3 {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #717171;
+  background: #4a4563;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-track {
@@ -162,7 +168,7 @@ h3 {
   color: var(--bg);
 }
 .btn-primary:hover {
-  background: #d9d9d9;
+  background: #dcd7ee;
 }
 .btn-ghost {
   background: transparent;
@@ -176,7 +182,7 @@ h3 {
   color: var(--link);
 }
 .btn-outline:hover {
-  background: rgba(62, 166, 255, 0.15);
+  background: rgba(124, 77, 255, 0.15);
   border-color: transparent;
 }
 .btn-danger {
@@ -248,9 +254,9 @@ h3 {
   display: none;
 }
 .chip {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
   background: var(--surface-2);
   font-weight: 500;
   white-space: nowrap;
@@ -330,20 +336,20 @@ h3 {
   height: 40px;
   padding: 0 16px;
   border-radius: 20px 0 0 20px;
-  border: 1px solid #303030;
+  border: 1px solid #2e2b3d;
   background: var(--bg-2);
   color: var(--text);
   font-size: 16px;
   outline: none;
 }
 .search input:focus {
-  border-color: #1c62b9;
+  border-color: var(--accent);
 }
 .search button {
   width: 64px;
   border-radius: 0 20px 20px 0;
   background: var(--surface-2);
-  border: 1px solid #303030;
+  border: 1px solid #2e2b3d;
   border-left: none;
   display: flex;
   align-items: center;
@@ -379,7 +385,7 @@ h3 {
   position: absolute;
   right: 0;
   top: 44px;
-  background: #282828;
+  background: var(--surface-2);
   border-radius: 12px;
   padding: 8px 0;
   min-width: 280px;
@@ -910,7 +916,7 @@ h3 {
   color: var(--link);
 }
 .desc-text .ts {
-  background: rgba(62, 166, 255, 0.15);
+  background: rgba(124, 77, 255, 0.15);
   border-radius: 4px;
   padding: 0 4px;
 }
@@ -1034,7 +1040,7 @@ h3 {
   margin-left: -12px;
 }
 .replies-toggle:hover {
-  background: rgba(62, 166, 255, 0.15);
+  background: rgba(124, 77, 255, 0.15);
 }
 .replies {
   margin-top: 8px;
@@ -1052,8 +1058,8 @@ h3 {
   border-radius: 16px;
   background:
     radial-gradient(ellipse at 20% 50%, rgba(255, 0, 51, 0.35), transparent 60%),
-    radial-gradient(ellipse at 80% 40%, rgba(62, 166, 255, 0.35), transparent 60%),
-    linear-gradient(135deg, #1a1a2e, #16213e 50%, #0f3460);
+    radial-gradient(ellipse at 80% 40%, rgba(124, 77, 255, 0.35), transparent 60%),
+    linear-gradient(135deg, #1a1530, #221a45 50%, #3a1f7a);
 }
 .channel-head {
   display: flex;
@@ -1276,7 +1282,7 @@ h3 {
 }
 .notice {
   color: var(--link);
-  background: rgba(62, 166, 255, 0.1);
+  background: rgba(124, 77, 255, 0.1);
   border-radius: 8px;
   padding: 10px 12px;
   margin-bottom: 16px;
@@ -1356,7 +1362,7 @@ h3 {
 .dropzone:hover,
 .dropzone.over {
   border-color: var(--link);
-  background: rgba(62, 166, 255, 0.05);
+  background: rgba(124, 77, 255, 0.05);
 }
 .dropzone .big-icon {
   width: 136px;
@@ -1950,7 +1956,7 @@ kbd {
 
 /* timeline */
 .tl {
-  background: #181818;
+  background: #15131d;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   user-select: none;
 }
@@ -1994,7 +2000,7 @@ kbd {
   overflow: hidden;
 }
 .tl-film.loading {
-  background: repeating-linear-gradient(90deg, #222 0 120px, #262626 120px 240px);
+  background: repeating-linear-gradient(90deg, #1d1b28 0 120px, #221f2e 120px 240px);
 }
 .tl-tile {
   position: absolute;
@@ -2006,7 +2012,7 @@ kbd {
 .tl-wave {
   position: relative;
   height: 44px;
-  background: #121821;
+  background: #13111c;
 }
 .tl-wave canvas {
   position: absolute;
@@ -2145,7 +2151,7 @@ kbd {
   margin-top: 16px;
   padding: 12px 16px;
   border-radius: 12px;
-  background: rgba(62, 166, 255, 0.08);
+  background: rgba(124, 77, 255, 0.08);
   color: var(--text-2);
 }
 .remote-note .icon {
@@ -2307,7 +2313,7 @@ kbd {
   font-weight: 500;
 }
 .announce {
-  background: rgba(62, 166, 255, 0.1);
+  background: rgba(124, 77, 255, 0.1);
   border-left: 3px solid var(--link);
   border-radius: 6px;
   padding: 10px 12px;
@@ -2453,7 +2459,7 @@ kbd {
 }
 .report-reason.active {
   border-color: var(--link);
-  background: rgba(62, 166, 255, 0.08);
+  background: rgba(124, 77, 255, 0.08);
 }
 .report-reason input {
   margin-top: 3px;
@@ -3296,7 +3302,7 @@ th.num {
   height: 18px;
   padding: 0 4px;
   border-radius: 9px;
-  background: var(--accent);
+  background: var(--live);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -3465,14 +3471,14 @@ th.num {
   font-size: 11px;
 }
 .chart-bar {
-  fill: #3987e5;
+  fill: #8f66ff;
 }
 .chart-bar.hover {
-  fill: #5a9cec;
+  fill: #a98bff;
 }
 .chart-line {
   fill: none;
-  stroke: #3987e5;
+  stroke: #8f66ff;
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -3482,7 +3488,7 @@ th.num {
   stroke-width: 1;
 }
 .chart-dot {
-  fill: #3987e5;
+  fill: #8f66ff;
   stroke: var(--surface);
   stroke-width: 2;
 }
@@ -3527,7 +3533,7 @@ th.num {
 .ref-bar span {
   display: block;
   height: 100%;
-  background: #3987e5;
+  background: #8f66ff;
   border-radius: 0 4px 4px 0;
 }
 .ref-n {
@@ -4236,8 +4242,8 @@ th.num {
   align-items: center;
   gap: 6px;
   padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--accent);
+  border-radius: 6px;
+  background: var(--live);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -4267,7 +4273,7 @@ th.num {
   margin: 0 0 10px;
 }
 .live-now h2 .icon {
-  color: var(--accent);
+  color: var(--live);
 }
 .live-row {
   display: flex;
@@ -4289,7 +4295,7 @@ th.num {
   text-decoration: none;
 }
 .live-card:hover {
-  border-color: var(--accent);
+  border-color: var(--live);
 }
 .live-card-top {
   display: flex;
@@ -4335,4 +4341,176 @@ th.num {
 }
 .live-form {
   margin-top: 12px;
+}
+
+/* ---- OurTube brand ------------------------------------------------------- */
+
+h1,
+h2,
+.page-title {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+.logo {
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+.logo-mark {
+  width: 30px;
+  height: 30px;
+  background: none;
+  border-radius: 0;
+  color: var(--accent);
+}
+.logo-our {
+  color: var(--accent-text);
+}
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.btn-accent:hover {
+  background: var(--accent-hover);
+}
+.nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+/* Cards: rounder thumbnails, the creator sitting on the thumbnail corner, the server as a tag. */
+.thumb {
+  border-radius: 16px;
+}
+.thumb .duration {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(14, 13, 22, 0.82);
+  font-weight: 700;
+}
+.card.grid .card-avatar {
+  position: relative;
+  z-index: 1;
+  margin: -30px 0 0 10px;
+  align-self: flex-start;
+}
+.card.grid .card-avatar .avatar {
+  box-shadow: 0 0 0 3px var(--bg);
+}
+.card-title {
+  font-weight: 700;
+}
+.card-instance {
+  align-self: flex-start;
+  margin: 2px 0;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+/* Everything / Videos / Shorts, at the start of the home page chips. */
+.format-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 3px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+.format-switch button {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.format-switch button:hover {
+  color: var(--text);
+}
+.format-switch button.active {
+  background: var(--surface-3);
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.chips-divider {
+  flex-shrink: 0;
+  width: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}
+
+/* Shorts: a shelf on the home page, and their own grid. */
+.shorts-shelf {
+  padding: 4px 24px 12px;
+}
+.shelf-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.shelf-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: 800;
+}
+.shelf-head h2 .icon {
+  color: var(--accent-text);
+}
+.shelf-head a {
+  margin-left: auto;
+  color: var(--link);
+  font-weight: 700;
+}
+.shorts-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 190px);
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+.video-grid.shorts-grid {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 28px 14px;
+}
+.card.short {
+  gap: 8px;
+}
+.card.short .thumb {
+  aspect-ratio: 9 / 16;
+}
+.card.short .card-title {
+  font-size: 14px;
+  line-height: 19px;
+  max-height: 38px;
+}
+.card.short .card-channel,
+.card.short .card-meta {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* Live: red ringed cards on the brand surfaces. */
+.live-now {
+  padding: 0 24px;
+}
+.live-now h2 {
+  font-size: 22px;
+  font-weight: 800;
+}
+.live-card {
+  background: linear-gradient(150deg, rgba(229, 40, 60, 0.16), var(--surface) 55%);
+  border-color: rgba(229, 40, 60, 0.45);
+  border-radius: 16px;
 }

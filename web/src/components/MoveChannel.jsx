@@ -15,7 +15,7 @@ export function MoveSettings() {
         <Icon name="public" /> Moving to another site
       </h2>
       <p className="hint">
-        Take your channel to another ClipTube instance: export it here, import it there, then move. Subscribers here, on other instances and on the fediverse
+        Take your channel to another OurTube server: export it here, import it there, then move. Subscribers here, on other instances and on the fediverse
         follow you to the new channel. <Link to="/help/fediverse">How moving works</Link>
       </p>
       <ExportPart />

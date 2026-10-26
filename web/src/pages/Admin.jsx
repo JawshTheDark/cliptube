@@ -124,7 +124,7 @@ function EmailSettings() {
           </div>
           <div className="field">
             <label>From</label>
-            <input className="input" value={form.smtp_from} onChange={(e) => set({ smtp_from: e.target.value })} placeholder="ClipTube <clips@example.com>" />
+            <input className="input" value={form.smtp_from} onChange={(e) => set({ smtp_from: e.target.value })} placeholder="OurTube <clips@example.com>" />
           </div>
         </div>
         <div className="field-row">

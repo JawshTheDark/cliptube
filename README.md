@@ -110,7 +110,7 @@ around what a clip site needs:
 
 ### Discover
 
-- Home with *All*, *For you* (it tells you why) and *Vertical*
+- Home with *Everything*, *Videos* and *Shorts*, and *For you* (it tells you why)
 - Trending, and full-text search with filters
 - RSS and Atom for the site, every channel and every game
 - Notifications in the app, as web push or by email

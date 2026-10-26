@@ -64,7 +64,7 @@ export function PeersPanel({ state, run, busy }) {
                 {!p.direct && <Pill map={MINE} value={p.peer_status} />}
                 {!p.direct && <Pill map={THEIRS} value={p.remote_status} />}
                 {p.in_hub && <span className="badge">In the hub</span>}
-                {p.protocol < 3 && <span className="badge" title="An older ClipTube: reachable through the hub only">Older version</span>}
+                {p.protocol < 3 && <span className="badge" title="An older OurTube: reachable through the hub only">Older version</span>}
               </div>
               <div className="fed-sub">
                 {p.url} · {p.video_count} clip{p.video_count === 1 ? '' : 's'}

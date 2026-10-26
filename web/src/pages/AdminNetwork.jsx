@@ -325,7 +325,7 @@ export default function AdminNetwork() {
             </button>
           </div>
           {hub.members.length === 0 ? (
-            <p className="muted">No instances have joined yet. Point another ClipTube at {state.self_url} under Admin → Network.</p>
+            <p className="muted">No instances have joined yet. Point another OurTube server at {state.self_url} under Admin → Network.</p>
           ) : (
             <div className="fed-list">
               {hub.members.map((i) => (

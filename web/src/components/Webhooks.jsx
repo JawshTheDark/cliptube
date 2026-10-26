@@ -47,7 +47,7 @@ export function Webhooks() {
         <div className="field-row align-end">
           <div className="field grow">
             <label>Address</label>
-            <input className="input" value={draft.url} required placeholder="https://bot.example.com/cliptube" onChange={(e) => setDraft({ ...draft, url: e.target.value })} />
+            <input className="input" value={draft.url} required placeholder="https://bot.example.com/ourtube" onChange={(e) => setDraft({ ...draft, url: e.target.value })} />
           </div>
           <div className="field">
             <label>Format</label>

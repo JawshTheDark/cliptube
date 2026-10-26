@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth, useTitle } from '../auth.jsx';
 
-/** Public help: following ClipTube channels from Mastodon and PeerTube, and moving a channel. */
+/** Public help: following OurTube channels from Mastodon and PeerTube, and moving a channel. */
 export default function HelpFediverse() {
   const { site, user } = useAuth();
   useTitle('Following from the fediverse');
@@ -54,7 +54,7 @@ export default function HelpFediverse() {
         <li>On the new site: paste the link under <b>Import a channel here</b>. Videos, comments, captions and the profile come along.</li>
         <li>On the new site: add the old account under <b>Moving here</b>.</li>
         <li>
-          On the old site: enter the new account under <b>Moving away</b>. Subscribers here, on other ClipTube instances and on Mastodon or PeerTube are moved to
+          On the old site: enter the new account under <b>Moving away</b>. Subscribers here, on other OurTube servers and on Mastodon or PeerTube are moved to
           the new channel, and the old channel points there.
         </li>
       </ol>

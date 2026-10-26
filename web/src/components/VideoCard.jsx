@@ -5,7 +5,7 @@ import { Icon } from './Icons.jsx';
 import { compact, displayed, formatDuration, timeAgo, usePref } from '../util.js';
 
 /**
- * variant: 'grid' (home / channel), 'compact' (watch sidebar), 'list' (search results)
+ * variant: 'grid' (home / channel), 'short' (Shorts, 9:16), 'compact' (watch sidebar), 'list' (search results)
  */
 export function VideoCard({ video: v, variant = 'grid', showChannel = true, extra = null }) {
   const [communityPref] = usePref('community');
@@ -120,11 +120,11 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true, extr
   );
 }
 
-export function VideoGrid({ videos, showChannel = true, renderExtra = null }) {
+export function VideoGrid({ videos, showChannel = true, renderExtra = null, variant = 'grid' }) {
   return (
-    <div className="video-grid">
+    <div className={`video-grid ${variant === 'short' ? 'shorts-grid' : ''}`}>
       {videos.map((v) => (
-        <VideoCard key={v.id} video={v} showChannel={showChannel} extra={renderExtra ? renderExtra(v) : null} />
+        <VideoCard key={v.id} video={v} variant={variant} showChannel={showChannel} extra={renderExtra ? renderExtra(v) : null} />
       ))}
     </div>
   );

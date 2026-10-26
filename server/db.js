@@ -33,7 +33,7 @@ export function touchVideo(id) {
 }
 
 export const DEFAULT_SETTINGS = {
-  site_name: 'ClipTube',
+  site_name: 'OurTube',
   allow_registration: 'true', // legacy; registration_mode replaces it
   registration_mode: 'open', // open | approval | invite | closed
   max_upload_mb: '8192',
@@ -98,7 +98,7 @@ export const DEFAULT_SETTINGS = {
 
   // Hub mode (this instance runs the network).
   hub_enabled: 'false',
-  hub_network_name: 'ClipTube Network',
+  hub_network_name: 'OurTube Network',
   hub_accept_new: 'true', // lockdown switch: false = no new instances can join
   hub_require_approval: 'false', // new instances wait for the hub admin
   hub_require_https: 'true',

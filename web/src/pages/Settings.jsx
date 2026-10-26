@@ -443,8 +443,8 @@ function ViewingSettings() {
       </label>
       <label className="toggle-row">
         <span className="toggle-text">
-          <b>Keep vertical clips in their own tab</b>
-          <span className="hint">Home shows them only under Vertical.</span>
+          <b>Keep Shorts off the home page</b>
+          <span className="hint">No Shorts shelf on Home; they stay under Shorts.</span>
         </span>
         <input type="checkbox" className="switch" checked={hideVertical === 'on'} onChange={(e) => setHideVertical(e.target.checked ? 'on' : 'off')} />
       </label>
