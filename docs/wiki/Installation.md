@@ -23,8 +23,9 @@ settings you can change afterwards are in [Configuration](Configuration.md).
 | --- | --- |
 | **Machine** | A 64-bit server, VM or PC: x86-64, or ARM64 such as a Raspberry Pi 4 or 5. The Docker image builds on both; Node.js runs anywhere Node does. |
 | **Software** | Docker Engine with Compose v2, or Node.js 22.13 or newer. FFmpeg comes bundled (on ARM the image adds Debian's, see [Without Docker](#without-docker) for ARM without it). |
-| **Disk** | Room for your clips. An edited video keeps its first version as the editing source (about twice the space), and adaptive streaming adds a few renditions per video. |
-| **CPU** | Transcoding is the only heavy work, and H.264 recordings skip it (they are remuxed in seconds). A GPU encoder helps with the rest. |
+| **Memory** | Little. clips.irc.so, the hub, uses about 60 MB of RAM when idle, plus about 20 MB with live streaming on; encoding a video takes a few hundred MB more while it runs. A 1 GB VPS is plenty for a small server. |
+| **Disk** | Where most of the cost is. Plan on a little over the size of the uploads, and about three times that with adaptive streaming at `full` (the hub: 2.7 GB of videos, 8.8 GB in all). An edited video also keeps its first version as the editing source. |
+| **CPU** | Only encoding is heavy: it uses every core for a while after an upload, then nothing. H.264 recordings skip it (they are remuxed in seconds), and a GPU encoder helps with the rest. On a busy VPS, leave adaptive streaming off and the maximum resolution at 1080p or lower. |
 | **Network** | For anything beyond your LAN: a domain name and HTTPS. Linking with other servers and the fediverse needs a public `https://` address. |
 
 ## Docker behind a reverse proxy (recommended)
