@@ -160,7 +160,7 @@ async function refreshVideo(row) {
 
 const threads = new Map(); // video ap id -> { at, items }
 /**
- * The full comment thread of a video on a OurTube peer (protocol 4), from its comments collection with
+ * The full comment thread of a video on an OurTube peer (protocol 4), from its comments collection with
  * the notes embedded. Cached for a few seconds. Returns null when it can't be read.
  */
 export async function remoteThread(row) {

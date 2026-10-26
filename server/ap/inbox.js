@@ -31,7 +31,7 @@ const accepts = (actorId) => {
   return { comments: s.network_accept_comments === 'true', likes: s.network_accept_likes === 'true', subscriptions: s.network_accept_subscriptions === 'true' };
 };
 
-/** A OurTube peer on protocol 4, which expects an answer to each comment (Accept or Reject). */
+/** An OurTube peer on protocol 4, which expects an answer to each comment (Accept or Reject). */
 const wantsVerdict = (actorId) => {
   const inst = db.prepare('SELECT ap_actor, protocol FROM instances WHERE url = ?').get(originOf(actorId));
   return !!inst?.ap_actor && (inst.protocol || 0) >= 4;
@@ -201,7 +201,7 @@ async function onAnswer(a, actorId, base, accepted) {
   }
   if (!f) return onVerdict(o, actorId, accepted, a);
   db.prepare('UPDATE ap_follows SET status = ? WHERE local_actor = ? AND remote_actor = ?').run(accepted ? 'accepted' : 'rejected', f.local_actor, f.remote_actor);
-  // Our instance following a OurTube peer: that is the peering, and network.js keeps track of it.
+  // Our instance following an OurTube peer: that is the peering, and network.js keeps track of it.
   if (f.local_actor === 'i' && db.prepare('SELECT 1 FROM instances WHERE ap_actor = ?').get(actorId)) return peerFollowAnswered(actorId, accepted);
   if (accepted) enqueueJob('ap.backfill', { actor: actorId }, { dedupe: `ap-backfill:${actorId}` });
 }

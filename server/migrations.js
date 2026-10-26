@@ -723,7 +723,7 @@ CREATE INDEX idx_channel_imports_user ON channel_imports(user_id, created_at);
     version: 10,
     name: 'OurTube network over ActivityPub: peer instance actors, pending peer follows, comment verdicts',
     up(db) {
-      addColumn(db, 'instances', 'ap_actor', 'TEXT'); // the instance actor of a OurTube peer that speaks protocol 4
+      addColumn(db, 'instances', 'ap_actor', 'TEXT'); // the instance actor of an OurTube peer that speaks protocol 4
       addColumn(db, 'instances', 'ap_follow_id', 'TEXT'); // its Follow of our instance actor, while it waits for approval
       addColumn(db, 'network_comments', 'status', "TEXT NOT NULL DEFAULT 'visible'"); // visible | pending | rejected
       addColumn(db, 'network_comments', 'status_reason', 'TEXT');

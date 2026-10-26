@@ -4,7 +4,7 @@
 
 # OurTube
 
-**A self-hosted YouTube for Your Videos.**<br>
+**A self-hosted YouTube for your videos.**<br>
 Upload your videos, share them with friends, and link your server with theirs.
 
 [![Node.js 22.13+](https://img.shields.io/badge/Node.js-22.13%2B-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
@@ -20,7 +20,7 @@ Upload your videos, share them with friends, and link your server with theirs.
 [Wiki](docs/wiki/Home.md) •
 [Development](#development)
 
-<img src="docs/images/game.jpg" alt="A OurTube game page: SteamGridDB banner, title logo and cover above the game's videos" width="100%">
+<img src="docs/images/game.jpg" alt="An OurTube game page: SteamGridDB banner, title logo and cover above the game's videos" width="100%">
 
 </div>
 
@@ -29,7 +29,7 @@ Upload your videos, share them with friends, and link your server with theirs.
 Your videos shouldn't live on a platform you don't control. OurTube is a streaming site you run yourself, built
 around what a video streaming site needs:
 
-- **videos go up fast.** Drop in a pile of recordings, fill in the details while they upload, and publish when
+- **Videos go up fast.** Drop in a pile of recordings, fill in the details while they upload, and publish when
   you're ready. H.264 recordings are remuxed losslessly in seconds; anything else is transcoded, on your GPU if
   you have one.
 - **Every friend runs their own.** Each person hosts their own videos. The servers link up into one network, so
@@ -41,7 +41,7 @@ around what a video streaming site needs:
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/home.jpg" alt="The home feed with three gaming videos"></td>
+    <td width="50%"><img src="docs/images/home.jpg" alt="The home feed: videos from four servers, each tagged with the server it lives on"></td>
     <td width="50%"><img src="docs/images/watch.jpg" alt="The watch page with the player, likes, share, compare and download"></td>
   </tr>
   <tr>
@@ -86,9 +86,9 @@ around what a video streaming site needs:
 <tr>
 <td width="50%" valign="top">
 
-### video tools
+### Video tools
 
-- **video a moment** from any video into a new one that links back
+- **Clip a moment** from any video into a new one that links back
 - GIF and MP4 export of any range
 - Looping share links (`/watch/abc?t=12&end=20`)
 - **Compare** two videos side by side, frame-aligned, at up to 1/10 speed
@@ -165,17 +165,17 @@ cd ourtube
 mkdir -p data
 docker network create proxy-net    # the network your reverse proxy shares with OurTube (once)
 docker compose up -d --build
-docker logs videotube               # shows the one-time setup code
+docker logs cliptube               # shows the one-time setup code
 ```
 
 Then:
 
-1. Point your reverse proxy at **`videotube:3000`**, and let it pass large uploads (the
+1. Point your reverse proxy at **`cliptube:3000`**, and let it pass large uploads (the
    [Installation](docs/wiki/Installation.md) guide has settings for Nginx Proxy Manager, Caddy and nginx).
 2. Open the site and **create the first account**. It becomes the admin; the form asks for the setup code
    from the log, so nobody else can claim a fresh server.
 3. In **Admin → Overview**, set the **Public URL** to your `https://` address and choose who may sign up.
-4. Optional: **Admin → Network → Join network** with `https://videos.irc.so` to link up with the OurTube
+4. Optional: **Admin → Network → Join network** with `https://clips.irc.so` to link up with the OurTube
    network, and add a SteamGridDB key under **Admin → Games** for game artwork.
 
 No reverse proxy yet, or no Docker? The [Installation](docs/wiki/Installation.md) guide covers a standalone
@@ -185,7 +185,7 @@ container, running straight from Node.js, hosting at home and GPU encoding.
 
 ```mermaid
 flowchart TB
-    hub(["<b>Hub</b> · videos.irc.so<br/>directory · game catalog · block list"])
+    hub(["<b>Hub</b> · clips.irc.so<br/>directory · game catalog · block list"])
     subgraph net ["Servers peer directly over ActivityPub"]
         direction LR
         you["Your server"] <--> f1["A friend’s server"] <--> f2["Another friend’s server"]
@@ -240,10 +240,10 @@ All settings, the data folder and what to back up: [Configuration](docs/wiki/Con
 Server operators can manage the network, accounts and settings without a web login:
 
 ```bash
-docker exec videotube node server/cli.js network status
-docker exec videotube node server/cli.js network join https://videos.irc.so
-docker exec videotube node server/cli.js user role alice moderator
-docker exec -i videotube node server/cli.js settings set-secret steamgriddb_api_key < keyfile
+docker exec cliptube node server/cli.js network status
+docker exec cliptube node server/cli.js network join https://clips.irc.so
+docker exec cliptube node server/cli.js user role alice moderator
+docker exec -i cliptube node server/cli.js settings set-secret steamgriddb_api_key < keyfile
 ```
 
 Every command: [Admin CLI](docs/wiki/Admin-CLI.md).
@@ -283,7 +283,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 | [Upgrading and Backups](docs/wiki/Upgrading-and-Backups.md) | Updates, rollbacks, backups, moving servers |
 | [Uploading and Editing](docs/wiki/Uploading-and-Editing.md) | Uploads, drafts, processing, the timeline editor, captions |
 | [Watching and Discovery](docs/wiki/Watching-and-Discovery.md) | The player, streaming, feeds, notifications, search, analytics |
-| [video Tools and Games](docs/wiki/video-Tools-and-Games.md) | videoping, exports, compare, the game catalog, SteamGridDB |
+| [Clip Tools and Games](docs/wiki/Clip-Tools-and-Games.md) | Clipping a moment, exports, compare, the game catalog, SteamGridDB |
 | [Watch Parties](docs/wiki/Watch-Parties.md) | Watching with friends in sync, the queue, chat and reactions |
 | [Live Streaming](docs/wiki/Live-Streaming.md) | Going live from OBS, the live chat, recordings, turning it on |
 | [Webhooks](docs/wiki/Webhooks.md) | Telling a bot, a bridge or a chat channel when you post or go live |
@@ -298,8 +298,8 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 
 ## Status
 
-OurTube runs on three linked servers, with [videos.irc.so](https://videos.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.12.0**); smaller ideas are tracked in
+OurTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.14.1**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/ourtube/releases).
 

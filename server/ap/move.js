@@ -55,7 +55,7 @@ const isHere = (target) => {
 };
 
 /**
- * Moves one local person's subscription to a channel's new home: a channel on this site, a OurTube
+ * Moves one local person's subscription to a channel's new home: a channel on this site, an OurTube
  * instance (subscribed through the network), or anywhere in the fediverse (followed). Returns how, or null.
  */
 export async function moveSubscriber(userId, target, { fromName = null, prefer = 'network' } = {}) {

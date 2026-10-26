@@ -312,7 +312,7 @@ async function runImport(id) {
 
   const entries = await listTar(file);
   const meta = entries.find((e) => e.name === 'channel.json' || e.name.endsWith('/channel.json'));
-  if (!meta) throw new Error("This isn't a OurTube channel export (channel.json is missing)");
+  if (!meta) throw new Error("This isn't an OurTube channel export (channel.json is missing)");
   if (meta.size > 64 * 1048576) throw new Error('channel.json is too large');
   const root = meta.name.slice(0, meta.name.length - 'channel.json'.length);
   let data;
@@ -564,7 +564,7 @@ const archiveUpload = () =>
   multer({
     storage: archiveStorage,
     limits: { files: 1, fileSize: importMaxBytes() },
-    fileFilter: (req, f, cb) => (/\.tar$/i.test(f.originalname) ? cb(null, true) : cb(new HttpError(400, 'Choose the .tar file from a OurTube channel export'))),
+    fileFilter: (req, f, cb) => (/\.tar$/i.test(f.originalname) ? cb(null, true) : cb(new HttpError(400, 'Choose the .tar file from an OurTube channel export'))),
   }).single('archive');
 
 transferRouter.get('/channel-imports', (req, res) => {

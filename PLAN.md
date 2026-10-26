@@ -310,7 +310,7 @@ and search finds clips by game, length and phrase.
 **Schema:** `ap_actors` (cache of remote actors and keys), `ap_objects` (seen activity and object ids, for
 deduplication), `users.ap_public_key`, `users.ap_private_key`, `network_videos.ap_id`,
 `network_videos.origin_type`, `comments.ap_id`.
-**Done when:** the sandbox PeerTube follows a OurTube channel, plays a new upload within a minute, and a
+**Done when:** the sandbox PeerTube follows an OurTube channel, plays a new upload within a minute, and a
 comment posted there shows up on OurTube, and the reverse works too.
 
 ## M7: Mastodon, account moves, export and import (v1.1), size L to XL
@@ -334,7 +334,7 @@ comment posted there shows up on OurTube, and the reverse works too.
 - ✅ **Public docs**: how to follow OurTube channels from Mastodon and PeerTube. (S) At `/help/fediverse`.
 
 **Schema:** `users.moved_to`, `users.also_known_as`; export archives run as jobs.
-**Done when:** a sandbox Mastodon or GoToSocial account follows a OurTube channel, watches a clip in its
+**Done when:** a sandbox Mastodon or GoToSocial account follows an OurTube channel, watches a clip in its
 timeline, replies, and the reply appears as a comment.
 
 ## M8: One federation protocol, size M

@@ -1,6 +1,6 @@
 # OurTube Wiki
 
-<img src="../images/game.jpg" alt="A OurTube game page with SteamGridDB artwork" width="100%">
+<img src="../images/game.jpg" alt="An OurTube game page with SteamGridDB artwork" width="100%">
 
 **OurTube** is a self-hosted, YouTube-style video site for gaming clips. Each friend runs their own server
 and hosts their own clips; the servers link up into one network with [clips.irc.so](https://clips.irc.so) as

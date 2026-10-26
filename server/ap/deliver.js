@@ -68,7 +68,7 @@ export function sendVerdict(localActor, noteId, remoteActor, accepted, reason = 
   );
 }
 
-/** The owner approved (or deleted) a held comment that came from a OurTube peer: answer its server. */
+/** The owner approved (or deleted) a held comment that came from an OurTube peer: answer its server. */
 export async function apCommentVerdict(comment, accepted, reason = null) {
   if (!comment?.ap_id || !apEnabled()) return;
   const author = db.prepare('SELECT ap_actor FROM users WHERE id = ?').get(comment.user_id);

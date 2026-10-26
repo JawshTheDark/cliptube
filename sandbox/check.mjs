@@ -264,7 +264,7 @@ async function main() {
       if (m.type !== 'video' && !/\.mp4/.test(m.remote_url || '')) throw new Error(`attachment is ${m.type}: ${m.remote_url}`);
       return `${m.type} attachment from ${m.remote_url}; text: ${short(status.content).slice(0, 120)}`;
     });
-    await step('GoToSocial: a reply there becomes a OurTube comment, without the leading mention', async () => {
+    await step('GoToSocial: a reply there becomes an OurTube comment, without the leading mention', async () => {
       if (!status) throw new Error('no status to reply to');
       reply = must(await gts('POST', '/api/v1/statuses', { json: { status: `@alice@${CT_HOST} great clip from the sandbox`, in_reply_to_id: status.id, visibility: 'public' } }), 'reply');
       const c = await waitFor(async () => (await ctComments(ct, two.id)).find((x) => /great clip from the sandbox/.test(x.body)), { what: 'the comment on OurTube' });
@@ -288,7 +288,7 @@ async function main() {
       }, { what: 'the share' });
       return `${n} share`;
     });
-    await step('GoToSocial: a OurTube reply arrives in the GoToSocial thread', async () => {
+    await step('GoToSocial: an OurTube reply arrives in the GoToSocial thread', async () => {
       if (!reply) throw new Error('no reply to answer');
       const c = (await ctComments(ct, two.id)).find((x) => /great clip from the sandbox/.test(x.body));
       must(await ct.post(`/api/videos/${two.id}/comments`, { body: 'thanks mona, this is OurTube answering', parent_id: c.id }), 'reply on OurTube');
@@ -339,7 +339,7 @@ async function main() {
         if (![200, 206].includes(r.status)) throw new Error(`the file answered ${r.status}`);
         return `${f.resolution?.label || '?'} from ${f.fileUrl}`;
       });
-      await step('PeerTube: a comment there becomes a OurTube comment', async () => {
+      await step('PeerTube: a comment there becomes an OurTube comment', async () => {
         const c = must(await pt('POST', `/api/v1/videos/${ptVideo.uuid}/comment-threads`, { json: { text: 'nice one, from PeerTube' } }), 'comment').comment;
         thread = c.threadId || c.id;
         const x = await waitFor(async () => (await ctComments(ct, one.id)).find((y) => /nice one, from PeerTube/.test(y.body)), { what: 'the comment on OurTube' });
@@ -353,7 +353,7 @@ async function main() {
         }, { what: 'the like' });
         return `${v.likes} like`;
       });
-      await step('PeerTube: a OurTube reply shows in the PeerTube thread', async () => {
+      await step('PeerTube: an OurTube reply shows in the PeerTube thread', async () => {
         if (!thread) throw new Error('no thread');
         const c = (await ctComments(ct, one.id)).find((y) => /nice one, from PeerTube/.test(y.body));
         must(await ct.post(`/api/videos/${one.id}/comments`, { body: 'glad you liked it, PeerTube', parent_id: c.id }), 'reply on OurTube');

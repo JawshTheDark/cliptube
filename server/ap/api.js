@@ -152,7 +152,7 @@ function apVideo(req) {
 }
 
 const instOf = (instanceId) => db.prepare('SELECT * FROM instances WHERE id = ?').get(Number(instanceId));
-/** A OurTube peer on protocol 4: answers each comment, and serves its whole thread. */
+/** An OurTube peer on protocol 4: answers each comment, and serves its whole thread. */
 const clipTubePeer = (inst) => !!inst?.ap_actor && (inst.protocol || 0) >= 4;
 
 /** The OurTube network's switches cover OurTube peers; other servers only answer to their own settings. */
@@ -199,7 +199,7 @@ const commentShape = (c, me) => {
   };
 };
 
-/** A note from a OurTube peer's thread, in the shape of the comments API. */
+/** A note from an OurTube peer's thread, in the shape of the comments API. */
 function threadComment(n, v, me, mine, inThread, base) {
   const a = n.attributedTo && typeof n.attributedTo === 'object' ? n.attributedTo : { id: idOf(n.attributedTo) };
   const actorId = idOf(a.id) || '';
@@ -241,7 +241,7 @@ apNetworkRouter.get('/videos/:iid/:rid/comments', async (req, res, next) => {
   const canPost = !!v.comments_enabled && apEnabled() && (!isNetworkPeer(inst) || networkPolicy().comments);
   const rows = db.prepare('SELECT * FROM network_comments WHERE instance_id = ? AND remote_id = ? ORDER BY created_at').all(v.instance_id, v.remote_id);
   const mine = new Map(rows.filter((c) => c.ap_id).map((c) => [c.ap_id, c]));
-  // A OurTube peer serves the whole thread; elsewhere, show the comments that were delivered here.
+  // An OurTube peer serves the whole thread; elsewhere, show the comments that were delivered here.
   const thread = clipTubePeer(inst) ? await remoteThread(v) : null;
   if (thread) {
     const inThread = new Set(thread.map((n) => n.id));
@@ -367,7 +367,7 @@ apNetworkRouter.post('/videos/:iid/:rid/like', requireAuth, requireApOn, async (
 });
 
 /**
- * A fediverse channel's actor, for the remote channel links. On a OurTube peer (protocol 4) a channel we
+ * A fediverse channel's actor, for the remote channel links. On an OurTube peer (protocol 4) a channel we
  * haven't seen yet is fetched from its usual address (name_channel is /ap/channels/name).
  */
 async function apChannel(req) {

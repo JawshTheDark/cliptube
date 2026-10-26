@@ -122,13 +122,13 @@ const apOn = () => !!ap && apEnabled() && !!apBase();
 /** A peer that speaks protocol 4 (the OurTube network over ActivityPub). */
 const apPeer = (inst) => !!inst?.ap_actor && (inst.protocol || 0) >= 4;
 
-/** A OurTube instance in this network (peered, or listed by our hub): the network's switches apply to it. */
+/** An OurTube instance in this network (peered, or listed by our hub): the network's switches apply to it. */
 export function isNetworkPeer(inst) {
   return !!inst && (inst.protocol || 0) >= 2 && peerAllowed(inst);
 }
 
 /**
- * Another server's instance actor asks to follow ours: a OurTube peer (protocol 4 peering) or a server
+ * Another server's instance actor asks to follow ours: an OurTube peer (protocol 4 peering) or a server
  * mirroring this one (PeerTube does this). The admission switches decide. Returns accept, reject or pending.
  */
 export async function peerFollowReceived(actor, followId) {
@@ -140,7 +140,7 @@ export async function peerFollowReceived(actor, followId) {
   if (!apPeer(inst)) {
     try {
       inst = recordDescriptor(inst.url, await fetchDescriptor(inst.url), inst.source === 'activitypub' ? 'inbound' : inst.source || 'inbound');
-    } catch {} // not a OurTube instance: still subject to the switches below
+    } catch {} // not an OurTube instance: still subject to the switches below
   }
   if (inst.blocked || ['banned', 'suspended'].includes(inst.hub_status)) return 'reject';
   const adm = admission();
@@ -153,7 +153,7 @@ export async function peerFollowReceived(actor, followId) {
     return 'pending';
   }
   db.prepare("UPDATE instances SET peer_status = 'approved', ap_follow_id = NULL, last_seen_at = ?, next_try_at = NULL WHERE id = ?").run(now(), inst.id);
-  // A OurTube peer gets followed back, so videos flow both ways (what "hello" did in protocol v3).
+  // An OurTube peer gets followed back, so videos flow both ways (what "hello" did in protocol v3).
   if (apPeer(inst) && inst.ap_actor === actor.id && apOn() && participating()) ap.follow(instById(inst.id)).catch(() => {});
   return 'accept';
 }
@@ -349,7 +349,7 @@ function validPublicKey(pem) {
 /** What an instance says about itself at its own address. Its TLS certificate vouches for the key. */
 async function fetchDescriptor(url) {
   const d = await fetchJson(`${url}/.well-known/cliptube`, { timeout: 10000 });
-  if (d.software !== 'cliptube') throw new RemoteError(0, `${url} is not a OurTube instance`);
+  if (d.software !== 'cliptube') throw new RemoteError(0, `${url} is not an OurTube instance`);
   let claimed = null;
   try {
     claimed = normalizeInstanceUrl(d.url);
@@ -625,7 +625,7 @@ export function cleanItem(it, origin) {
   };
 }
 
-// One video, one row: a OurTube video seen through both protocols merges, and once it has come over
+// One video, one row: an OurTube video seen through both protocols merges, and once it has come over
 // ActivityPub it stays on that path (protocol 4 peers no longer take interactions the old way).
 const UPSERT_VIDEO = `INSERT INTO network_videos (instance_id, remote_id, title, description, tags, duration, width, height, views, likes,
     created_at, updated_at, thumbnail_url, video_url, watch_url, uploader_username, uploader_display_name, uploader_avatar_url, uploader_url, fetched_at,
@@ -1463,9 +1463,9 @@ export async function joinHub(meInput, hubInput) {
   try {
     desc = await fetchJson(`${hubUrl}/.well-known/cliptube`);
   } catch (e) {
-    throw new HttpError(400, e.status === 404 ? `${hubUrl} is not running a OurTube network hub` : `Could not reach ${hubUrl}: ${e.message}`);
+    throw new HttpError(400, e.status === 404 ? `${hubUrl} is not running an OurTube network hub` : `Could not reach ${hubUrl}: ${e.message}`);
   }
-  if (desc.software !== 'cliptube' || !desc.hub?.enabled) throw new HttpError(400, `${hubUrl} is not running a OurTube network hub`);
+  if (desc.software !== 'cliptube' || !desc.hub?.enabled) throw new HttpError(400, `${hubUrl} is not running an OurTube network hub`);
 
   const nonce = crypto.randomBytes(24).toString('base64url');
   const feedToken = crypto.randomBytes(32).toString('base64url');
@@ -1520,7 +1520,7 @@ export async function joinNetwork(meInput, targetInput) {
   try {
     d = await fetchDescriptor(target);
   } catch (e) {
-    throw new HttpError(400, e.status === 404 ? `${target} is not part of a OurTube network` : `Could not reach ${target}: ${e.message}`);
+    throw new HttpError(400, e.status === 404 ? `${target} is not part of an OurTube network` : `Could not reach ${target}: ${e.message}`);
   }
   if (d.hub?.enabled && !isHub()) return joinHub(me, target);
   if ((Number(d.protocol) || 2) < 3) throw new HttpError(400, `${target} runs an older OurTube that can only be joined through its hub${d.hub?.url ? ` (${d.hub.url})` : ''}`);

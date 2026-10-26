@@ -71,7 +71,7 @@ PeerTube comments and likes work in both directions.
 
 ## Linked accounts
 
-If you have accounts on several OurTube servers (or a OurTube account and a Mastodon one), link them, and
+If you have accounts on several OurTube servers (or an OurTube account and a Mastodon one), link them, and
 every server shows them as one person. Unlike a move, nothing goes away: each account keeps its own videos,
 subscribers and login.
 
@@ -114,7 +114,7 @@ people here follow moves, OurTube follows the move.
 
 ## Checked against real servers
 
-`scripts/fediverse-sandbox.sh <ssh-host>` starts **PeerTube 7.3**, **GoToSocial 0.22** and a OurTube built
+`scripts/fediverse-sandbox.sh <ssh-host>` starts **PeerTube 7.3**, **GoToSocial 0.22** and an OurTube built
 from your working tree in a private Docker sandbox on that host (an internal network with its own certificate
 authority; nothing is exposed), runs the interop checks and cleans up. Add `--keep` to leave it running for a
 look around.

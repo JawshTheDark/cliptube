@@ -188,7 +188,7 @@ test('discovery: WebFinger, NodeInfo, actors and content negotiation', async () 
   assert.match(html, /rel="alternate" type="application\/activity\+json"/);
 });
 
-test('a fediverse channel follows a OurTube channel and gets its new uploads', async () => {
+test('a fediverse channel follows an OurTube channel and gets its new uploads', async () => {
   const r = await fake.send(`${base}/ap/channels/bob/inbox`, { type: 'Follow', actor: fake.account, object: `${base}/ap/channels/bob` });
   assert.equal(r.status, 202, await r.text());
   const accept = await waitFor(() => fake.find((b) => b.type === 'Accept'), { what: 'Accept' });

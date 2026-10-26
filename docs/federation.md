@@ -17,7 +17,7 @@ catalog.
   missed delivery is caught and deletions are never missed.
 - **People.** Subscriptions are follows of a channel's actor (`name_channel`), likes and dislikes are Like
   and Dislike, comments are Notes, reports are Flags, deleted accounts are Delete, and moves are Move.
-- **Comment answers.** The server hosting a video answers each comment from a OurTube instance with
+- **Comment answers.** The server hosting a video answers each comment from an OurTube instance with
   Accept (shown, right away or once its owner approves a held one) or Reject (refused, with the reason).
   Until then the author sees it as waiting. A server that refuses the delivery outright (because it blocks
   the sender) marks it refused too.
@@ -77,9 +77,9 @@ address). It names the terms rather than linking to them, so it stays the same o
 Checked against real servers in a private sandbox (`scripts/fediverse-sandbox.sh`, which runs them in
 Docker on a host with no ports opened):
 
-- **PeerTube 7.3:** subscribing to a OurTube channel imports its videos, which PeerTube plays from the MP4;
+- **PeerTube 7.3:** subscribing to an OurTube channel imports its videos, which PeerTube plays from the MP4;
   comments and likes go both ways; OurTube follows PeerTube channels and whole servers and plays their videos.
-- **GoToSocial 0.22** (it speaks Mastodon's API): following a OurTube account, new clips in the timeline with
+- **GoToSocial 0.22** (it speaks Mastodon's API): following an OurTube account, new clips in the timeline with
   a playable video, replies becoming comments, favourites and boosts counting, OurTube's replies arriving,
   and OurTube following GoToSocial accounts.
 
