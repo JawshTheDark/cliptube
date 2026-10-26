@@ -5,6 +5,9 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
+import { execFileSync } from 'node:child_process';
+import ffmpegPath from 'ffmpeg-static';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { startInstance, Client, setupAdmin, uploadReady, waitFor } from './helpers.js';
@@ -139,6 +142,40 @@ test("the hub's directory gives members its current name, not the one it was set
   assert.equal((await hubIn()).name, 'Hub A, renamed');
   await A.patch('/api/admin/settings', { site_name: 'Hub A' });
   assert.equal((await hubIn()).name, 'Hub A');
+});
+
+test("a channel's new picture and name reach its videos on other servers, older ones included", async () => {
+  const avatar = path.join(os.tmpdir(), 'ourtube-test-avatar.jpg');
+  if (!fs.existsSync(avatar)) execFileSync(ffmpegPath, ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=purple:s=96x96', '-frames:v', '1', avatar]);
+  const bobOnHub = async () => (await net(A)).find((v) => v.title === 'Bob on the member')?.uploader;
+  assert.equal((await bobOnHub()).avatar_url, null);
+
+  // The member sends the change to the servers it peers with.
+  const form = new FormData();
+  form.append('avatar', new Blob([fs.readFileSync(avatar)]), 'me.jpg');
+  assert.equal((await B.req('POST', '/api/me/avatar', undefined, { form })).status, 200);
+  await B.patch('/api/me', { display_name: 'Bob, now with a face' });
+  const after = await waitFor(
+    async () => {
+      const u = await bobOnHub();
+      return u?.avatar_url && u.display_name === 'Bob, now with a face' ? u : null;
+    },
+    { what: "bob's new picture and name on the hub" },
+  );
+  assert.ok(after.avatar_url.startsWith(`${member.url}/media/avatars/`), after.avatar_url);
+
+  // A server that doesn't send its changes (an older version): Sync now on the hub reads the channel again.
+  const hubDb = new DatabaseSync(path.join(hub.dataDir, 'cliptube.db'));
+  hubDb.prepare("UPDATE network_videos SET uploader_avatar_url = NULL, uploader_display_name = 'stale' WHERE ap_actor IS NOT NULL").run();
+  hubDb.close();
+  assert.equal((await bobOnHub()).display_name, 'stale');
+  await A.post('/api/admin/network/sync');
+  const fresh = await bobOnHub();
+  assert.equal(fresh.display_name, 'Bob, now with a face');
+  assert.equal(fresh.avatar_url, after.avatar_url);
+
+  await B.patch('/api/me', { display_name: 'bob' });
+  await waitFor(async () => (await bobOnHub()).display_name === 'bob', { what: "bob's name back on the hub" });
 });
 
 test("a clip from another server shared from here gets a link preview", { skip: !fs.existsSync(path.join(import.meta.dirname, '..', 'web', 'dist', 'index.html')) && 'the web app is not built' }, async () => {

@@ -181,4 +181,18 @@ export const forgetThread = (apId) => threads.delete(apId);
 
 export { isNetworkPeer };
 
-useApTransport({ follow, answerFollow, unpeer, reconcile, upgradePeers, refreshVideo });
+/**
+ * Re-reads the profiles of the channels whose videos are shown here, oldest copy first, so their pictures and
+ * names stay current even when their server doesn't send its changes.
+ */
+async function refreshChannels({ maxAge = 12 * 3600_000 } = {}) {
+  const stale = db
+    .prepare(
+      `SELECT DISTINCT v.ap_actor AS id, a.fetched_at FROM network_videos v LEFT JOIN ap_actors a ON a.id = v.ap_actor
+       WHERE v.ap_actor IS NOT NULL AND (a.fetched_at IS NULL OR a.fetched_at <= ?) ORDER BY a.fetched_at LIMIT 100`,
+    )
+    .all(now() - maxAge);
+  for (const { id } of stale) await getActor(id, { refresh: true }).catch(() => {});
+}
+
+useApTransport({ follow, answerFollow, unpeer, reconcile, upgradePeers, refreshVideo, refreshChannels });

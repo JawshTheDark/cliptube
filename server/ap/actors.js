@@ -8,6 +8,7 @@ import { HttpError, newId, now, str } from '../util.js';
 import { apFetch } from './http.js';
 import { first, hostOf, idOf, originOf } from './common.js';
 import { instanceKeys } from './keys.js';
+import { indexNetworkVideo } from '../search.js';
 
 const STALE_MS = 24 * 3600_000;
 const ACTOR_TYPES = new Set(['Person', 'Group', 'Application', 'Service', 'Organization']);
@@ -74,7 +75,26 @@ export function storeActor(a, fetchedFrom = null) {
   ).run(...vals, a.id);
   const row = db.prepare('SELECT * FROM ap_actors WHERE id = ?').get(a.id);
   if (row.user_id) refreshShadow(row);
+  if (row.type === 'Group' || row.type === 'Person') refreshCopies(row);
   return row;
+}
+
+/**
+ * Videos from other servers, and subscriptions to their channels, keep a copy of the channel's name and picture.
+ * They follow the channel's profile, so a new picture or name doesn't stop at the videos that arrive after it.
+ */
+function refreshCopies(a) {
+  const name = a.name || a.username;
+  const videos = db
+    .prepare('SELECT instance_id, remote_id FROM network_videos WHERE ap_actor = ? AND (uploader_display_name IS NOT ? OR uploader_avatar_url IS NOT ?)')
+    .all(a.id, name, a.icon_url);
+  if (videos.length) {
+    db.prepare('UPDATE network_videos SET uploader_display_name = ?, uploader_avatar_url = ? WHERE ap_actor = ?').run(name, a.icon_url, a.id);
+    for (const v of videos) indexNetworkVideo(v.instance_id, v.remote_id); // search finds them by the new name
+  }
+  db.prepare('UPDATE network_subscriptions SET display_name = ?, avatar_url = ? WHERE instance_id = ? AND username = ?').run(
+    str(name, 50) || a.username, a.icon_url, a.instance_id, a.username,
+  );
 }
 
 /** A remote actor, from the cache or fetched (again when stale or when `refresh`). */

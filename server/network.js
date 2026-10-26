@@ -1749,6 +1749,8 @@ export async function networkTick({ full = false } = {}) {
   if (!isHub() && s.network_hub_token) await syncFromHub({ full }).catch(() => {});
   await refreshBlocklists({ force: full }).catch(() => {});
   if (apOn()) await ap.upgradePeers({ force: full }).catch((e) => console.warn(`[network] moving peers to ActivityPub: ${e.message}`));
+  // Channels' pictures and names, for servers that don't send their profile changes; Sync now reads them all.
+  if (apOn()) await ap.refreshChannels({ maxAge: full ? 0 : 12 * 3600_000 }).catch((e) => console.warn(`[network] reading channel profiles: ${e.message}`));
   await introduceKnown().catch(() => {});
   await pullAllMembers({ full });
 }

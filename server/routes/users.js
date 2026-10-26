@@ -12,6 +12,13 @@ import { videoSelect, serializeVideo, LOCAL_LIST_COLS, REMOTE_LIST_COLS, mapList
 import { NETWORK_VISIBLE, serializeRemote, networkActive } from '../network.js';
 import { indexVideosOf } from '../search.js';
 import { linkedVideoFilter, publicLinks, subscribeAll } from '../links.js';
+import { apEnabled } from '../ap/common.js';
+import { sendActorUpdates } from '../ap/move.js';
+
+/** A new name, picture or bio goes out to the servers that show this person's videos and comments. */
+function announceProfile(id) {
+  if (apEnabled()) sendActorUpdates(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+}
 
 /** Local channels only; people from other instances have placeholder accounts with no channel page here. */
 function channelByUsername(username) {
@@ -230,6 +237,7 @@ meRouter.patch('/', async (req, res) => {
     db.prepare('UPDATE users SET comment_mode = ? WHERE id = ?').run(b.comment_mode, u.id);
   }
   if (b.support_links !== undefined) db.prepare('UPDATE users SET support_links = ? WHERE id = ?').run(JSON.stringify(cleanSupportLinks(b.support_links)), u.id);
+  if (display_name !== u.display_name || bio !== u.bio || b.support_links !== undefined) announceProfile(u.id);
 
   if (b.new_password) {
     if (typeof b.new_password !== 'string' || b.new_password.length < 6) throw new HttpError(400, 'New password must be at least 6 characters');
@@ -307,6 +315,7 @@ meRouter.post('/avatar', imageUpload('avatar'), async (req, res) => {
   }
   if (u.avatar) try { fs.unlinkSync(path.join(DIRS.avatars, u.avatar)); } catch {}
   db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(name, u.id);
+  announceProfile(u.id);
   res.json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
 });
 
@@ -314,5 +323,6 @@ meRouter.delete('/avatar', (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   if (u.avatar) try { fs.unlinkSync(path.join(DIRS.avatars, u.avatar)); } catch {}
   db.prepare('UPDATE users SET avatar = NULL WHERE id = ?').run(u.id);
+  announceProfile(u.id);
   res.json({ user: userToPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
 });

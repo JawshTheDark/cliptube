@@ -180,7 +180,10 @@ function sendMoveActivities(u) {
   deliver(`c:${u.id}`, { '@context': CONTEXT, id: x.activity(), type: 'Move', actor: group, object: group, target: u.moved_to_group || u.moved_to, to: [`${group}/followers`] }, groupInboxes);
 }
 
-/** Profile changes (aliases, undoing a move) for servers that follow the account or channel. */
+/**
+ * Profile changes (name, picture, bio, aliases, undoing a move) for servers that follow the account or channel,
+ * and for the servers peering with this one, which show its videos and comments.
+ */
 export function sendActorUpdates(u) {
   const base = apBase();
   if (!base) return;
@@ -189,8 +192,8 @@ export function sendActorUpdates(u) {
   const gj = groupJson(u, base);
   delete pj['@context'];
   delete gj['@context'];
-  deliver(`u:${u.id}`, { '@context': CONTEXT, id: x.activity(), type: 'Update', actor: x.person(u.username), to: [PUBLIC], object: pj }, inboxesOf(followersOf([`u:${u.id}`])));
-  deliver(`c:${u.id}`, { '@context': CONTEXT, id: x.activity(), type: 'Update', actor: x.group(u.username), to: [PUBLIC], object: gj }, inboxesOf(followersOf([`c:${u.id}`])));
+  deliver(`u:${u.id}`, { '@context': CONTEXT, id: x.activity(), type: 'Update', actor: x.person(u.username), to: [PUBLIC], object: pj }, inboxesOf(followersOf([`u:${u.id}`, 'i'])));
+  deliver(`c:${u.id}`, { '@context': CONTEXT, id: x.activity(), type: 'Update', actor: x.group(u.username), to: [PUBLIC], object: gj }, inboxesOf(followersOf([`c:${u.id}`, 'i'])));
 }
 
 // People on this site and on other OurTube instances follow the channel to its new home.

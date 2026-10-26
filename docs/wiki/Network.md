@@ -59,6 +59,10 @@ Every video says where it lives: a tag on its thumbnail with the server's name a
 server's videos too, once it is in a network). The same server has the same color on every server, since the
 color comes from its address. Watch pages, channel pages and live cards show the server the same way.
 
+A channel's picture, name and bio follow it everywhere: a change is sent to the servers in the network right
+away, and each server also reads the channels it shows again every 12 hours (all of them on *Sync now*), for
+servers that don't send their changes.
+
 ## What every server controls
 
 Every server stays in charge of itself. Under **Admin → Network** each one can:

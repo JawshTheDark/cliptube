@@ -39,6 +39,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | The name OurTube everywhere (repository JawshTheDark/ourtube); webhooks send X-OurTube-* headers as well as the old ones | Done | v1.13.2, 2026-10-26 |
 | Whole-server webhooks for admins: everything published here, and optionally new videos from the network | Done | v1.14.0, 2026-10-26 |
 | A renamed hub keeps its new name on members (the member directory sent the name from setup) | Done | v1.14.1, 2026-10-26 |
+| A channel's new picture, name and bio reach the videos other servers already have | Done | v1.14.2, 2026-10-26 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you
