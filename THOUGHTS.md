@@ -32,3 +32,28 @@ have to go looking on a specific channel. Approval or invite-only sign-up helps 
 Some places (the UK, several US states) legally require real age checks for sites with a lot of pornography.
 Another reason to leave each server's switch at *not allowed* unless its admin decides otherwise, after checking
 what applies to them.
+
+## Push notifications for the Android app (Firebase Cloud Messaging, through the hub)
+
+Only the hub holds the Firebase key; every other server asks the hub to send its pushes. Nobody else needs a
+Firebase account.
+
+1. **Firebase project (Jawsh, once).** Create a free Firebase project and add an Android app with the package id
+   `so.irc.cliptube`. That gives two files, both secrets: `google-services.json` for the app build, and a
+   service-account key for the hub (kept outside the repository, like `LIVE_SECRET`).
+2. **The app.** Asks Firebase for this phone's push token and gives it to every server it is signed in to (a new
+   `POST /api/me/devices`), and removes it on sign-out. A tapped notification opens the right page.
+3. **Every server.** Keeps each person's device tokens. When a notification is made (the same moment web push and
+   email go out today), it sends `{ token, title, body, url }` to the hub's relay over the network link it
+   already has.
+4. **The hub.** A relay endpoint only for servers in its network (they already sign their requests to it). It
+   sends each push to Firebase with the service-account key, rate-limits per server, and tells the sending server
+   to forget tokens Firebase says are gone.
+
+Choices to make before building:
+
+- **What a push says.** The title and text (useful, but Google and the hub see them), or only "something new on
+  <server>" with the app fetching the rest (private, but the app has to wake up and ask). A per-person "private
+  notifications" switch could offer both.
+- **Servers outside the network** get no pushes this way. The app could check now and then while it's open.
+- **The hub becomes the one path for pushes:** if it's down, pushes wait or are dropped; nothing else breaks.
