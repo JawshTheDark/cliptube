@@ -5,6 +5,7 @@ import { useAuth, useTitle } from '../auth.jsx';
 import { Player } from '../components/Player.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { Avatar } from '../components/Avatar.jsx';
+import { ServerTag } from '../components/ServerTag.jsx';
 import { Empty } from '../components/VideoCard.jsx';
 import { GameField } from '../components/GameField.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -54,9 +55,9 @@ export function LiveNow() {
               <span className="live-card-title">{s.title}</span>
               <span className="muted small">
                 {s.channel.display_name}
-                {s.remote ? ` · ${s.remote.peer_name}` : ''}
                 {s.game ? ` · ${s.game.name}` : ''}
               </span>
+              <ServerTag remote={s.remote} />
             </>
           );
           return s.remote ? (

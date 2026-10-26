@@ -6,6 +6,7 @@ import { Player } from '../components/Player.jsx';
 import { Comments } from '../components/Comments.jsx';
 import { VideoCard, Empty } from '../components/VideoCard.jsx';
 import { Avatar } from '../components/Avatar.jsx';
+import { ServerTag } from '../components/ServerTag.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { Description } from './Watch.jsx';
@@ -170,7 +171,7 @@ export default function RemoteWatch() {
                 {u.display_name}
               </a>
               <div className="subs">
-                <Icon name="public" className="inline-icon" /> {r.peer_name}
+                <ServerTag remote={r} />
                 {channel.subscriber_count !== null && ` · ${compact(channel.subscriber_count)} subscriber${channel.subscriber_count === 1 ? '' : 's'}`}
               </div>
             </div>

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 import { Avatar } from '../components/Avatar.jsx';
+import { ServerTag } from '../components/ServerTag.jsx';
 import { VideoGrid, InfiniteScroll, Empty } from '../components/VideoCard.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { plural, formatDate, usePaged } from '../util.js';
@@ -96,6 +97,7 @@ export default function Channel() {
           <h1>{channel.display_name}</h1>
           <div className="meta">
             <span>@{channel.username}</span>
+            <ServerTag />
             <span>•</span>
             <span>{plural(channel.subscriber_count, 'subscriber')}</span>
             <span>•</span>

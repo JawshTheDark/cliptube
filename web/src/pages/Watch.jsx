@@ -6,6 +6,7 @@ import { Player } from '../components/Player.jsx';
 import { Comments } from '../components/Comments.jsx';
 import { VideoCard, Empty } from '../components/VideoCard.jsx';
 import { Avatar } from '../components/Avatar.jsx';
+import { ServerTag } from '../components/ServerTag.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { ReportButton } from '../components/ReportDialog.jsx';
@@ -499,6 +500,7 @@ export default function Watch() {
                 {u.display_name}
               </Link>
               <div className="subs">
+                <ServerTag after=" · " />
                 {compact(u.subscriber_count)} {u.subscriber_count === 1 ? 'subscriber' : 'subscribers'}
               </div>
             </div>

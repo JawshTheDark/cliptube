@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar } from './Avatar.jsx';
 import { Icon } from './Icons.jsx';
+import { ServerTag } from './ServerTag.jsx';
 import { compact, displayed, formatDuration, timeAgo, usePref } from '../util.js';
 
 /**
@@ -64,6 +65,7 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true, extr
           />
         )}
         {v.duration > 0 && <span className="duration">{formatDuration(v.duration)}</span>}
+        <ServerTag remote={remote} className="on-thumb" />
         {watched > 0 && (
           <div className="watched">
             <div style={{ width: `${watched}%` }} />
@@ -90,11 +92,6 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true, extr
               {variant === 'list' && <Avatar user={u} size={24} />}
               {u.display_name}
             </ChannelLink>
-          )}
-          {remote && (
-            <span className="card-instance" title={`Hosted on ${remote.peer_url}`}>
-              <Icon name="public" /> {remote.peer_name}
-            </span>
           )}
           {v.game && (
             <Link to={`/g/${v.game.id}`} className="card-game" title={`More ${v.game.name} clips`}>

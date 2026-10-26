@@ -4514,3 +4514,45 @@ h2,
   border-color: rgba(229, 40, 60, 0.45);
   border-radius: 16px;
 }
+
+/* Where a video lives: every server has its own color, the same on every server in the network. */
+.server-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  vertical-align: middle;
+}
+.server-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.server-tag.on-thumb {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 1;
+  max-width: calc(100% - 16px);
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  background: rgba(14, 13, 22, 0.82);
+  color: #fff;
+  font-size: 11px;
+}
+.card.compact .server-tag.on-thumb,
+.card.short .server-tag.on-thumb {
+  left: 6px;
+  top: 6px;
+  max-width: calc(100% - 12px);
+  padding: 2px 7px 2px 6px;
+  font-size: 10px;
+}
+.live-card .server-tag {
+  align-self: flex-start;
+}

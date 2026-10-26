@@ -53,7 +53,11 @@ docker exec cliptube node server/cli.js network join https://clips.irc.so
 ```
 
 If the hub requires approval, your server waits until the hub's admin approves it. Once in, other servers'
-clips appear within a sync round, and the hub's games show up under Admin → Games.
+videos appear within a sync round, and the hub's games show up under Admin → Games.
+
+Every video says where it lives: a tag on its thumbnail with the server's name and a colored dot (your own
+server's videos too, once it is in a network). The same server has the same color on every server, since the
+color comes from its address. Watch pages, channel pages and live cards show the server the same way.
 
 ## What every server controls
 
