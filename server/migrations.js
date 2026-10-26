@@ -929,6 +929,17 @@ CREATE TABLE IF NOT EXISTS webhooks (
 `);
     },
   },
+  {
+    version: 18,
+    name: "webhooks are each person's own",
+    up(db) {
+      addColumn(db, 'webhooks', 'user_id', 'TEXT REFERENCES users(id) ON DELETE CASCADE');
+      // Any from v1.11.0, when only admins had webhooks, go to the first admin.
+      db.exec("UPDATE webhooks SET user_id = (SELECT id FROM users WHERE is_admin = 1 ORDER BY created_at LIMIT 1) WHERE user_id IS NULL");
+      db.exec('DELETE FROM webhooks WHERE user_id IS NULL');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_webhooks_user ON webhooks(user_id)');
+    },
+  },
 ];
 
 export function currentVersion(db) {

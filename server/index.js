@@ -12,7 +12,7 @@ import { adminRouter } from './routes/admin.js';
 import { mediaRouter } from './routes/media.js';
 import { checkFfmpeg, resumePending } from './media.js';
 import { startUploadSweep, uploadsRouter } from './uploads.js';
-import { webhooksAdminRouter } from './webhooks.js';
+import { webhooksRouter } from './webhooks.js';
 import { startJobs } from './jobs.js';
 import { networkProtocolRouter, networkAdminRouter, networkRouter, networkActive, networkPeers, networkInfo, startNetwork } from './network.js';
 import { modRouter, reportsRouter, legalAdminRouter, legalPublicRouter } from './moderation.js';
@@ -108,6 +108,7 @@ app.use('/api/live', liveHookRouter); // MediaMTX asks here who may publish and 
 app.use('/api/live', liveRouter);
 app.use('/live/hls', liveMediaRouter);
 app.use('/api/uploads', uploadsRouter); // big files in pieces, for proxies that cap request size
+app.use('/api/me/webhooks', webhooksRouter); // each person's webhooks
 app.use('/api/me', privacyRouter); // exports, account deletion
 app.use('/api/me', meRouter);
 app.use('/api/me', moveRouter); // aliases and moves
@@ -122,7 +123,6 @@ app.use('/api/admin/network', networkAdminRouter);
 app.use('/api/admin/legal', legalAdminRouter);
 app.use('/api/admin/mail', mailAdminRouter);
 app.use('/api/admin/fediverse', fediverseAdminRouter);
-app.use('/api/admin/webhooks', webhooksAdminRouter);
 app.use('/api/admin', adminRouter);
 app.use('/media', watchingMediaRouter); // HLS, federation MP4, captions, originals
 app.use('/media', mediaRouter);

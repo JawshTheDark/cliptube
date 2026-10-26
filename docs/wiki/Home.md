@@ -27,6 +27,7 @@ its hub, and Mastodon and PeerTube can follow along.
   game catalog and SteamGridDB artwork
 - [Watch Parties](Watch-Parties.md): watching with friends in sync, the queue, chat and reactions
 - [Live Streaming](Live-Streaming.md): going live from OBS, the live chat, recordings, and turning it on
+- [Webhooks](Webhooks.md): telling a bot, a bridge or a chat channel when you post or go live
 - [Android App](Android-App.md): installing the app, servers and sign-in, uploading from your phone
 
 ## Running a server

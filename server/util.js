@@ -1,3 +1,4 @@
+import net from 'node:net';
 import crypto from 'node:crypto';
 
 export class HttpError extends Error {
@@ -48,4 +49,24 @@ export function parseTags(input) {
 
 export function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/** Whether an address is in a private, loopback, link-local or otherwise non-public network. */
+export function isPrivateIp(ip) {
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split('.').map(Number);
+    return (
+      a === 0 || a === 10 || a === 127 || a >= 224 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && (b === 168 || b === 0)) ||
+      (a === 198 && (b === 18 || b === 19))
+    );
+  }
+  const v = ip.toLowerCase();
+  if (v === '::' || v === '::1') return true;
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(v);
+  if (mapped) return isPrivateIp(mapped[1]);
+  return /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || v.startsWith('ff');
 }

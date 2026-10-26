@@ -79,7 +79,7 @@ defineJob('notify.upload', {
         dedupe: `upload:${v.id}`,
       });
     }
-    fireWebhooks('video.published', videoEvent(v.id));
+    fireWebhooks('video.published', videoEvent(v.id), v.user_id);
   },
 });
 

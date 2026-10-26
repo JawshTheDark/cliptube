@@ -33,6 +33,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Sync now reads each server's name and version at its own address (hourly otherwise) | Done | v1.10.3, 2026-10-25 |
 | Link previews for clips from other servers in the network | Done | v1.10.4, 2026-10-25 |
 | Outgoing webhooks for new videos and live streams (JSON, Discord, Slack) | Done | v1.11.0, 2026-10-25 |
+| Webhooks are each person's own, in Settings, and can't reach the server's own network | Done | v1.12.0, 2026-10-25 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

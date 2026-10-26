@@ -71,61 +71,7 @@ emails they choose. Admin → Overview → *Email* has a test button.
 
 Web push notifications need no setup: the server makes its own keys on first start.
 
-### Webhooks
-
-Webhooks tell a bot, a bridge or a chat channel when something happens here:
-
-| Event | When |
-| --- | --- |
-| `video.published` | A video is published: public and done processing (a draft when its details are saved). Once per video. |
-| `live.started` | A public live stream starts |
-
-Add one under **Admin → Overview → Webhooks** with its address, the events it wants and a format:
-
-- **JSON** sends the whole event (below), for bots and bridges.
-- **Discord** sends a message to a Discord webhook (*Channel settings → Integrations → Webhooks*): who posted what,
-  and the link, which Discord then shows with its preview and player.
-- **Slack** sends the same message to a Slack incoming webhook, or to Mattermost.
-
-**Test** sends a test right away and shows the answer. A delivery that doesn't get a `2xx` answer within 10
-seconds is tried again, up to five times, a little later each time; the list shows how the last one went. Set the
-Public URL first, so the links in webhooks are complete.
-
-A JSON delivery looks like this:
-
-```json
-{
-  "event": "video.published",
-  "delivery": "kq3T0v9xW2c",
-  "sent_at": "2026-10-25T23:15:45.011Z",
-  "site": { "name": "Brad's Vidya", "url": "https://video.bradroot.me" },
-  "video": {
-    "id": "nVei-xmEYFI",
-    "title": "Doggos excited to walk",
-    "description": "",
-    "url": "https://video.bradroot.me/watch/nVei-xmEYFI",
-    "thumbnail_url": "https://video.bradroot.me/media/thumbs/nVei-xmEYFI.jpg",
-    "video_url": "https://video.bradroot.me/media/videos/nVei-xmEYFI.mp4",
-    "duration": 21.5,
-    "width": 1080,
-    "height": 1920,
-    "game": { "id": "umamusume-pretty-derby", "name": "Umamusume: Pretty Derby" },
-    "tags": ["dogs"],
-    "published_at": "2026-10-25T22:01:00.000Z",
-    "channel": { "username": "amiantos", "display_name": "amiantos", "url": "https://video.bradroot.me/c/amiantos", "avatar_url": null }
-  }
-}
-```
-
-`live.started` has a `stream` instead: `id`, `title`, `description`, `url` (the live page), `game`, `started_at`
-and `channel`. Each request carries `X-ClipTube-Event` and `X-ClipTube-Delivery` headers. With a **secret**,
-`X-ClipTube-Signature` is `sha256=` and the HMAC-SHA256 of the raw body with the secret, so the other end can check
-that the request came from here:
-
-```js
-const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-const ok = crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(req.headers['x-cliptube-signature'] || ''));
-```
+Each person can set up their own [webhooks](Webhooks.md) in Settings, for their new videos and live streams.
 
 ## Admin → Moderation
 

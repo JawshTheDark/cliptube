@@ -75,7 +75,7 @@ around what a clip site needs:
 - Theater mode, keyboard shortcuts, resume where you left off
 - Community titles and thumbnails, visible dislikes, support links
 - Link previews with an inline player in Discord and Slack
-- Webhooks for new videos and live streams: JSON for bots and bridges, or messages for Discord and Slack
+- Webhooks, each person's own, for their new videos and live streams: JSON for bots and bridges, or messages for Discord and Slack
 - Original downloads when the uploader allows them
 - **Playlists** and Watch later, mixing clips from any server, with shuffle, loop and autoplay
 - **Watch together**: parties that play in sync for everyone, with a queue, chat and reactions
@@ -286,6 +286,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 | [Clip Tools and Games](docs/wiki/Clip-Tools-and-Games.md) | Clipping, exports, compare, the game catalog, SteamGridDB |
 | [Watch Parties](docs/wiki/Watch-Parties.md) | Watching with friends in sync, the queue, chat and reactions |
 | [Live Streaming](docs/wiki/Live-Streaming.md) | Going live from OBS, the live chat, recordings, turning it on |
+| [Webhooks](docs/wiki/Webhooks.md) | Telling a bot, a bridge or a chat channel when you post or go live |
 | [Network](docs/wiki/Network.md) | Hubs, members, peering, blocking, running a hub |
 | [Fediverse](docs/wiki/Fediverse.md) | Mastodon, PeerTube, moving a channel |
 | [Moderation and Legal](docs/wiki/Moderation-and-Legal.md) | Roles, reports, spam, sign-up, copyright, privacy |
@@ -298,7 +299,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 ## Status
 
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
-milestone in [PLAN.md](PLAN.md) is done (current release: **v1.11.0**); smaller ideas are tracked in
+milestone in [PLAN.md](PLAN.md) is done (current release: **v1.12.0**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/cliptube/releases).
 

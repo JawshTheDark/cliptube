@@ -116,7 +116,7 @@ test('MediaMTX asks ClipTube who may publish, and only ClipTube may read', async
   assert.equal(await auth({ action: 'read', path: 'live/alice', user: 'cliptube', password: SECRET }), 200);
   assert.equal(await auth({ action: 'api', user: 'cliptube', password: SECRET }), 200);
 
-  assert.equal((await alice.post('/api/admin/webhooks', { url: `${fake.url}/hook`, events: ['live.started'] })).status, 201);
+  assert.equal((await alice.post('/api/me/webhooks', { url: `${fake.url}/hook`, events: ['live.started'] })).status, 201);
   fake.ready = ['live/alice'];
   assert.equal(await auth({ action: 'publish', path: 'live/alice', query: `key=${key}`, protocol: 'rtmp' }), 200);
   const page = (await new Client(inst.url).get('/api/live/alice')).data;

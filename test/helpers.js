@@ -41,10 +41,10 @@ export function tempDir(name) {
 }
 
 /** Starts a real ClipTube server on a free port with its own temporary data folder. */
-export async function startInstance(name = 'test', { env = {}, args = [] } = {}) {
+export async function startInstance(name = 'test', { env = {}, args = [], allowPrivate = true } = {}) {
   const port = await freePort();
   const dataDir = tempDir(name);
-  const child = spawn(process.execPath, ['server/index.js', '--port', String(port), '--allow-private-federation', ...args], {
+  const child = spawn(process.execPath, ['server/index.js', '--port', String(port), ...(allowPrivate ? ['--allow-private-federation'] : []), ...args], {
     cwd: ROOT,
     env: { ...process.env, DATA_DIR: dataDir, SETUP_CODE: 'testcode', HOST: '127.0.0.1', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
