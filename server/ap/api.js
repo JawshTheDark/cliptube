@@ -12,7 +12,7 @@ import { apFetch } from './http.js';
 import { getActor, resolveActor, signer } from './actors.js';
 import { followersOf, sendFollow, sendTo, sendUnfollow } from './deliver.js';
 import { isNetworkPeer, networkPolicy } from '../network.js';
-import { forgetThread, remoteThread } from './peering.js';
+import { forgetThread, remoteChapters, remoteThread } from './peering.js';
 
 const actorSummary = (a, status = null) => ({
   id: a.id,
@@ -260,6 +260,13 @@ apNetworkRouter.get('/videos/:iid/:rid/comments', async (req, res, next) => {
   }
   const shown = rows.filter((c) => c.status === 'visible' || c.user_id === req.user?.id);
   res.json({ comments: shown.map((c) => commentShape(c, req.user)), can_post: canPost, origin, host_name: v.peer_name || origin });
+});
+
+// Chapters set on PeerTube (others come from timestamps in the description, read by the player).
+apNetworkRouter.get('/videos/:iid/:rid/chapters', async (req, res, next) => {
+  const v = apVideo(req);
+  if (!v) return next();
+  res.json({ chapters: await remoteChapters(v) });
 });
 
 /** Who should hear about an interaction with this video: its channel and the channel's account. */

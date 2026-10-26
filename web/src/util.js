@@ -73,6 +73,30 @@ export function parseTimestamp(s) {
   return parts.reduce((acc, p) => acc * 60 + p, 0);
 }
 
+/**
+ * Chapters from a description, the way YouTube and PeerTube read them: lines like "0:00 Intro" or "Intro - 1:23",
+ * at least two, in order. A first chapter that starts late gets an untitled one before it. [{ start, title }]
+ */
+export function parseChapters(text, duration = Infinity) {
+  const ts = String.raw`[\[(]?((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?`;
+  const first = new RegExp(String.raw`^\s*${ts}\s*[-–—:|.]?\s*(.*?)\s*$`);
+  const last = new RegExp(String.raw`^\s*(.+?)\s*[-–—:|]?\s*${ts}\s*$`);
+  const out = [];
+  for (const line of String(text || '').split('\n')) {
+    let m = first.exec(line);
+    let stamp = m?.[1];
+    let title = m?.[2];
+    if (!m && (m = last.exec(line))) [stamp, title] = [m[2], m[1]];
+    if (!stamp) continue;
+    const start = parseTimestamp(stamp);
+    if (start === null || start >= duration || (out.length && start <= out.at(-1).start)) continue;
+    out.push({ start, title: title.replace(/^[-–—:|.\s]+/, '').slice(0, 100) });
+  }
+  if (out.length < 2) return [];
+  if (out[0].start > 0) out.unshift({ start: 0, title: '' });
+  return out;
+}
+
 /** Copies text to the clipboard, with a fallback for plain-http LAN hosts where navigator.clipboard is unavailable. */
 export async function copyText(text) {
   try {

@@ -231,6 +231,25 @@ async function peerTubeThread(row, origin, uuid) {
   return notes;
 }
 
+const chapterCache = new Map(); // video ap id -> { at, chapters }
+/** A PeerTube video's chapters ([{ start, title }], seconds), from its API. Cached ten minutes; [] elsewhere. */
+export async function remoteChapters(row) {
+  const pt = row.ap_id && PEERTUBE_VIDEO.exec(row.ap_id);
+  if (!pt) return [];
+  const hit = chapterCache.get(row.ap_id);
+  if (hit && now() - hit.at < 600_000) return hit.chapters;
+  let chapters = hit?.chapters || [];
+  try {
+    const r = await apFetch(`${pt[1]}/api/v1/videos/${pt[2]}/chapters`, { accept: 'application/json', timeout: 4000 });
+    chapters = (Array.isArray(r.chapters) ? r.chapters : [])
+      .filter((c) => Number.isFinite(Number(c?.timecode)) && typeof c.title === 'string')
+      .map((c) => ({ start: Math.max(0, Number(c.timecode)), title: c.title.slice(0, 100) }))
+      .sort((a, b) => a.start - b.start);
+  } catch {}
+  chapterCache.set(row.ap_id, { at: now(), chapters });
+  return chapters;
+}
+
 /** A comment from PeerTube's API as a note, replying to the video or to its thread's first comment. */
 function peerTubeNote(c, inReplyTo, origin, owner) {
   const a = c.account || {};

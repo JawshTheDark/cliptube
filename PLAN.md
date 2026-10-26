@@ -48,6 +48,8 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | PeerTube videos show their whole comment thread, from before the follow too | Done | v1.17.0, 2026-10-26 |
 | A Shorts viewer: one at a time, full height, each in a frame of its own shape; scroll, swipe or arrow keys | Done | v1.17.0, 2026-10-26 |
 | Times in comments jump the video there, and the comment box can add the current time | Done | v1.17.0, 2026-10-26 |
+| Our own player controls in the OurTube look: a seek bar in chapters, volume, speed, quality and captions in one menu | Done | v1.18.0, 2026-10-26 |
+| Chapters from timestamps in the description, and from PeerTube for its videos | Done | v1.18.0, 2026-10-26 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

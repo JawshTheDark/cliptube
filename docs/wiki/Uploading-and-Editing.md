@@ -15,7 +15,8 @@
 Open **Upload** (`/upload`) and drop in one or more files, or pick them. Each file gets its own card with a
 progress bar, and you can fill in its details while it uploads:
 
-- **Title**, **description** and **tags**
+- **Title**, **description** and **tags** (times in the description, one per line, become
+  [chapters](Watching-and-Discovery.md#chapters))
 - **Visibility**: *public* (listed on the site and, if you allow it, in the network), *unlisted* (anyone with
   the link) or *private* (only you)
 - **Game**, from the site's catalog (see [Video Tools and Games](Video-Tools-and-Games.md#games))

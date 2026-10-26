@@ -38,6 +38,9 @@ function fakeTube() {
       return json(200, { '@context': AS, id: `${F.channel}/outbox`, type: 'OrderedCollection', totalItems: 1, orderedItems: [{ type: 'Create', actor: F.account, object: F.video('old-one', 'An older fake video') }] });
     }
     if (req.method === 'GET' && url.pathname.startsWith('/videos/watch/')) return json(200, F.video(url.pathname.split('/').pop(), 'Fetched fake video'));
+    if (req.method === 'GET' && url.pathname === '/api/v1/videos/talked-about/chapters') {
+      return json(200, { chapters: [{ timecode: 30, title: 'The trick' }, { timecode: 0, title: 'Start' }] });
+    }
     // PeerTube's comments API: the threads of a video, and one thread with its replies.
     const api = /^\/api\/v1\/videos\/([^/]+)\/comment-threads(?:\/(\d+))?$/.exec(url.pathname);
     if (req.method === 'GET' && api) {
@@ -343,6 +346,10 @@ test("a PeerTube video's whole comment thread shows, from before anyone here fol
   assert.equal(mine[0].id, r.data.comment.id);
   assert.equal(mine[0].parent_id, q.id);
   assert.equal(mine[0].can_delete, true);
+
+  // Chapters set on PeerTube come along for the player, in order.
+  const ch = await carol.get(`/api/network/videos/${nv.remote.peer_id}/${nv.remote.remote_id}/chapters`);
+  assert.deepEqual(ch.data.chapters, [{ start: 0, title: 'Start' }, { start: 30, title: 'The trick' }]);
 });
 
 test('blocking a server shuts it out', async () => {

@@ -34,6 +34,7 @@ export default function RemoteWatch() {
   const [params] = useSearchParams();
   const listId = params.get('list');
   const [saveOpen, setSaveOpen] = useState(false);
+  const [chapters, setChapters] = useState(null);
   const startParty = useStartParty();
 
   useEffect(() => {
@@ -41,7 +42,12 @@ export default function RemoteWatch() {
     setData(null);
     setError(null);
     setExpanded(false);
+    setChapters(null);
     window.scrollTo(0, 0);
+    // Chapters set on PeerTube; otherwise the player reads them from the description.
+    api(`/network/videos/${peerId}/${encodeURIComponent(remoteId)}/chapters`)
+      .then((r) => !dead && setChapters(r.chapters))
+      .catch(() => {});
     api(`/network/videos/${peerId}/${encodeURIComponent(remoteId)}`)
       .then((r) => {
         if (dead) return;
@@ -149,7 +155,7 @@ export default function RemoteWatch() {
   return (
     <div className={`watch ${theater ? 'theater' : ''}`}>
       <div className="player-wrap">
-        <Player video={video} videoRef={videoRef} theater={theater} onToggleTheater={toggleTheater} />
+        <Player video={video} videoRef={videoRef} theater={theater} onToggleTheater={toggleTheater} chapters={chapters} />
       </div>
 
       <div className="watch-body">

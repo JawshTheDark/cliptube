@@ -1,6 +1,8 @@
 # Watching and Discovery
 
 - [The player](#the-player)
+- [Chapters](#chapters)
+- [Shorts](#shorts)
 - [Adaptive streaming](#adaptive-streaming)
 - [Downloads and the 720p copy](#downloads-and-the-720p-copy)
 - [Community titles and thumbnails](#community-titles-and-thumbnails)
@@ -16,6 +18,12 @@
 
 ## The player
 
+The controls are OurTube's own. The seek bar shows what has loaded, the chapters and the skippable parts, and
+hovering it shows the time and chapter there. The volume (remembered between videos) slides out next to the
+speaker, the time shows the current chapter, and the gear holds quality, speed (0.25x to 2x) and captions. The
+controls hide while the video plays and the pointer rests. Click the video to pause, double-click for full
+screen. Live streams show **LIVE** instead of the seek bar; clicking it jumps back to the live edge.
+
 | Key | Action |
 | --- | --- |
 | `k` | Play or pause |
@@ -25,6 +33,8 @@
 | `t` | Theater mode |
 | `m` | Mute |
 | `0` to `9` | Jump to 0% to 90% of the video |
+| `↑` / `↓` | Volume up or down |
+| `,` / `.` | Back or forward one frame (paused) |
 
 Signed in, videos resume where you left off (unless you paused your history). Under the player you can like
 or dislike, subscribe, **Share** (with a *start at* time, or a looping range), **Compare** with another clip,
@@ -32,6 +42,20 @@ and download the original when the uploader allows it.
 
 Times in descriptions and comments (`1:23`, `1:02:03`) are links that jump the video there. While writing a
 comment, **Add time** puts in the moment the video is at.
+
+## Chapters
+
+Put the chapters in the description, one per line, the way YouTube and PeerTube read them:
+
+```
+0:00 Intro
+1:23 The cave
+12:05 Boss fight
+```
+
+Times can also go after the title (`Boss fight - 12:05`) or in brackets. It takes at least two chapters, in
+order; if the first starts after 0:00, an untitled one fills the start. The seek bar splits at each chapter.
+Videos from PeerTube bring the chapters set on their server.
 
 ## Shorts
 

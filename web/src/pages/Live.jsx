@@ -308,7 +308,7 @@ export default function Live() {
       <div className="party-main">
         <div className="player-wrap party-player">
           {stream?.hls_url ? (
-            <Player video={{ id: `live-${stream.id}`, hls_url: stream.hls_url, video_url: null, thumbnail_url: null }} videoRef={videoRef} />
+            <Player video={{ id: `live-${stream.id}`, hls_url: stream.hls_url, video_url: null, thumbnail_url: null }} videoRef={videoRef} live />
           ) : (
             <div className="player">
               <div className="processing-panel">

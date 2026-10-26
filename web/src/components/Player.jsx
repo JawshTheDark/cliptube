@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { getPref, setPref, usePref } from '../util.js';
-
-const rungLabel = (r) => (r.name === 'source' ? `Source (${r.height}p${r.fps > 31 ? Math.round(r.fps) : ''})` : `${r.height}p${r.fps > 31 ? Math.round(r.fps) : ''}`);
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { PlayerControls } from './PlayerControls.jsx';
+import { getPref, parseChapters, setPref, usePref } from '../util.js';
 
 /**
  * Adaptive streaming with hls.js (loaded on demand) when the video has HLS renditions; the MP4 otherwise.
@@ -123,13 +122,15 @@ function useSegments(video, videoRef) {
 }
 
 /**
- * Native <video> with YouTube-style keyboard shortcuts, resume position and progress reporting.
- * `videoRef` is owned by the parent so the description timestamps and share dialog can reach the element.
+ * The video with OurTube's own controls (PlayerControls), YouTube-style keyboard shortcuts, resume position and
+ * progress reporting. `videoRef` is owned by the parent so the description timestamps and share dialog can reach
+ * the element. Chapters come from `chapters` (set on another server) or from timestamps in the description.
  */
-export function Player({ video, videoRef, startAt = 0, exactStart = false, loop = null, onProgress, theater, onToggleTheater }) {
+export function Player({ video, videoRef, startAt = 0, exactStart = false, loop = null, onProgress, theater, onToggleTheater, chapters = null, live = false }) {
   const q = useHls(video, videoRef);
   const seg = useSegments(video, videoRef);
-  const [menu, setMenu] = useState(false);
+  const boxRef = useRef(null);
+  const chapterList = useMemo(() => (chapters?.length ? chapters : parseChapters(video.description)), [chapters, video.description]);
   // Seek to the start position once metadata is known. Resume points skip the very start and end;
   // a time from a shared link (exactStart) is used as is.
   useEffect(() => {
@@ -240,7 +241,8 @@ export function Player({ video, videoRef, startAt = 0, exactStart = false, loop 
           break;
         case 'f':
           if (document.fullscreenElement) document.exitFullscreen();
-          else el.requestFullscreen?.();
+          else if (boxRef.current?.requestFullscreen) boxRef.current.requestFullscreen().catch(() => {});
+          else el.webkitEnterFullscreen?.();
           break;
         case 't':
           onToggleTheater?.();
@@ -259,43 +261,26 @@ export function Player({ video, videoRef, startAt = 0, exactStart = false, loop 
     return () => document.removeEventListener('keydown', h);
   }, [videoRef, onToggleTheater]);
 
-  const activeLevel = q.levels && q.levels[q.active];
   return (
-    <div className={`player ${theater ? 'theater' : ''}`}>
-      <video
-        key={video.id}
-        ref={videoRef}
-        src={video.hls_url ? undefined : video.video_url}
-        poster={video.thumbnail_url || undefined}
-        controls
-        autoPlay
-        playsInline
-        controlsList="nodownload"
-      >
+    <div ref={boxRef} className={`player ${theater ? 'theater' : ''}`}>
+      <video key={video.id} ref={videoRef} src={video.hls_url ? undefined : video.video_url} poster={video.thumbnail_url || undefined} autoPlay playsInline>
         {/* No hls_url: the MP4 is the source. With HLS the stream is attached by hls.js. */}
         {(video.captions || []).map((c, i) => (
           <track key={c.id} kind="subtitles" srcLang={c.lang} label={c.label} src={c.url} default={i === 0 && getPref('captions') === 'on'} />
         ))}
       </video>
-      {q.levels && q.levels.length > 1 && (
-        <div className="player-quality">
-          <button className="player-chip" onClick={() => setMenu((m) => !m)} title="Quality">
-            {q.level < 0 ? `Auto${activeLevel ? ` (${rungLabel(activeLevel)})` : ''}` : rungLabel(q.levels[q.level])}
-          </button>
-          {menu && (
-            <div className="player-menu" onMouseLeave={() => setMenu(false)}>
-              <button className={q.level < 0 ? 'active' : ''} onClick={() => (q.setLevel(-1), setMenu(false))}>
-                Auto
-              </button>
-              {[...q.levels].reverse().map((l) => (
-                <button key={l.index} className={q.level === l.index ? 'active' : ''} onClick={() => (q.setLevel(l.index), setMenu(false))}>
-                  {rungLabel(l)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <PlayerControls
+        videoRef={videoRef}
+        boxRef={boxRef}
+        videoKey={video.id}
+        q={q}
+        chapters={chapterList}
+        segments={video.segments || []}
+        captions={video.captions || []}
+        live={live}
+        theater={theater}
+        onToggleTheater={onToggleTheater}
+      />
       {seg.current && (
         <button className="player-skip" onClick={seg.skip}>
           Skip {seg.current.label.toLowerCase()} ⏭
