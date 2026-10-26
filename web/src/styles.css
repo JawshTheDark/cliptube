@@ -2486,10 +2486,13 @@ kbd {
   font-weight: 600;
 }
 .chips.flat {
+  position: static;
+  z-index: auto;
   flex-wrap: wrap;
   overflow: visible;
   padding: 0;
   margin: 8px 0;
+  background: none;
 }
 .chips.flat .chip {
   height: 28px;
@@ -4555,4 +4558,13 @@ h2,
 }
 .live-card .server-tag {
   align-self: flex-start;
+}
+/* Sort chips over a game's artwork: glassy instead of solid blocks. */
+.game-head.with-hero .chip:not(.active) {
+  background: rgba(14, 13, 22, 0.55);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.game-head.with-hero .chip:not(.active):hover {
+  background: rgba(14, 13, 22, 0.75);
 }

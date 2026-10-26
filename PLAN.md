@@ -35,6 +35,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Outgoing webhooks for new videos and live streams (JSON, Discord, Slack) | Done | v1.11.0, 2026-10-25 |
 | Webhooks are each person's own, in Settings, and can't reach the server's own network | Done | v1.12.0, 2026-10-25 |
 | The OurTube look: dark purple theme, new logo and fonts, Everything / Videos / Shorts on Home with a Shorts shelf, every video tagged with its server | Done | v1.13.0, 2026-10-25 |
+| Game pages: sort chips sit cleanly on the artwork, and game pages count videos, not clips | Done | v1.13.1, 2026-10-25 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

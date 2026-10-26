@@ -58,7 +58,7 @@ export function Games() {
       </div>
       {games.length === 0 ? (
         <Empty icon="game" title="No games yet">
-          <p>Moderators add games, and clips can then be filed under them.</p>
+          <p>Moderators add games, and videos can then be filed under them.</p>
         </Empty>
       ) : (
         <div className="game-grid">
@@ -66,7 +66,7 @@ export function Games() {
             <Link key={g.id} to={`/g/${g.id}`} className="game-tile">
               <Cover game={g} />
               <div className="game-tile-name">{g.name}</div>
-              <div className="muted small">{plural(g.video_count + g.network_count, 'clip')}</div>
+              <div className="muted small">{plural(g.video_count + g.network_count, 'video')}</div>
             </Link>
           ))}
         </div>
@@ -108,13 +108,13 @@ export function GamePage() {
             ) : (
               game.name
             )}{' '}
-            {!game.remote_only && <FeedButton href={`/feeds/game/${game.id}.atom`} title={`${game.name} clips`} />}
+            {!game.remote_only && <FeedButton href={`/feeds/game/${game.id}.atom`} title={`${game.name} videos`} />}
           </h1>
           <div className="muted">
-            {plural(total, 'clip')}
-            {site.federation && game.network_count > 0 && ` · ${game.network_count} from other instances`}
+            {plural(total, 'video')}
+            {site.federation && game.network_count > 0 && ` · ${game.network_count} from other servers`}
           </div>
-          {game.remote_only && <p className="hint">This game comes from other instances in the network.</p>}
+          {game.remote_only && <p className="hint">This game comes from other servers in the network.</p>}
           <ArtCredit game={game} />
           <div className="chips flat top-gap">
             {[
@@ -130,8 +130,8 @@ export function GamePage() {
         </div>
       </div>
       {!loading && items.length === 0 ? (
-        <Empty icon="game" title="No clips yet">
-          <p>Pick this game when you upload a clip.</p>
+        <Empty icon="game" title="No videos yet">
+          <p>Pick this game when you upload a video.</p>
         </Empty>
       ) : (
         <VideoGrid videos={items} />
