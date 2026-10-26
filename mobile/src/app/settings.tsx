@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Text';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Button, Icon, toast } from '@/components/ui';
@@ -51,7 +52,7 @@ export default function AppSettings() {
       <Button title="Add or remove servers" icon="dns" onPress={() => router.push('/servers')} style={{ alignSelf: 'flex-start' }} />
 
       <Text style={[s.section, { marginTop: 18 }]}>About</Text>
-      <Text style={s.hint}>ClipTube for Android {Constants.expoConfig?.version || ''}</Text>
+      <Text style={s.hint}>OurTube for Android {Constants.expoConfig?.version || ''}</Text>
     </ScrollView>
   );
 }

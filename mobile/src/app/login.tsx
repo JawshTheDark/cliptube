@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
 import { Button, Icon } from '@/components/ui';
@@ -49,7 +50,7 @@ export default function Login() {
         <View style={s.server}>
           <Icon name="dns" size={20} color={colors.text2} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.text, fontWeight: '600' }}>{site?.site_name || 'ClipTube'}</Text>
+            <Text style={{ color: colors.text, fontWeight: '600' }}>{site?.site_name || 'OurTube'}</Text>
             <Text style={s.hint}>{hostLabel(server)}</Text>
           </View>
           <Button title="Change" small onPress={() => router.push('/servers')} />

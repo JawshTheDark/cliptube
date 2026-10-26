@@ -57,7 +57,7 @@ export function usePaged<T = any>(api: Api, path: string | null, pick: (r: any) 
       const page = await fetchPage(state.items.length);
       if (g !== gen.current) return;
       setState((s) => {
-        // A clip published between pages shifts the offsets; skip anything already shown.
+        // A video published between pages shifts the offsets; skip anything already shown.
         const seen = new Set(s.items.map((x: any) => x.id));
         return { ...s, items: [...s.items, ...page.items.filter((x: any) => !seen.has(x.id))], hasMore: page.hasMore };
       });

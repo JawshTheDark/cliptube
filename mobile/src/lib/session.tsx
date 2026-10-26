@@ -5,7 +5,7 @@ import { Api, ApiError, normalizeServerUrl } from './api';
 import type { Site, User } from './types';
 
 /**
- * Where the first-launch screen looks for server suggestions: the ClipTube network's hub, which lists the
+ * Where the first-launch screen looks for server suggestions: the OurTube network's hub, which lists the
  * servers in it. Only a suggestion; nothing is chosen for the user.
  */
 export const NETWORK_DIRECTORY = 'https://clips.irc.so';
@@ -56,12 +56,12 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
-/** Checks that an address is a ClipTube server and returns its site info. */
+/** Checks that an address is a OurTube server and returns its site info. */
 export async function probeServer(url: string): Promise<Site> {
   const site = await new Api(url).get<Site>('/site').catch((e) => {
-    throw new Error(e instanceof ApiError && e.status ? `${url} answered, but it doesn't look like a ClipTube server` : e.message);
+    throw new Error(e instanceof ApiError && e.status ? `${url} answered, but it doesn't look like a OurTube server` : e.message);
   });
-  if (!site || typeof site.site_name !== 'string') throw new Error(`${url} doesn't look like a ClipTube server`);
+  if (!site || typeof site.site_name !== 'string') throw new Error(`${url} doesn't look like a OurTube server`);
   return site;
 }
 
@@ -158,7 +158,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const startSession = async (res: { user: User; token?: string }) => {
     if (!res.token) {
-      throw new Error('This server runs an older ClipTube that the app can’t sign in to. Ask its admin to update to 1.5 or newer.');
+      throw new Error('This server runs an older OurTube that the app can’t sign in to. Ask its admin to update to 1.5 or newer.');
     }
     await SecureStore.setItemAsync(tokenKey(server), res.token);
     setToken(res.token);

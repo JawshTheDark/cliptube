@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { Text } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button, ErrorBox, Loading, toast } from '@/components/ui';
@@ -20,7 +21,7 @@ export default function EditVideo() {
     api
       .get<{ video: Video }>(`/videos/${encodeURIComponent(id)}`)
       .then(({ video: v }) => {
-        if (!v.can_edit) throw new Error('You can only edit your own clips.');
+        if (!v.can_edit) throw new Error('You can only edit your own videos.');
         setVideo(v);
         setFields({
           title: v.title,
@@ -39,7 +40,7 @@ export default function EditVideo() {
   if (!video || !fields) return <Loading />;
 
   const save = async () => {
-    if (!fields.title.trim()) return toast('Give the clip a title');
+    if (!fields.title.trim()) return toast('Give the video a title');
     setBusy(true);
     try {
       await api.patch(`/videos/${encodeURIComponent(id)}`, {
@@ -62,7 +63,7 @@ export default function EditVideo() {
   };
 
   const remove = () =>
-    Alert.alert('Delete this clip?', `"${video.title}" and its comments are deleted for good.`, [
+    Alert.alert('Delete this video?', `"${video.title}" and its comments are deleted for good.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -70,7 +71,7 @@ export default function EditVideo() {
         onPress: async () => {
           try {
             await api.del(`/videos/${encodeURIComponent(id)}`);
-            toast('Clip deleted');
+            toast('Video deleted');
             router.dismissTo('/library/mine');
           } catch (e: any) {
             toast(e.message);
@@ -81,11 +82,11 @@ export default function EditVideo() {
 
   return (
     <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
-        {video.draft && <Text style={{ color: colors.warn }}>This clip is a draft. Saving publishes it.</Text>}
+        {video.draft && <Text style={{ color: colors.warn }}>This video is a draft. Saving publishes it.</Text>}
         <VideoForm value={fields} onChange={setFields} />
         <Button title={video.draft ? 'Publish' : 'Save'} kind="primary" onPress={save} busy={busy} />
         <View style={{ height: 8 }} />
-        <Button title="Delete clip" kind="danger" icon="delete-outline" onPress={remove} />
+        <Button title="Delete video" kind="danger" icon="delete-outline" onPress={remove} />
         <Text style={{ color: colors.text2, fontSize: 12.5 }}>Trim, thumbnails and captions are on the website’s Studio.</Text>
     </KeyboardAwareScrollView>
   );

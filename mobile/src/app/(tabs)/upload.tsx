@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -39,7 +40,7 @@ export default function Upload() {
     setStage({ kind: 'form' });
   }, [server, user?.id]);
 
-  // After the upload, follow processing until the clip is ready.
+  // After the upload, follow processing until the video is ready.
   useEffect(() => {
     if (stage.kind !== 'processing') return;
     const t = setInterval(async () => {
@@ -58,7 +59,7 @@ export default function Upload() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <AppHeader title="Upload" />
-        <Empty icon="file-upload" title="Sign in to upload clips">
+        <Empty icon="file-upload" title="Sign in to upload videos">
           <View style={{ marginTop: 8 }}>
             <Button title="Sign in" kind="primary" onPress={() => router.push('/login')} />
           </View>
@@ -69,7 +70,7 @@ export default function Upload() {
 
   const pick = async () => {
     setError(null);
-    // copyToCacheDirectory: false streams the file from where it is, so multi-GB clips aren't copied first.
+    // copyToCacheDirectory: false streams the file from where it is, so multi-GB videos aren't copied first.
     const r = await DocumentPicker.getDocumentAsync({ type: 'video/*', copyToCacheDirectory: false, multiple: false });
     if (r.canceled || !r.assets?.[0]) return;
     const a = r.assets[0];
@@ -78,7 +79,7 @@ export default function Upload() {
       setError(`That file is ${bytes(a.size)}. This server takes up to ${bytes(max)}.`);
       return;
     }
-    setFile({ uri: a.uri, name: a.name || 'clip.mp4', size: a.size ?? null, type: a.mimeType || 'video/mp4', lastModified: a.lastModified ?? null });
+    setFile({ uri: a.uri, name: a.name || 'video.mp4', size: a.size ?? null, type: a.mimeType || 'video/mp4', lastModified: a.lastModified ?? null });
     if (!fields.title) setFields((f) => ({ ...f, title: (a.name || '').replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim().slice(0, 120) }));
   };
 
@@ -86,7 +87,7 @@ export default function Upload() {
     if (!file) return;
     setError(null);
     setStage({ kind: 'uploading', sent: 0, total: file.size || 0 });
-    // In pieces that survive a dropped connection (ClipTube 1.10+), or in one request on older servers.
+    // In pieces that survive a dropped connection (OurTube 1.10+), or in one request on older servers.
     const job = api.uploadVideo<{ video: Video }>(
       {
         title: fields.title.trim(),
@@ -147,7 +148,7 @@ export default function Upload() {
         <View style={s.progressBox}>
           <Icon name={stage.kind === 'processing' ? 'hourglass-top' : failed ? 'error-outline' : 'check-circle'} size={56} color={failed ? colors.err : stage.kind === 'done' ? colors.ok : colors.text2} />
           <Text style={s.big} numberOfLines={2}>
-            {stage.kind === 'processing' ? 'Processing…' : failed ? 'Processing failed' : 'Your clip is up'}
+            {stage.kind === 'processing' ? 'Processing…' : failed ? 'Processing failed' : 'Your video is up'}
           </Text>
           <Text style={s.hint}>
             {stage.kind === 'processing'
@@ -187,10 +188,10 @@ export default function Upload() {
         {file && (
           <>
             <VideoForm value={fields} onChange={setFields} />
-            <Button title="Upload" kind="primary" icon="file-upload" onPress={() => (fields.title.trim() ? start() : toast('Give the clip a title'))} />
+            <Button title="Upload" kind="primary" icon="file-upload" onPress={() => (fields.title.trim() ? start() : toast('Give the video a title'))} />
           </>
         )}
-        {!file && <Text style={[s.hint, { textAlign: 'center' }]}>{`Clips up to ${bytes((site?.max_upload_mb || 0) * 1024 * 1024)} go to ${server.replace(/^https?:\/\//, '')}.`}</Text>}
+        {!file && <Text style={[s.hint, { textAlign: 'center' }]}>{`Videos up to ${bytes((site?.max_upload_mb || 0) * 1024 * 1024)} go to ${server.replace(/^https?:\/\//, '')}.`}</Text>}
       </KeyboardAwareScrollView>
     </View>
   );

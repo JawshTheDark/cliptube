@@ -1,4 +1,4 @@
-// Shapes returned by the ClipTube API (see server/routes/videos.js, server/network.js and server/auth.js).
+// Shapes returned by the OurTube API (see server/routes/videos.js, server/network.js and server/auth.js).
 
 export type User = {
   id: string;
@@ -23,6 +23,7 @@ export type Site = {
   has_terms: boolean;
   federation: boolean;
   network_peers?: { id: number; name: string; url: string }[];
+  ap_host?: string | null; // the address other servers know this one by
 };
 
 export type Uploader = {
@@ -121,7 +122,7 @@ export type Comment = {
   can_pin?: boolean;
 };
 
-/** One of a channel's verified linked accounts elsewhere (ClipTube 1.6). */
+/** One of a channel's verified linked accounts elsewhere (OurTube 1.6). */
 export type LinkedAccount = {
   handle: string;
   url: string;
@@ -185,7 +186,7 @@ export type Notification = {
   created_at: number;
 };
 
-// ---- playlists (ClipTube 1.7) ----
+// ---- playlists (OurTube 1.7) ----
 
 export type PlaylistItem = {
   id: number;
@@ -216,7 +217,7 @@ export type PlaylistSummary = {
 
 export type Playlist = PlaylistSummary & { items: PlaylistItem[] };
 
-// ---- watch parties (ClipTube 1.8) ----
+// ---- watch parties (OurTube 1.8) ----
 
 export type PartyState = { item_id: number | null; playing: boolean; position: number; at: number };
 
@@ -239,7 +240,7 @@ export type Party = {
   now: number;
 };
 
-// ---- live streaming (ClipTube 1.9) ----
+// ---- live streaming (OurTube 1.9) ----
 
 export type LiveStream = {
   id: string;
@@ -256,6 +257,7 @@ export type LiveStream = {
   url: string;
   video_id: string | null; // the recording, once the stream ended
   channel: { username: string; display_name: string; avatar_url: string | null };
+  remote?: { peer_id: number; peer_name: string | null; peer_url: string }; // a stream on another server, in /live/now
 };
 
 export type LiveNow = { enabled: boolean; live: LiveStream[]; network: LiveStream[] };

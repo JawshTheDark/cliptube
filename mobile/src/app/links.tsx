@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
@@ -12,7 +13,7 @@ import { colors } from '@/lib/theme';
 import type { LinksState, OwnLink } from '@/lib/types';
 
 /**
- * Linked accounts (ClipTube 1.6): the same person's accounts on other ClipTube servers or Mastodon. A link
+ * Linked accounts (OurTube 1.6): the same person's accounts on other OurTube servers or Mastodon. A link
  * counts once both accounts list each other; then every server shows them as one person.
  */
 export default function LinkedAccounts() {
@@ -28,7 +29,7 @@ export default function LinkedAccounts() {
     api
       .get<LinksState>('/me/links')
       .then(setS)
-      .catch((e) => setError(e.status === 404 ? 'Linked accounts need ClipTube 1.6 or newer on this server.' : e.message));
+      .catch((e) => setError(e.status === 404 ? 'Linked accounts need OurTube 1.6 or newer on this server.' : e.message));
   }, [api]);
   useEffect(load, [load]);
 
@@ -77,7 +78,7 @@ export default function LinkedAccounts() {
   return (
     <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled" bottomOffset={24}>
       <Text style={s_.hint}>
-        Have accounts on other ClipTube servers, or on Mastodon? Link them and every server shows them as one person: Also on
+        Have accounts on other OurTube servers, or on Mastodon? Link them and every server shows them as one person: Also on
         on your channel, your comments from any of them marked as the uploader’s, and one button to subscribe to all of them.
         A link counts once both accounts list each other.
       </Text>

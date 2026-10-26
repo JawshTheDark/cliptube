@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { router } from 'expo-router';
 import { itemHref } from '@/lib/refs';
 import { withServer } from '@/lib/scope';
@@ -22,7 +23,7 @@ function shuffledOrder(listId: string, ids: number[]): number[] {
     }
     shuffled.set(listId, order);
   }
-  // Clips added since go at the end.
+  // Videos added since go at the end.
   const known = new Set(order);
   return [...order.filter((id) => ids.includes(id)), ...ids.filter((id) => !known.has(id))];
 }
@@ -30,8 +31,8 @@ function shuffledOrder(listId: string, ids: number[]): number[] {
 export type PlaylistNav = { next: PlaylistItem | null; goNext: () => void; autoplay: boolean };
 
 /**
- * The playlist a clip is playing from: where it is in the list, what's next, shuffle, loop and autoplay.
- * Reports what plays next to the watch screen, which moves on when the clip ends.
+ * The playlist a video is playing from: where it is in the list, what's next, shuffle, loop and autoplay.
+ * Reports what plays next to the watch screen, which moves on when the video ends.
  */
 export function PlaylistBar({
   api,
@@ -86,7 +87,7 @@ export function PlaylistBar({
           {p.title}
         </Text>
         <Text style={s.meta} numberOfLines={1}>
-          {index >= 0 ? `${index + 1} of ${items.length}` : `${items.length} clips`}
+          {index >= 0 ? `${index + 1} of ${items.length}` : `${items.length} videos`}
           {next ? ` · Next: ${next.video?.community?.title || next.title}` : ' · End of the list'}
         </Text>
       </Pressable>
@@ -101,11 +102,11 @@ export function PlaylistBar({
       <IconButton
         name={autoplay ? 'play-circle-filled' : 'play-circle-outline'}
         size={20}
-        label="Play the next clip automatically"
+        label="Play the next video automatically"
         color={autoplay ? colors.accent : colors.text2}
         onPress={() => setAutoplay((x) => (prefs.autoplay = !x))}
       />
-      {next && <IconButton name="skip-next" size={22} label="Next clip" onPress={() => go(next)} />}
+      {next && <IconButton name="skip-next" size={22} label="Next video" onPress={() => go(next)} />}
     </View>
   );
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -160,7 +161,7 @@ export default function Comments() {
           keyExtractor={(t) => t.c.id}
           renderItem={renderItem}
           contentContainerStyle={{ paddingVertical: 8 }}
-          ListEmptyComponent={<Empty icon="chat-bubble-outline" title={off ? 'Comments are off' : 'No comments yet'}>{off ? 'The uploader turned comments off for this clip.' : canPost ? 'Be the first to say something.' : ''}</Empty>}
+          ListEmptyComponent={<Empty icon="chat-bubble-outline" title={off ? 'Comments are off' : 'No comments yet'}>{off ? 'The uploader turned comments off for this video.' : canPost ? 'Be the first to say something.' : ''}</Empty>}
           keyboardShouldPersistTaps="handled"
         />
       )}
@@ -193,7 +194,7 @@ export default function Comments() {
         ) : !user ? (
           <Button title="Sign in to comment" onPress={() => router.push('/login')} />
         ) : off ? null : data?.can_post === false ? (
-          <Text style={s.note}>{data.host_name ? `${data.host_name} isn’t taking comments from this server right now.` : 'Comments from here aren’t accepted for this clip.'}</Text>
+          <Text style={s.note}>{data.host_name ? `${data.host_name} isn’t taking comments from this server right now.` : 'Comments from here aren’t accepted for this video.'}</Text>
         ) : null}
       </View>
     </KeyboardAvoidingView>

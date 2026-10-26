@@ -1,4 +1,5 @@
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Text';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
@@ -56,12 +57,12 @@ export default function You() {
 
         {user && (
           <View style={s.group}>
-            <Row icon="video-library" label="Your clips" onPress={() => router.push('/library/mine')} />
+            <Row icon="video-library" label="Your videos" onPress={() => router.push('/library/mine')} />
             <Row icon="history" label="History" onPress={() => router.push('/library/history')} />
             <Row icon="watch-later" label="Watch later" onPress={() => router.push('/playlist/watch-later')} />
             <Row icon="playlist-play" label="Playlists" onPress={() => router.push('/library/playlists')} />
             <Row icon="groups" label="Watch parties" hint="Parties you host" onPress={() => router.push('/library/parties')} />
-            <Row icon="thumb-up-off-alt" label="Liked clips" onPress={() => router.push('/library/liked')} />
+            <Row icon="thumb-up-off-alt" label="Liked videos" onPress={() => router.push('/library/liked')} />
             <Row icon="subscriptions" label="Subscriptions" onPress={() => router.push('/library/subscriptions')} />
             <Row icon="link" label="Linked accounts" hint="Your accounts on other servers, shown as one person" onPress={() => router.push('/links')} />
           </View>
@@ -74,7 +75,7 @@ export default function You() {
           {user && <Row icon="logout" label="Sign out" onPress={confirmSignOut} />}
         </View>
 
-        <Text style={s.version}>ClipTube for Android {Constants.expoConfig?.version || ''}</Text>
+        <Text style={s.version}>OurTube for Android {Constants.expoConfig?.version || ''}</Text>
       </ScrollView>
     </View>
   );

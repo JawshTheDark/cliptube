@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { Api, normalizeServerUrl } from './api';
 import type { Site } from './types';
 
-/** Addresses the app knows to be ClipTube servers: the saved ones and the active server's network. */
+/** Addresses the app knows to be OurTube servers: the saved ones and the active server's network. */
 export function knownServers(saved: { url: string }[], site: Site | null): Set<string> {
   const out = new Set(saved.map((s) => s.url));
   for (const p of site?.network_peers || []) {
@@ -17,16 +17,16 @@ export function knownServers(saved: { url: string }[], site: Site | null): Set<s
 }
 
 /**
- * Opens someone's profile link: a channel on a known ClipTube server opens in the app (from that server),
+ * Opens someone's profile link: a channel on a known OurTube server opens in the app (from that server),
  * anything else (Mastodon, PeerTube, unknown sites) in the browser.
  */
 export function openProfile(url: string, known: Set<string>) {
   openChannelLink(url, known);
 }
 
-// Servers found (or not) to be ClipTube by asking them, so each is asked once.
+// Servers found (or not) to be OurTube by asking them, so each is asked once.
 const probed = new Map<string, Promise<boolean>>();
-const isClipTube = (origin: string) => {
+const isOurTube = (origin: string) => {
   let p = probed.get(origin);
   if (!p) {
     p = Promise.race([
@@ -39,7 +39,7 @@ const isClipTube = (origin: string) => {
 };
 
 /**
- * Opens a channel from its web address. A ClipTube channel (/c/<name>) opens in the app, read from its own server:
+ * Opens a channel from its web address. A OurTube channel (/c/<name>) opens in the app, read from its own server:
  * at once for a server the app knows, after a quick check for any other. Everything else (Mastodon, PeerTube,
  * a server that doesn't answer) opens in the browser.
  */
@@ -48,7 +48,7 @@ export async function openChannelLink(url: string, known: Set<string>) {
     const u = new URL(url);
     const m = /^\/c\/([A-Za-z0-9_]{3,20})\/?$/.exec(u.pathname);
     const origin = `${u.protocol}//${u.host}`.toLowerCase();
-    if (m && (known.has(origin) || (await isClipTube(origin)))) {
+    if (m && (known.has(origin) || (await isOurTube(origin)))) {
       router.push(`/c/${m[1]}?server=${encodeURIComponent(origin)}` as any);
       return;
     }

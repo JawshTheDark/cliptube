@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Text';
 import { PlaylistRow } from '@/components/PlaylistRow';
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { VideoList } from '@/components/VideoList';
-import { Avatar, Button, Chip, Empty, ErrorBox, Icon, Loading, toast } from '@/components/ui';
+import { ServerTag } from '@/components/ServerTag';
+import { Avatar, Button, Chip, Empty, ErrorBox, Icon, LiveBadge, Loading, toast } from '@/components/ui';
 import { knownServers, openProfile } from '@/lib/profiles';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
 import { usePaged } from '@/lib/usePaged';
 import { hostOf, plural } from '@/lib/format';
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 import type { Channel, LivePage, PlaylistSummary, Video } from '@/lib/types';
 
 const SORTS = [
@@ -35,7 +37,7 @@ export default function ChannelScreen() {
     api
       .get<LivePage>(`/live/${encodeURIComponent(username)}`)
       .then(setLive)
-      .catch(() => setLive(null)); // no live streaming before ClipTube 1.9
+      .catch(() => setLive(null)); // no live streaming before OurTube 1.9
   }, [api, username]);
   const [playlists, setPlaylists] = useState<PlaylistSummary[] | null>(null);
   useEffect(() => {
@@ -104,17 +106,16 @@ export default function ChannelScreen() {
             {channel.display_name}
           </Text>
           <Text style={s.meta}>@{channel.username}</Text>
+          <ServerTag style={{ marginVertical: 2 }} />
           <Text style={s.meta}>
-            {`${plural(channel.subscriber_count, 'subscriber')} · ${plural(channel.video_count, 'clip')} · ${plural(channel.total_views, 'view')}`}
+            {`${plural(channel.subscriber_count, 'subscriber')} · ${plural(channel.video_count, 'video')} · ${plural(channel.total_views, 'view')}`}
           </Text>
         </View>
       </View>
       {!!channel.bio && <Text style={s.bio}>{channel.bio}</Text>}
       {!!live?.live && live.stream && (
         <Pressable style={s.liveBanner} onPress={() => router.push(withServer(`/live/${encodeURIComponent(username)}`, foreign) as any)} accessibilityRole="button">
-          <View style={s.liveBadge}>
-            <Text style={s.liveBadgeText}>LIVE</Text>
-          </View>
+          <LiveBadge />
           <Text style={{ color: colors.text, flex: 1, fontWeight: '600' }} numberOfLines={1}>
             {live.stream.title}
           </Text>
@@ -156,7 +157,7 @@ export default function ChannelScreen() {
       <View style={s.tabs}>
         {(['videos', 'playlists'] as const).map((t) => (
           <Pressable key={t} onPress={() => setTab(t)} style={[s.tab, tab === t && s.tabOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === t }}>
-            <Text style={[s.tabText, tab === t && { color: colors.text }]}>{t === 'videos' ? 'Clips' : 'Playlists'}</Text>
+            <Text style={[s.tabText, tab === t && { color: colors.text }]}>{t === 'videos' ? 'Videos' : 'Playlists'}</Text>
           </Pressable>
         ))}
       </View>
@@ -186,7 +187,7 @@ export default function ChannelScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
         />
       ) : (
-        <VideoList paged={paged} header={header} showChannel={false} empty={<Empty title="No clips yet">{channel?.is_self ? 'Your uploads show up here.' : ''}</Empty>} />
+        <VideoList paged={paged} header={header} showChannel={false} empty={<Empty title="No videos yet">{channel?.is_self ? 'Your uploads show up here.' : ''}</Empty>} />
       )}
     </ApiScope>
   );
@@ -195,7 +196,7 @@ export default function ChannelScreen() {
 const s = StyleSheet.create({
   banner: { width: '100%', aspectRatio: 6, backgroundColor: colors.surface },
   head: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 },
-  name: { color: colors.text, fontSize: 22, fontWeight: '700' },
+  name: { color: colors.text, fontSize: 24, fontFamily: fonts.display, fontWeight: '800', letterSpacing: -0.5 },
   meta: { color: colors.text2, fontSize: 13 },
   bio: { color: colors.text, fontSize: 14, lineHeight: 20, paddingHorizontal: 12, paddingBottom: 10 },
   moved: { margin: 12, padding: 12, borderRadius: 10, backgroundColor: colors.surface2 },
@@ -203,11 +204,9 @@ const s = StyleSheet.create({
   sorts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairline },
   alsoOn: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 10 },
   tabs: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairline },
-  liveBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginBottom: 10, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,0,51,0.15)' },
-  liveBadge: { backgroundColor: colors.accent, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  liveBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  liveBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginBottom: 10, padding: 12, borderRadius: 12, backgroundColor: colors.liveSoft, borderWidth: 1, borderColor: colors.liveBorder },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabOn: { borderBottomColor: colors.text },
+  tabOn: { borderBottomColor: colors.accent },
   tabText: { color: colors.text2, fontSize: 14, fontWeight: '600' },
-  alsoChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  alsoChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surface2, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
 });

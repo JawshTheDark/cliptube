@@ -3,7 +3,7 @@ import { Api, normalizeServerUrl } from './api';
 import { useSession } from './session';
 
 /**
- * A link shared from another ClipTube server (https://clips.example/watch/x) opens with `?server=`.
+ * A link shared from another OurTube server (https://clips.example/watch/x) opens with `?server=`.
  * Screens then read from that server, signed out, until the person switches to it.
  */
 type Scope = { api: Api; foreign: string | null };

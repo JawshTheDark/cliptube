@@ -1,31 +1,34 @@
-# ClipTube for Android
+# OurTube for Android
 
-A React Native app (Expo SDK 58, Expo Router) for ClipTube servers: browse and watch clips, comment, like,
-subscribe, get notifications and upload from your phone. It talks to the same API as the website.
+A React Native app (Expo SDK 58, Expo Router) for OurTube servers (called ClipTube before 1.13): browse and watch
+videos, Shorts and live streams, comment, like, subscribe, get notifications and upload from your phone. It talks
+to the same API as the website and has the same look: the OurTube palette, Plus Jakarta Sans and Bricolage
+Grotesque (bundled through expo-font), and the two-circle mark (`src/components/Logo.tsx`; the launcher icons come
+from `python scripts/icons.py assets`).
 
 ## Install
 
 Download the APK from the [GitHub releases](https://github.com/JawshTheDark/cliptube/releases) (tags named
 `android-v…`) on the phone and open it. Newer releases install over older ones and keep your sign-ins.
 
-Signing in needs **ClipTube 1.5 or newer** on the server, which added bearer-token sessions for the app.
+Signing in needs **version 1.5 or newer** on the server, which added bearer-token sessions for the app.
 Watching and browsing work on any version.
 
 ## What it does
 
 | Area | Details |
 | --- | --- |
-| Home | All, This site, For you, Subscriptions, Trending, Vertical, Top rated and popular tags, like the website |
-| Watch | Native player (Media3) with fullscreen, picture-in-picture and resume; likes, subscribe, share, related clips |
-| Network | Clips from other servers stream from their own server; likes, comments and subscriptions go through yours |
+| Home | Everything, Videos and Shorts, then All, This site, For you, Subscriptions, Trending, Top rated and popular tags, like the website; a Shorts shelf after the first eight videos and a 9:16 grid for Shorts |
+| Watch | Native player (Media3) with fullscreen, picture-in-picture and resume; likes, subscribe, share, related videos |
+| Network | Videos from other servers stream from their own server; likes, comments and subscriptions go through yours. In a network every card, watch page, channel and live card shows the server it lives on, with the website's color for it |
 | Comments | Threads with replies, held and pending states, approve and delete for uploaders and moderators |
 | Explore | Search with sorting, and the game catalog with SteamGridDB artwork; game and channel pages |
-| Upload | Pick a video, set title, description, game, tags, visibility and clipping, watch progress and processing. On ClipTube 1.10+ it goes up in 8 MB pieces that survive dropped connections and resume after the app is closed |
-| You | Your clips (edit, publish drafts, delete), history, liked clips, subscriptions, sign out |
-| Linked accounts | Link your accounts on other servers or Mastodon (ClipTube 1.6+); channels show Also on, Subscribe to all and an All accounts filter |
-| Playlists | Save to Watch later or a playlist, play a list with shuffle, loop and autoplay, edit and reorder your own (ClipTube 1.7+) |
-| Watch parties | Synced playback with chat, reactions, a shared queue and host controls, over the server's event stream (ClipTube 1.8+) |
-| Live streams | Who's live on Home, live pages with the HLS stream, live chat (signed in or as a guest), reactions and chat moderation (ClipTube 1.9+) |
+| Upload | Pick a video, set title, description, game, tags, visibility and clipping, watch progress and processing. On 1.10+ it goes up in 8 MB pieces that survive dropped connections and resume after the app is closed |
+| You | Your videos (edit, publish drafts, delete), history, liked videos, subscriptions, sign out |
+| Linked accounts | Link your accounts on other servers or Mastodon (1.6+); channels show Also on, Subscribe to all and an All accounts filter |
+| Playlists | Save to Watch later or a playlist, play a list with shuffle, loop and autoplay, edit and reorder your own (1.7+) |
+| Watch parties | Synced playback with chat, reactions, a shared queue and host controls, over the server's event stream (1.8+) |
+| Live streams | Who's live on Home, live pages with the HLS stream, live chat (signed in or as a guest), reactions and chat moderation (1.9+) |
 | Inbox | Notifications with an unread badge on the tab, checked every minute while the app is open |
 | Servers | Pick your main server on first launch (the app opens on it; change it under You → App settings), keep more servers with a sign-in for each, and switch between them |
 | Links | `https://<server>/watch/…`, `/c/…` and `/n/…` links for the three known servers can open in the app |
@@ -38,7 +41,7 @@ moderation pages, push notifications.
 The app logs in with `POST /api/auth/login` and `"return_token": true`. The server answers with a session
 token instead of setting a cookie, and the app sends it as `Authorization: Bearer <token>`. Tokens are kept per
 server in the Android keystore (expo-secure-store). The app only sends a token to the server it belongs to,
-including to the video player, so private clips play and no other server sees it. Signing out ends that
+including to the video player, so private videos play and no other server sees it. Signing out ends that
 session on the server.
 
 ## Develop
@@ -53,7 +56,7 @@ npm run typecheck
 A debug build loads JavaScript from Metro on your computer, so edits show up at once. Expo Go can't run this
 app because it uses its own native configuration (video player, link handling, cleartext for LAN servers).
 
-To try it against a local server, run ClipTube on your computer and add `http://10.0.2.2:3000` (the emulator's
+To try it against a local server, run the server on your computer and add `http://10.0.2.2:3000` (the emulator's
 address for your computer) or your computer's LAN address under You → Servers.
 
 Routes live in `src/app` (file-based, like the website's paths: `watch/[id]`, `n/[peer]/[remote]`,
@@ -67,7 +70,7 @@ npm run build:apk
 ```
 
 This regenerates `android/`, builds a release APK for arm64-v8a, armeabi-v7a and x86_64, and copies it to
-`dist/cliptube-<version>.apk`. It needs the Android SDK (`ANDROID_HOME`, or Android Studio's default
+`dist/ourtube-<version>.apk`. It needs the Android SDK (`ANDROID_HOME`, or Android Studio's default
 location) and JDK 17 or newer (`JAVA_HOME`, or the JDK that ships with Android Studio).
 
 On Windows the native parts would pass the 260-character path limit from a folder this deep, so the script
@@ -105,7 +108,7 @@ Without the secrets, a tag build only leaves a warning. Build the APK yourself a
 
 ```bash
 npm run build:apk
-gh release create android-v1.0.1 dist/cliptube-1.0.1.apk --title "ClipTube for Android 1.0.1" --notes-file RELEASE_NOTES.md
+gh release create android-v1.0.1 dist/ourtube-1.0.1.apk --title "OurTube for Android 1.0.1" --notes-file RELEASE_NOTES.md
 ```
 
 Running the workflow by hand from the Actions tab builds an APK as a workflow artifact without a release.

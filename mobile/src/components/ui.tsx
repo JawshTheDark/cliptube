@@ -1,8 +1,9 @@
 import { type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, ToastAndroid, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, ToastAndroid, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Text } from './Text';
 import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -86,6 +87,33 @@ export function Chip({ label, active, onPress }: { label: string; active?: boole
   );
 }
 
+/** Everything / Videos / Shorts at the top of the home page: one picked, like the website's format switch. */
+export function Segmented<K extends string>({ options, value, onChange }: { options: { key: K; label: string }[]; value: K; onChange: (k: K) => void }) {
+  return (
+    <View style={styles.segmented} accessibilityRole="tablist">
+      {options.map((o) => {
+        const on = o.key === value;
+        return (
+          <Pressable key={o.key} onPress={() => onChange(o.key)} style={[styles.segment, on && styles.segmentOn]} accessibilityRole="tab" accessibilityState={{ selected: on }}>
+            <Text style={[styles.segmentText, on && { color: colors.text, fontWeight: '700' }]} numberOfLines={1}>
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Red only ever means live. */
+export function LiveBadge({ small }: { small?: boolean }) {
+  return (
+    <View style={[styles.liveBadge, small && { paddingHorizontal: 5, paddingVertical: 1 }]}>
+      <Text style={[styles.liveBadgeText, small && { fontSize: 10 }]}>LIVE</Text>
+    </View>
+  );
+}
+
 export function Loading({ style }: { style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[styles.center, { paddingVertical: 48 }, style]}>
@@ -116,7 +144,7 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
 
 export const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
-  avatarFallback: { backgroundColor: '#5c6bc0', alignItems: 'center', justifyContent: 'center' },
+  avatarFallback: { backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -127,12 +155,18 @@ export const styles = StyleSheet.create({
     minHeight: 40,
   },
   buttonSmall: { minHeight: 32, paddingHorizontal: 12, borderRadius: 16 },
-  buttonText: { fontSize: 14, fontWeight: '600' },
+  buttonText: { fontSize: 14, fontWeight: '700' },
   iconButton: { padding: 8, borderRadius: 20 },
-  chip: { backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
+  chip: { backgroundColor: colors.surface2, borderRadius: 17, height: 34, paddingHorizontal: 14, justifyContent: 'center' },
   chipActive: { backgroundColor: colors.text },
   chipText: { color: colors.text, fontSize: 14, fontWeight: '500' },
-  emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '600', textAlign: 'center' },
+  segmented: { flexDirection: 'row', alignSelf: 'flex-start', padding: 3, borderRadius: 14, backgroundColor: colors.surface2 },
+  segment: { height: 32, paddingHorizontal: 14, borderRadius: 11, justifyContent: 'center' },
+  segmentOn: { backgroundColor: colors.surface3, elevation: 2 },
+  segmentText: { color: colors.text2, fontSize: 14, fontWeight: '600' },
+  liveBadge: { backgroundColor: colors.live, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start' },
+  liveBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
+  emptyTitle: { color: colors.text, fontSize: 19, fontFamily: fonts.display, fontWeight: '800', letterSpacing: -0.3, textAlign: 'center' },
   emptyText: { color: colors.text2, fontSize: 14, textAlign: 'center', lineHeight: 20 },
   errorBox: {
     flexDirection: 'row',

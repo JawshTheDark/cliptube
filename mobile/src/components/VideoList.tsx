@@ -1,8 +1,8 @@
-import { type ReactElement } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { useMemo, type ReactElement } from 'react';
+import { FlatList, RefreshControl, View, useWindowDimensions } from 'react-native';
 import { colors } from '@/lib/theme';
 import type { Video } from '@/lib/types';
-import { VideoCard, VideoRow } from './VideoCard';
+import { ShortCard, VideoCard, VideoRow } from './VideoCard';
 import { ErrorBox, Loading } from './ui';
 
 type Paged = {
@@ -16,25 +16,58 @@ type Paged = {
   loadMore: () => void;
 };
 
-/** A pull-to-refresh, endlessly scrolling list of clips. */
+type Item = { kind: 'video'; v: Video } | { kind: 'slot' };
+
+/**
+ * A pull-to-refresh, endlessly scrolling list of videos: full cards, compact rows, or Shorts two to a row.
+ * `slot` (the Shorts shelf on the home page) goes after the first `slotAfter` cards.
+ */
 export function VideoList({
   paged,
   header,
   empty,
   rows = false,
+  shorts = false,
   showChannel = true,
+  slot = null,
+  slotAfter = 8,
 }: {
   paged: Paged;
   header?: ReactElement | null;
   empty?: ReactElement | null;
   rows?: boolean;
+  shorts?: boolean;
   showChannel?: boolean;
+  slot?: ReactElement | null;
+  slotAfter?: number;
 }) {
+  // Two Shorts to a row, 12 on each side and 10 between.
+  const shortWidth = (useWindowDimensions().width - 34) / 2;
+  const data = useMemo<Item[]>(() => {
+    const list: Item[] = paged.items.map((v) => ({ kind: 'video', v }));
+    if (slot && !shorts && list.length) list.splice(Math.min(slotAfter, list.length), 0, { kind: 'slot' });
+    return list;
+  }, [paged.items, slot, shorts, slotAfter]);
+
   return (
     <FlatList
-      data={paged.items}
-      keyExtractor={(v) => v.id}
-      renderItem={({ item }) => (rows ? <VideoRow v={item} /> : <VideoCard v={item} showChannel={showChannel} />)}
+      // FlatList can't change its column count in place.
+      key={shorts ? 'shorts' : 'cards'}
+      data={data}
+      numColumns={shorts ? 2 : 1}
+      columnWrapperStyle={shorts ? { gap: 10, paddingHorizontal: 12 } : undefined}
+      keyExtractor={(x) => (x.kind === 'video' ? x.v.id : 'slot')}
+      renderItem={({ item }) =>
+        item.kind === 'slot' ? (
+          slot
+        ) : shorts ? (
+          <ShortCard v={item.v} style={{ width: shortWidth, marginBottom: 18 }} />
+        ) : rows ? (
+          <VideoRow v={item.v} />
+        ) : (
+          <VideoCard v={item.v} showChannel={showChannel} />
+        )
+      }
       ListHeaderComponent={
         <>
           {header}

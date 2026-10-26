@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, Share, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Alert, FlatList, Pressable, Share, StyleSheet, Switch, View, useWindowDimensions } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -33,7 +34,7 @@ async function measureOffset(api: Api, id: string, headers: Record<string, strin
 }
 
 /**
- * A watch party (ClipTube 1.8): everyone sees the same clip at the same moment, with chat and reactions. The
+ * A watch party (OurTube 1.8): everyone sees the same video at the same moment, with chat and reactions. The
  * server keeps the playback state; every player works out where it should be and corrects itself. The host
  * steers (or everyone, if the host allows it, or anyone while the host is away); others can step out and back.
  */
@@ -241,7 +242,7 @@ export default function PartyScreen() {
         ) : (
           <View style={s.noVideo}>
             <Icon name="videocam-off" size={36} color={colors.text2} />
-            <Text style={s.hint}>{party.queue.length ? 'This clip is no longer available.' : 'The queue is empty.'}</Text>
+            <Text style={s.hint}>{party.queue.length ? 'This video is no longer available.' : 'The queue is empty.'}</Text>
           </View>
         )}
         <View style={s.bubbles} pointerEvents="none">
@@ -384,11 +385,11 @@ function PartyPlayer({
         <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center' }}>
           {canControl ? (
             <>
-              {btn('skip-previous', 'Previous clip', () => onControl('prev'), !hasPrev)}
+              {btn('skip-previous', 'Previous video', () => onControl('prev'), !hasPrev)}
               {btn('replay-10', 'Back 10 seconds', () => seek(player.currentTime - 10))}
               {btn(playing ? 'pause' : 'play-arrow', playing ? 'Pause for everyone' : 'Play for everyone', () => onControl(playing ? 'pause' : 'play', { position: player.currentTime }))}
               {btn('forward-10', 'Forward 10 seconds', () => seek(player.currentTime + 10))}
-              {btn('skip-next', 'Next clip', () => onControl('next'), !hasNext)}
+              {btn('skip-next', 'Next video', () => onControl('next'), !hasNext)}
             </>
           ) : local ? (
             btn(playing ? 'pause' : 'play-arrow', playing ? 'Pause' : 'Play', () => (playing ? player.pause() : player.play()))
@@ -479,7 +480,7 @@ function Queue({ party, call, canControl, onControl, api, signedIn }: { party: P
     p.then(() => done && toast(done)).catch((e: any) => toast(e.message));
   const add = () => {
     const ref = refFromLink(link);
-    if (!ref) return toast('Paste a link to a clip on this server, or one from its network');
+    if (!ref) return toast('Paste a link to a video on this server, or one from its network');
     setLink('');
     act(call('/queue', 'POST', { ref }), 'Added to the queue');
   };
@@ -522,7 +523,7 @@ function Queue({ party, call, canControl, onControl, api, signedIn }: { party: P
         canControl ? (
           <View style={{ padding: 12, gap: 8 }}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput value={link} onChangeText={setLink} placeholder="Paste a clip link" placeholderTextColor={colors.text2} style={[f.input, { flex: 1 }]} autoCapitalize="none" onSubmitEditing={add} />
+              <TextInput value={link} onChangeText={setLink} placeholder="Paste a video link" placeholderTextColor={colors.text2} style={[f.input, { flex: 1 }]} autoCapitalize="none" onSubmitEditing={add} />
               <Button title="Add" icon="add" onPress={add} disabled={!link.trim()} />
             </View>
             {lists.length > 0 && <Text style={s.section}>Add one of your playlists</Text>}

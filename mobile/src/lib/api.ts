@@ -1,4 +1,4 @@
-// HTTP client for one ClipTube server. Signs in with a bearer token (ClipTube 1.5+), never cookies,
+// HTTP client for one OurTube server. Signs in with a bearer token (OurTube 1.5+), never cookies,
 // and only ever sends that token to the server it belongs to.
 import { File, FileMode, UploadType } from 'expo-file-system';
 import { fetch as nativeFetch } from 'expo/fetch';
@@ -41,7 +41,7 @@ type ReqOpts = { method?: string; body?: unknown; signal?: AbortSignal; headers?
 
 export type UploadFile = { uri: string; name: string; type: string; size?: number | null; lastModified?: number | null };
 
-/** An upload in pieces on the server (ClipTube 1.10+). */
+/** An upload in pieces on the server (OurTube 1.10+). */
 export type ServerUpload = { id: string; kind: string; name: string; size: number; offset: number; chunk_size: number; fingerprint: string | null };
 
 const MiB = 1024 * 1024;
@@ -124,7 +124,7 @@ export class Api {
   }
 
   /**
-   * Uploads a video and creates it with `fields`. On ClipTube 1.10+ the file goes up in pieces that survive a
+   * Uploads a video and creates it with `fields`. On OurTube 1.10+ the file goes up in pieces that survive a
    * dropped connection: each piece can be sent again, the server skips bytes it already has, and choosing the
    * same file again later picks up where it stopped. Older servers (no /api/uploads) get it in one request.
    */
@@ -259,7 +259,7 @@ export class Api {
   /**
    * Multipart upload with progress, through expo-file-system's native uploader. It streams the file from
    * its content:// or file:// URI in large chunks; React Native's own networking wraps upload bodies in a
-   * stream that writes one byte at a time, which made a 10 MB clip take over a minute on a fast link.
+   * stream that writes one byte at a time, which made a 10 MB video take over a minute on a fast link.
    */
   upload<T = any>(path: string, fields: Record<string, string>, file: UploadFile, onProgress?: (sent: number, total: number) => void) {
     let cancelled = false;
@@ -301,13 +301,13 @@ export function hostLabel(base: string): string {
   return base.replace(/^https?:\/\//, '');
 }
 
-/** "r-3-abc" (a clip from another instance in the network) -> { peer: '3', remote: 'abc' } */
+/** "r-3-abc" (a video from another server in the network) -> { peer: '3', remote: 'abc' } */
 export function parseRemoteId(id: string): { peer: string; remote: string } | null {
   const m = /^r-(\d+)-(.+)$/.exec(id);
   return m ? { peer: m[1], remote: m[2] } : null;
 }
 
-/** The app route for a video from a list (local clips and network clips have different pages). */
+/** The app route for a video from a list (local videos and network videos have different pages). */
 export function videoHref(v: { id: string; remote?: { peer_id: number; remote_id: string } }): string {
   if (v.remote) return `/n/${v.remote.peer_id}/${encodeURIComponent(v.remote.remote_id)}`;
   const r = parseRemoteId(v.id);

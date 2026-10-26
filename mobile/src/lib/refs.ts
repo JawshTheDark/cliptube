@@ -14,7 +14,7 @@ export function refFromRoute(p: { id?: string; peer?: string; remote?: string })
   return p.id ? `v:${p.id}` : null;
 }
 
-/** A pasted link to a clip on this server (/watch/<id>) or from its network (/n/<peer>/<remote>). */
+/** A pasted link to a video on this server (/watch/<id>) or from its network (/n/<peer>/<remote>). */
 export function refFromLink(text: string): string | null {
   const s = text.trim();
   try {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Text, TextInput } from './Text';
 import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
 import type { Game, Visibility } from '@/lib/types';
@@ -57,7 +58,7 @@ export function VideoForm({ value, onChange }: { value: VideoFields; onChange: (
   return (
     <View style={{ gap: 16 }}>
       <Field label="Title">
-        <TextInput value={value.title} onChangeText={(t) => set('title', t)} style={f.input} placeholder="What happened in this clip?" placeholderTextColor={colors.text2} maxLength={120} />
+        <TextInput value={value.title} onChangeText={(t) => set('title', t)} style={f.input} placeholder="Give it a title" placeholderTextColor={colors.text2} maxLength={120} />
       </Field>
       <Field label="Description">
         <TextInput

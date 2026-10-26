@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { PlaylistRow } from '@/components/PlaylistRow';
 import { f } from '@/components/VideoForm';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -13,9 +14,9 @@ import { colors } from '@/lib/theme';
 import type { PlaylistSummary, SubscriptionChannel, Video } from '@/lib/types';
 
 const TITLES: Record<string, string> = {
-  mine: 'Your clips',
+  mine: 'Your videos',
   history: 'History',
-  liked: 'Liked clips',
+  liked: 'Liked videos',
   subscriptions: 'Subscriptions',
   playlists: 'Playlists',
   parties: 'Watch parties',
@@ -45,18 +46,18 @@ export default function Library() {
       ) : kind === 'parties' ? (
         <MyParties />
       ) : (
-        <Clips kind={kind === 'liked' ? 'liked' : 'history'} />
+        <Videos kind={kind === 'liked' ? 'liked' : 'history'} />
       )}
     </>
   );
 }
 
-function Clips({ kind }: { kind: 'history' | 'liked' }) {
+function Videos({ kind }: { kind: 'history' | 'liked' }) {
   const { api } = useSession();
   const paged = usePaged<Video>(api, `/me/${kind}`, (r) => r.videos, false);
 
   const clear = () =>
-    Alert.alert('Clear watch history?', 'This removes every clip from your history on this server.', [
+    Alert.alert('Clear watch history?', 'This removes every video from your history on this server.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Clear',
@@ -74,7 +75,7 @@ function Clips({ kind }: { kind: 'history' | 'liked' }) {
       paged={paged}
       rows
       header={kind === 'history' && paged.items.length > 0 ? <Button title="Clear history" icon="delete-sweep" small kind="ghost" onPress={clear} style={{ alignSelf: 'flex-end', margin: 12 }} /> : null}
-      empty={kind === 'history' ? <Empty icon="history" title="Nothing watched yet" /> : <Empty icon="thumb-up-off-alt" title="No liked clips yet" />}
+      empty={kind === 'history' ? <Empty icon="history" title="Nothing watched yet" /> : <Empty icon="thumb-up-off-alt" title="No liked videos yet" />}
     />
   );
 }
@@ -100,9 +101,9 @@ function Mine() {
       keyExtractor={(v) => v.id}
       ListHeaderComponent={paged.error ? <ErrorBox message={paged.error} onRetry={paged.reload} /> : undefined}
       ListEmptyComponent={
-        <Empty icon="video-library" title="No clips yet">
+        <Empty icon="video-library" title="No videos yet">
           <View style={{ marginTop: 8 }}>
-            <Button title="Upload a clip" kind="accent" icon="file-upload" onPress={() => router.push('/upload')} />
+            <Button title="Upload a video" kind="accent" icon="file-upload" onPress={() => router.push('/upload')} />
           </View>
         </Empty>
       }
@@ -149,7 +150,7 @@ function MyPlaylists() {
       refreshing={paged.refreshing}
       ListHeaderComponent={
         <View style={{ padding: 12, gap: 8 }}>
-          {!!paged.error && <ErrorBox message={paged.error.includes('Not found') ? 'Playlists need ClipTube 1.7 or newer on this server.' : paged.error} onRetry={paged.reload} />}
+          {!!paged.error && <ErrorBox message={paged.error.includes('Not found') ? 'Playlists need OurTube 1.7 or newer on this server.' : paged.error} onRetry={paged.reload} />}
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput value={name} onChangeText={setName} placeholder="New playlist name" placeholderTextColor={colors.text2} style={[f.input, { flex: 1 }]} maxLength={100} onSubmitEditing={() => name.trim() && create()} />
             <Button title="Create" icon="playlist-add" onPress={create} disabled={!name.trim()} busy={busy} />
@@ -181,8 +182,8 @@ function MyParties() {
       keyExtractor={(p) => p.id}
       onRefresh={paged.refresh}
       refreshing={paged.refreshing}
-      ListHeaderComponent={paged.error ? <ErrorBox message={paged.error.includes('Not found') ? 'Watch parties need ClipTube 1.8 or newer on this server.' : paged.error} onRetry={paged.reload} /> : undefined}
-      ListEmptyComponent={<Empty icon="groups" title="No watch parties">Start one with Watch together on a clip or a playlist.</Empty>}
+      ListHeaderComponent={paged.error ? <ErrorBox message={paged.error.includes('Not found') ? 'Watch parties need OurTube 1.8 or newer on this server.' : paged.error} onRetry={paged.reload} /> : undefined}
+      ListEmptyComponent={<Empty icon="groups" title="No watch parties">Start one with Watch together on a video or a playlist.</Empty>}
       renderItem={({ item }) => (
         <Pressable style={({ pressed }) => [s.row, pressed && { backgroundColor: colors.surface }]} onPress={() => router.push(`/party/${encodeURIComponent(item.id)}`)}>
           <View style={s.partyIcon}>
@@ -212,7 +213,7 @@ function Subscriptions() {
       onRefresh={paged.refresh}
       refreshing={paged.refreshing}
       ListHeaderComponent={paged.error ? <ErrorBox message={paged.error} onRetry={paged.reload} /> : undefined}
-      ListEmptyComponent={<Empty icon="subscriptions" title="No subscriptions yet">Subscribe to channels from their clips.</Empty>}
+      ListEmptyComponent={<Empty icon="subscriptions" title="No subscriptions yet">Subscribe to channels from their videos.</Empty>}
       renderItem={({ item: c }) => (
         <Pressable
           style={({ pressed }) => [s.row, pressed && { backgroundColor: colors.surface }]}

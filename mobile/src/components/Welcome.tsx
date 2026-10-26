@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from './Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Api, hostLabel, normalizeServerUrl } from '@/lib/api';
 import { NETWORK_DIRECTORY, useSession } from '@/lib/session';
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
+import { LogoMark } from './Logo';
 import type { Site } from '@/lib/types';
 import { Button, Icon } from './ui';
 import { f } from './VideoForm';
@@ -14,7 +16,7 @@ type Suggestion = { url: string; name: string };
 
 /**
  * First launch: the user picks their main server (the one they have an account on, or want to browse). The
- * ClipTube network's servers are offered as suggestions, but nothing is picked for them.
+ * OurTube network's servers are offered as suggestions, but nothing is picked for them.
  */
 export function Welcome() {
   const { setMain } = useSession();
@@ -62,12 +64,14 @@ export function Welcome() {
       bottomOffset={24}
     >
       <View style={s.logo}>
-        <Icon name="play-arrow" size={44} color="#fff" />
+        <LogoMark size={80} />
       </View>
-      <Text style={s.title}>Welcome to ClipTube</Text>
+      <Text style={s.title}>
+        Welcome to <Text style={[s.title, { color: colors.accentText }]}>our</Text>tube
+      </Text>
       <Text style={s.text}>
-        ClipTube is a network of servers run by friends. Pick your main server: the one you have an account on, or the one
-        you want to browse. The app opens on it, and you can add more servers later.
+        OurTube is a network of servers run by friends, for videos, Shorts and live streams. Pick your main server: the one
+        you have an account on, or the one you want to browse. The app opens on it, and you can add more servers later.
       </Text>
 
       <Text style={s.section}>Your server’s address</Text>
@@ -82,12 +86,12 @@ export function Welcome() {
         keyboardType="url"
         onSubmitEditing={() => input.trim() && choose(input)}
       />
-      <Button title="Continue" kind="primary" onPress={() => choose(input)} disabled={!input.trim() || !!busy} busy={busy === input} />
+      <Button title="Continue" kind="accent" onPress={() => choose(input)} disabled={!input.trim() || !!busy} busy={busy === input} />
       {!!error && <Text style={{ color: colors.err }}>{error}</Text>}
 
       {suggestions.length > 0 && (
         <>
-          <Text style={s.section}>Or pick one in the ClipTube network</Text>
+          <Text style={s.section}>Or pick one in the OurTube network</Text>
           {suggestions.map((x) => (
             <Pressable key={x.url} onPress={() => choose(x.url)} disabled={!!busy} style={({ pressed }) => [s.card, pressed && { backgroundColor: colors.surface2 }]}>
               <Icon name="dns" size={22} color={colors.text2} />
@@ -107,11 +111,11 @@ export function Welcome() {
 
 const s = StyleSheet.create({
   page: { paddingHorizontal: 20, gap: 12 },
-  logo: { alignSelf: 'center', width: 84, height: 62, borderRadius: 18, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '800', textAlign: 'center' },
+  logo: { alignSelf: 'center', marginBottom: 4 },
+  title: { color: colors.text, fontSize: 30, fontFamily: fonts.display, fontWeight: '800', letterSpacing: -1.2, textAlign: 'center' },
   text: { color: colors.text2, fontSize: 15, lineHeight: 21, textAlign: 'center', marginBottom: 8 },
   section: { color: colors.text2, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 10 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, backgroundColor: colors.surface },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   name: { color: colors.text, fontSize: 15, fontWeight: '600' },
   hint: { color: colors.text2, fontSize: 13 },
 });

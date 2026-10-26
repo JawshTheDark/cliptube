@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
 import { Button, Icon, IconButton, toast } from '@/components/ui';
@@ -9,8 +10,8 @@ import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
 
 /**
- * Each ClipTube server is its own site with its own accounts. The app keeps a sign-in per server and
- * shows one at a time; clips from the rest of the network still appear in that server's feeds.
+ * Each OurTube server is its own site with its own accounts. The app keeps a sign-in per server and
+ * shows one at a time; videos from the rest of the network still appear in that server's feeds.
  */
 export default function Servers() {
   const { server, servers, site, main, addServer, switchServer, removeServer, setMain } = useSession();

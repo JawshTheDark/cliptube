@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button, Empty, ErrorBox, Icon, Loading, toast } from '@/components/ui';
@@ -8,7 +9,7 @@ import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
 import type { PlaylistSummary, Visibility } from '@/lib/types';
 
-/** Save a clip to Watch later or a playlist: tick the lists it should be in, or make a new one. */
+/** Save a video to Watch later or a playlist: tick the lists it should be in, or make a new one. */
 export default function SaveSheet() {
   const { ref, title } = useLocalSearchParams<{ ref: string; title?: string }>();
   const { api, user } = useSession();
@@ -23,7 +24,7 @@ export default function SaveSheet() {
     api
       .get<{ playlists: PlaylistSummary[] }>(`/playlists/mine?has=${encodeURIComponent(ref)}`)
       .then((r) => setLists(r.playlists))
-      .catch((e) => setError(e.status === 404 ? 'Playlists need ClipTube 1.7 or newer on this server.' : e.message));
+      .catch((e) => setError(e.status === 404 ? 'Playlists need OurTube 1.7 or newer on this server.' : e.message));
   }, [api, ref]);
   useEffect(() => {
     if (user) load();
@@ -31,7 +32,7 @@ export default function SaveSheet() {
 
   if (!user) {
     return (
-      <Empty icon="playlist-add" title="Sign in to save clips">
+      <Empty icon="playlist-add" title="Sign in to save videos">
         <View style={{ marginTop: 8 }}>
           <Button title="Sign in" kind="primary" onPress={() => router.replace('/login')} />
         </View>
@@ -85,7 +86,7 @@ export default function SaveSheet() {
           <Icon name={p.contains ? 'check-box' : 'check-box-outline-blank'} size={24} color={p.contains ? colors.accent : colors.text2} />
           <View style={{ flex: 1 }}>
             <Text style={s.name}>{p.title}</Text>
-            <Text style={s.hint}>{[`${p.item_count} clip${p.item_count === 1 ? '' : 's'}`, p.visibility].join(' · ')}</Text>
+            <Text style={s.hint}>{[`${p.item_count} video${p.item_count === 1 ? '' : 's'}`, p.visibility].join(' · ')}</Text>
           </View>
           {p.kind === 'watch_later' && <Icon name="watch-later" size={20} color={colors.text2} />}
         </Pressable>

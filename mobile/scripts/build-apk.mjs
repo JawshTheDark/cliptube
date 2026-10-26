@@ -81,7 +81,7 @@ const archs = env.CLIPTUBE_ARCHS || 'arm64-v8a,armeabi-v7a,x86_64';
 run(path.join(where, 'android', win ? 'gradlew.bat' : 'gradlew'), ['assembleRelease', `-PreactNativeArchitectures=${archs}`, '--no-daemon'], path.join(where, 'android'));
 
 const { version } = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
-const out = path.join(root, 'dist', `cliptube-${version}.apk`);
+const out = path.join(root, 'dist', `ourtube-${version}.apk`);
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.copyFileSync(path.join(where, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk'), out);
 console.log(`\nAPK: ${out} (${(fs.statSync(out).size / 1048576).toFixed(1)} MB)`);

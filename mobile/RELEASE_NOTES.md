@@ -1,12 +1,12 @@
-ClipTube for Android 1.3.0: uploads that survive a bad connection.
+OurTube for Android 1.4.0: ClipTube is now OurTube, with the website's new look.
 
-**Install:** download the `.apk` below on your phone and open it. It installs over earlier versions and keeps your servers and sign-ins.
+**Install:** download the `.apk` below on your phone and open it. It installs over the ClipTube app and keeps your servers and sign-ins.
 
-New, on servers running ClipTube 1.10 or newer:
+- **New name and look.** The app is called OurTube, with the two-circle play mark as its icon, the dark purple palette, and the website's fonts (Plus Jakarta Sans and Bricolage Grotesque). A server still called OurTube shows the two-tone *ourtube* wordmark at the top; any other server shows its own name.
+- **Everything, Videos and Shorts** at the top of Home. Shorts are videos taller than they are wide. *Everything* puts the newest Shorts on a shelf after the first eight videos, and *Shorts* shows them two to a row as 9:16 cards.
+- **Every video shows its server.** In a network, each thumbnail carries a tag with a colored dot and the name of the server the video lives on. The color matches the website's. Watch pages, channel pages and live cards show it too.
+- **New cards.** Rounded thumbnails with the creator's avatar on the corner.
+- **Live stays red.** Live cards are ringed in red with a LIVE badge, and red means nothing else in the app.
+- **Videos, not clips.** The app talks about videos, Shorts and live streams, except for the clipping tool.
 
-- **Uploads go up in pieces.** If the connection drops, the app waits, checks how much arrived and carries on from there instead of starting over.
-- **Closing the app doesn't lose an upload.** Choose the same file again and it picks up where it stopped (the server keeps an unfinished upload for a day).
-- **Big videos work behind Cloudflare,** which refuses single requests over 100 MB on its free plan.
-- **Uploads are much faster.** Sending raw pieces skips the slow path the old single-request upload went through.
-
-Servers older than 1.10 still get the video in one request, as before.
+The tags and the Shorts shelf work best on servers running OurTube 1.13; older servers still work.

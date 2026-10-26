@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Text';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { VideoList } from '@/components/VideoList';
@@ -47,7 +48,7 @@ export default function GameScreen() {
       ) : null}
       <View style={s.head}>
         <Text style={s.name}>{game.name}</Text>
-        <Text style={s.meta}>{plural(n, 'clip')}</Text>
+        <Text style={s.meta}>{plural(n, 'video')}</Text>
       </View>
       <View style={s.sorts}>
         {SORTS.map((x) => (
@@ -60,7 +61,7 @@ export default function GameScreen() {
   return (
     <ApiScope value={scope}>
       <Stack.Screen options={{ title: game?.name || '' }} />
-      {error ? <ErrorBox message={error} onRetry={load} /> : <VideoList paged={paged} header={header} empty={<Empty icon="sports-esports" title="No clips of this game yet" />} />}
+      {error ? <ErrorBox message={error} onRetry={load} /> : <VideoList paged={paged} header={header} empty={<Empty icon="sports-esports" title="No videos of this game yet" />} />}
     </ApiScope>
   );
 }

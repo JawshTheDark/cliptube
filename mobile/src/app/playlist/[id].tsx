@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, Share, StyleSheet, View } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button, Empty, ErrorBox, Icon, IconButton, Loading, toast } from '@/components/ui';
@@ -98,7 +99,7 @@ export default function PlaylistScreen() {
       setEditing(false);
     });
   const del = () =>
-    Alert.alert('Delete this playlist?', `"${p.title}" is deleted. The clips in it stay where they are.`, [
+    Alert.alert('Delete this playlist?', `"${p.title}" is deleted. The videos in it stay where they are.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -119,7 +120,7 @@ export default function PlaylistScreen() {
     <View style={{ padding: 12, gap: 10 }}>
       <Text style={s.title}>{p.title}</Text>
       <Text style={s.meta}>
-        {[p.owner?.display_name, plural(p.item_count, 'clip'), p.visibility !== 'public' ? p.visibility : null].filter(Boolean).join(' · ')}
+        {[p.owner?.display_name, plural(p.item_count, 'video'), p.visibility !== 'public' ? p.visibility : null].filter(Boolean).join(' · ')}
       </Text>
       {!!p.description && <Text style={s.desc}>{p.description}</Text>}
       {playable.length > 0 && (
@@ -175,7 +176,7 @@ export default function PlaylistScreen() {
         data={p.items}
         keyExtractor={(it) => String(it.id)}
         ListHeaderComponent={header}
-        ListEmptyComponent={<Empty icon="playlist-add" title="No clips yet">{own ? 'Save clips here from their Save button.' : ''}</Empty>}
+        ListEmptyComponent={<Empty icon="playlist-add" title="No videos yet">{own ? 'Save videos here from their Save button.' : ''}</Empty>}
         contentContainerStyle={{ paddingBottom: 24 }}
         renderItem={({ item, index }) => {
           const v = item.video;

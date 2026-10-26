@@ -1,6 +1,6 @@
 /**
- * Opens ClipTube web links in the app: https://<server>/watch/<id> becomes /watch/<id>?server=<server>,
- * so a link from another ClipTube server loads from that server.
+ * Opens OurTube web links in the app: https://<server>/watch/<id> becomes /watch/<id>?server=<server>,
+ * so a link from another OurTube server loads from that server.
  */
 export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
   try {

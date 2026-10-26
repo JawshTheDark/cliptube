@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/Text';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';

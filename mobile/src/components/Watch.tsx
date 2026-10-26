@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { FlatList, Linking, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Text } from './Text';
 import { router } from 'expo-router';
 import { useEventListener } from 'expo';
 import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
@@ -8,11 +9,12 @@ import { Api } from '@/lib/api';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
 import { ago, compact, hostOf, plural } from '@/lib/format';
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 import type { RemoteWatch, Video } from '@/lib/types';
 import { knownServers, openChannelLink } from '@/lib/profiles';
 import { refFromRoute } from '@/lib/refs';
 import { PlaylistBar, type PlaylistNav } from './PlaylistBar';
+import { ServerTag } from './ServerTag';
 import { VideoRow } from './VideoCard';
 import { Avatar, Button, Empty, Icon, IconButton, Loading, toast } from './ui';
 
@@ -58,7 +60,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
           commentsPath: `/network/videos/${peer}/${encodeURIComponent(remote!)}`,
           shareUrl: v.remote.watch_url || `${base}/n/${peer}/${encodeURIComponent(remote!)}`,
         });
-        // The view counts on the server that hosts the clip, anonymously, like the website does. (Network clips all
+        // The view counts on the server that hosts the video, anonymously, like the website does. (Network videos all
         // say origin_type "activitypub" since the network moved to ActivityPub, so this doesn't check it.)
         if (v.remote.peer_url) {
           fetch(`${v.remote.peer_url}/api/videos/${encodeURIComponent(v.remote.remote_id)}/view`, { method: 'POST', credentials: 'omit' }).catch(() => {});
@@ -85,7 +87,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
         if (video.status === 'ready') api.post(`/videos/${encodeURIComponent(id!)}/view`, {}).catch(() => {});
       }
     } catch (e: any) {
-      setError(e.status === 404 ? 'This clip isn’t available. It may be private, or it was removed.' : e.message);
+      setError(e.status === 404 ? 'This video isn’t available. It may be private, or it was removed.' : e.message);
     }
   }, [api, id, peer, remote, isRemote, base]);
 
@@ -178,7 +180,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
       const r = await api.post<{ party: { id: string } }>('/parties', { ref });
       router.push(`/party/${r.party.id}`);
     } catch (e: any) {
-      toast(e.status === 404 ? 'Watch parties need ClipTube 1.8 or newer on this server.' : e.message);
+      toast(e.status === 404 ? 'Watch parties need OurTube 1.8 or newer on this server.' : e.message);
     }
   };
 
@@ -203,7 +205,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 48 }}>
         {back}
-        <Empty icon="videocam-off" title="Can’t play this clip">
+        <Empty icon="videocam-off" title="Can’t play this video">
           <Text style={{ color: colors.text2, textAlign: 'center' }}>{error}</Text>
           <View style={{ marginTop: 12 }}>
             <Button title="Try again" onPress={load} />
@@ -226,7 +228,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
   const u = v.uploader;
   const title = v.community?.title || v.title;
   const channelHref = !isRemote && u.username ? withServer(`/c/${encodeURIComponent(u.username)}`, foreign) : null;
-  // A network clip's uploader: their channel on the server the clip comes from (in the app when it's ClipTube).
+  // A network video's uploader: their channel on the server the video comes from (in the app when it's OurTube).
   const remoteChannel = isRemote ? u.url || v.remote?.peer_url || null : null;
   const openUploader = () => {
     if (channelHref) router.push(channelHref as any);
@@ -239,16 +241,16 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
         <View style={s.banner}>
           <Icon name="public" size={18} color={colors.warn} />
           <Text style={s.bannerText}>
-            This clip is on {hostOf(foreign)}. You’re using {hostOf(session.server)}.
+            This video is on {hostOf(foreign)}. You’re using {hostOf(session.server)}.
           </Text>
           <Button title="Switch" small onPress={switchHere} />
         </View>
       )}
       <Pressable onPress={() => setExpanded((x) => !x)} style={s.section}>
         <Text style={s.title}>{title}</Text>
+        <ServerTag remote={isRemote ? v.remote : null} style={{ marginTop: 6, marginBottom: 2 }} />
         <Text style={s.meta}>
           {`${plural(v.views, 'view')} · ${ago(v.published_at || v.created_at)}`}
-          {isRemote ? ` · on ${v.remote?.peer_name || hostOf(v.remote?.peer_url)}` : ''}
           {v.visibility !== 'public' ? ` · ${v.draft ? 'draft' : v.visibility}` : ''}
           {'  '}
           <Text style={{ color: colors.text, fontWeight: '600' }}>{expanded ? 'less' : '...more'}</Text>
@@ -334,7 +336,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
         <Text style={s.meta}>{data.can.comments ? 'Tap to read and add comments' : 'Tap to read comments'}</Text>
       </Pressable>
 
-      {data.related.length > 0 && <Text style={s.sectionTitle}>More clips</Text>}
+      {data.related.length > 0 && <Text style={s.sectionTitle}>More videos</Text>}
     </View>
   );
 
@@ -367,7 +369,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
   );
 }
 
-/** The native player (Media3 on Android). Sends the sign-in header only to the clip's own server. */
+/** The native player (Media3 on Android). Sends the sign-in header only to the video's own server. */
 function Player({ video, api, resumeAt, onTime, onEnd }: { video: Video; api: Api; resumeAt: number; onTime: (t: number) => void; onEnd?: () => void }) {
   const { width, height } = useWindowDimensions();
   const url = api.abs(video.hls_url || video.video_url);
@@ -417,8 +419,8 @@ function Player({ video, api, resumeAt, onTime, onEnd }: { video: Video; api: Ap
             : processing
               ? `Processing${video.progress ? ` · ${Math.round(video.progress)}%` : ''}… pull back in a minute.`
               : video.moderation_status
-                ? `This clip was ${video.moderation_status} by a moderator${video.moderation_reason ? `: ${video.moderation_reason}` : ''}.`
-                : 'This clip can’t be played.'}
+                ? `This video was ${video.moderation_status} by a moderator${video.moderation_reason ? `: ${video.moderation_reason}` : ''}.`
+                : 'This video can’t be played.'}
         </Text>
       </View>
     );
@@ -442,7 +444,7 @@ const s = StyleSheet.create({
   banner: { flexDirection: 'row', alignItems: 'center', gap: 8, margin: 12, marginBottom: 0, padding: 10, borderRadius: 10, backgroundColor: 'rgba(255,209,102,0.1)' },
   bannerText: { color: colors.text, flex: 1, fontSize: 13 },
   section: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 },
-  title: { color: colors.text, fontSize: 18, fontWeight: '700', lineHeight: 24 },
+  title: { color: colors.text, fontSize: 20, fontFamily: fonts.display, fontWeight: '800', letterSpacing: -0.4, lineHeight: 25 },
   meta: { color: colors.text2, fontSize: 12.5, marginTop: 4 },
   channelRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 10 },
   channel: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
@@ -456,6 +458,6 @@ const s = StyleSheet.create({
   desc: { color: colors.text, fontSize: 14, lineHeight: 20 },
   gameChip: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   commentsCard: { marginHorizontal: 12, marginVertical: 6, padding: 12, borderRadius: 12, backgroundColor: colors.surface, gap: 2 },
-  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '700', paddingHorizontal: 12, paddingTop: 12, paddingBottom: 6 },
+  sectionTitle: { color: colors.text, fontSize: 18, fontFamily: fonts.display, fontWeight: '800', paddingHorizontal: 12, paddingTop: 12, paddingBottom: 6 },
   noVideo: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20, backgroundColor: '#000' },
 });

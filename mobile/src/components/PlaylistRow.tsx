@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useScope, withServer } from '@/lib/scope';
@@ -8,7 +9,7 @@ import { colors } from '@/lib/theme';
 import type { PlaylistSummary } from '@/lib/types';
 import { Icon } from './ui';
 
-/** A playlist in a list: its first clip's thumbnail with the clip count over it. */
+/** A playlist in a list: its first video's thumbnail with the video count over it. */
 export const PlaylistRow = memo(function PlaylistRow({ p, showOwner = false }: { p: PlaylistSummary; showOwner?: boolean }) {
   const { api, foreign } = useScope();
   const thumb = api.abs(p.thumbnail_url);

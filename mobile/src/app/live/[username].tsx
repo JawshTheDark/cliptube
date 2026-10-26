@@ -1,30 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, Share, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Alert, FlatList, Pressable, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
-import { Avatar, Button, Empty, ErrorBox, Icon, IconButton, Loading, toast } from '@/components/ui';
+import { ServerTag } from '@/components/ServerTag';
+import { Avatar, Button, Empty, ErrorBox, Icon, IconButton, LiveBadge, Loading, toast } from '@/components/ui';
 import { f } from '@/components/VideoForm';
 import { Api } from '@/lib/api';
 import { ago, compact, hostOf } from '@/lib/format';
-import { useLinkedApi, withServer } from '@/lib/scope';
+import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
 import { openEvents } from '@/lib/sse';
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 import type { LivePage, LiveStream, PartyMessage } from '@/lib/types';
 
 type Bubble = { key: number; emoji: string; left: number };
 
 /**
- * A channel's live stream (ClipTube 1.9): low-latency HLS through the channel's server, with live chat,
+ * A channel's live stream (OurTube 1.9): low-latency HLS through the channel's server, with live chat,
  * reactions and the viewer count over its event stream. Watching needs no account; chatting needs one on that
  * server, or a guest name.
  */
 export default function LiveScreen() {
   const { username, server } = useLocalSearchParams<{ username: string; server?: string }>();
-  const { api, foreign } = useLinkedApi(server);
+  const scope = useLinkedApi(server);
+  const { api, foreign } = scope;
   const session = useSession();
   const signedIn = !!session.user && !foreign;
   const base = foreign || session.server;
@@ -215,9 +218,7 @@ export default function LiveScreen() {
       {!typing && (
         <View style={s.info}>
           <View style={s.liveRow}>
-            <View style={s.liveBadge}>
-              <Text style={s.liveText}>LIVE</Text>
-            </View>
+            <LiveBadge />
             <Text style={s.hint}>{`${compact(viewers)} watching · started ${ago(stream.started_at)}`}</Text>
           </View>
           <Text style={s.title} numberOfLines={2}>
@@ -226,9 +227,12 @@ export default function LiveScreen() {
           <Pressable style={s.channel} onPress={() => router.push(channelHref as any)}>
             <Avatar uri={api.abs(page.channel.avatar_url)} name={page.channel.display_name} size={30} />
             <Text style={s.channelName}>{page.channel.display_name}</Text>
-            {!!foreign && <Text style={s.hint}>{`on ${hostOf(foreign)}`}</Text>}
             {!!stream.game && <Text style={s.game}>{stream.game.name}</Text>}
           </Pressable>
+          {/* The server this stream lives on, as the website shows it; one outside a network is named by its address. */}
+          <ApiScope value={scope}>
+            <ServerTag fallback={foreign ? <Text style={s.hint}>{`on ${hostOf(foreign)}`}</Text> : null} />
+          </ApiScope>
         </View>
       )}
 
@@ -301,9 +305,7 @@ const s = StyleSheet.create({
   hint: { color: colors.text2, fontSize: 13 },
   info: { paddingHorizontal: 12, paddingTop: 10, gap: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.hairline, paddingBottom: 10 },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  liveBadge: { backgroundColor: colors.accent, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  liveText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-  title: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  title: { color: colors.text, fontSize: 19, fontFamily: fonts.display, fontWeight: '800', letterSpacing: -0.3 },
   channel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   channelName: { color: colors.text, fontSize: 14, fontWeight: '600' },
   game: { color: colors.text2, fontSize: 12, backgroundColor: colors.surface2, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },

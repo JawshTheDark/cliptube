@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Text, TextInput } from '@/components/Text';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,7 +37,7 @@ export default function Explore() {
             value={text}
             onChangeText={setText}
             onSubmitEditing={() => setQuery(text.trim())}
-            placeholder="Search clips, channels, games"
+            placeholder="Search videos, channels, games"
             placeholderTextColor={colors.text2}
             returnKeyType="search"
             style={s.input}
@@ -75,7 +76,7 @@ export default function Explore() {
   );
 }
 
-/** The game catalog as an artwork grid, most-clipped first. */
+/** The game catalog as an artwork grid, most videos first. */
 function Games() {
   const { api } = useSession();
   const { width } = useWindowDimensions();
@@ -109,7 +110,7 @@ function Games() {
       columnWrapperStyle={{ gap: 12, paddingHorizontal: 12 }}
       contentContainerStyle={{ gap: 14, paddingBottom: 24 }}
       ListHeaderComponent={<Text style={s.section}>Games</Text>}
-      ListEmptyComponent={<Empty icon="sports-esports" title="No games yet">Clips filed under a game show up here.</Empty>}
+      ListEmptyComponent={<Empty icon="sports-esports" title="No games yet">Videos filed under a game show up here.</Empty>}
       renderItem={({ item }) => {
         const art = api.abs(item.artwork_url);
         const n = (item.video_count || 0) + (item.network_count || 0);
@@ -121,7 +122,7 @@ function Games() {
             <Text style={s.gameName} numberOfLines={1}>
               {item.name}
             </Text>
-            <Text style={s.gameMeta}>{`${compact(n)} clip${n === 1 ? '' : 's'}`}</Text>
+            <Text style={s.gameMeta}>{`${compact(n)} video${n === 1 ? '' : 's'}`}</Text>
           </Pressable>
         );
       }}

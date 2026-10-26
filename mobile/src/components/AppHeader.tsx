@@ -1,10 +1,12 @@
 import { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/session';
 import { hostLabel } from '@/lib/api';
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
+import { LogoMark, Wordmark } from './Logo';
 import { Icon, IconButton } from './ui';
 
 /** Top bar for the tab screens: the logo with the active server, and actions on the right. */
@@ -17,13 +19,9 @@ export function AppHeader({ title, right }: { title?: string; right?: ReactNode 
         <Text style={s.title}>{title}</Text>
       ) : (
         <Pressable style={s.brand} onPress={() => router.push('/servers')} accessibilityRole="button" accessibilityLabel="Change server">
-          <View style={s.logo}>
-            <Icon name="play-arrow" size={20} color="#fff" />
-          </View>
+          <LogoMark size={30} />
           <View style={{ flexShrink: 1 }}>
-            <Text style={s.name} numberOfLines={1}>
-              {site?.site_name || 'ClipTube'}
-            </Text>
+            <Wordmark name={site?.site_name || 'OurTube'} size={22} />
             <Text style={s.host} numberOfLines={1}>
               {hostLabel(server)}
             </Text>
@@ -39,9 +37,7 @@ export function AppHeader({ title, right }: { title?: string; right?: ReactNode 
 const s = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 6, backgroundColor: colors.bg },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  logo: { width: 30, height: 22, borderRadius: 6, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  name: { color: colors.text, fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
-  host: { color: colors.text2, fontSize: 11 },
-  title: { color: colors.text, fontSize: 20, fontWeight: '700', flex: 1 },
+  host: { color: colors.text2, fontSize: 11, marginTop: -1 },
+  title: { color: colors.text, fontSize: 22, fontFamily: fonts.display, fontWeight: '800', letterSpacing: -0.5, flex: 1 },
   actions: { flexDirection: 'row', alignItems: 'center' },
 });
