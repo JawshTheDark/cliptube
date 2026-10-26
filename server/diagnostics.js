@@ -15,6 +15,7 @@ import { apBase, apEnabled } from './ap/common.js';
 import { liveEnabled, liveReachable } from './live.js';
 import { mailConfigured } from './mail.js';
 import { checkForUpdate, updateState } from './updates.js';
+import { dirSize, serverStorage } from './storage.js';
 
 const STARTED = Date.now();
 
@@ -70,31 +71,6 @@ async function tools() {
   return value;
 }
 
-function dirSize(dir) {
-  let total = 0;
-  let files = 0;
-  const walk = (d) => {
-    let entries = [];
-    try {
-      entries = fs.readdirSync(d, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else {
-        try {
-          total += fs.statSync(p).size;
-          files++;
-        } catch {}
-      }
-    }
-  };
-  walk(dir);
-  return { bytes: total, files };
-}
-
 let storageCache = null;
 function storage() {
   if (storageCache && Date.now() - storageCache.at < 60_000) return storageCache.value;
@@ -111,7 +87,7 @@ function storage() {
     const s = fs.statfsSync(DATA_DIR);
     disk = { total: s.blocks * s.bsize, free: s.bavail * s.bsize };
   } catch {}
-  const value = { data_dir: DATA_DIR, folders, database_bytes: dbBytes, backups: dirSize(path.join(DATA_DIR, 'backups')), disk };
+  const value = { data_dir: DATA_DIR, folders, database_bytes: dbBytes, backups: dirSize(path.join(DATA_DIR, 'backups')), disk, limit: serverStorage().limit };
   storageCache = { at: Date.now(), value };
   return value;
 }

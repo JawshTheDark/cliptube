@@ -5,6 +5,7 @@ import { db, touchVideo, getSettings } from '../db.js';
 import { DIRS, VIDEO_EXTENSIONS } from '../config.js';
 import { requireAuth } from '../auth.js';
 import { apBase } from '../ap/common.js';
+import { checkServerSpace } from '../storage.js';
 import { videoUpload, imageUpload, discard, defineUploadKind, finishedUpload } from '../uploads.js';
 import { HttpError, newId, now, parseTags, str, clampInt, sha256 } from '../util.js';
 import { enqueue, enqueueRender, convertImage, grabFrame, editorAssets, editorDir, queueRenditions } from '../media.js';
@@ -364,6 +365,7 @@ defineUploadKind('video', {
   extensions: VIDEO_EXTENSIONS,
   maxBytes: () => (Number(getSettings().max_upload_mb) || 8192) * 1048576,
   check(user, size, pending) {
+    checkServerSpace(size);
     const { used, quota } = storageFor(user.id);
     if (quota > 0 && used + pending + size > quota) throw overQuota(used + pending, quota);
   },
@@ -379,6 +381,11 @@ videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
     discard(req.file);
     return e;
   };
+  try {
+    checkServerSpace(req.file ? file.size : 0); // pieces were counted as they arrived
+  } catch (e) {
+    throw refuse(e);
+  }
   const { used, quota } = storageFor(req.user.id);
   if (quota > 0 && used + file.size > quota) throw refuse(overQuota(used, quota));
   let gameId = null;

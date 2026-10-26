@@ -44,6 +44,7 @@ With Docker, put these under `environment:` in a `docker-compose.override.yml`. 
 | Sign-up | `registration_mode` | open | `open`, `approval`, `invite` or `closed`. See [Moderation and Legal](Moderation-and-Legal.md#sign-up). |
 | Upload limit | `max_upload_mb` | 8192 MB | Per file. Your reverse proxy must allow at least this much. |
 | Default storage quota | `default_quota_mb` | 0 (no limit) | Per person; the users table has per-person overrides |
+| Storage for the whole server | `storage_limit_gb` | 0 (no limit) | Everything in the data folder (videos, adaptive streaming, thumbnails, backups). Uploads and channel imports stop when they would go over it, and whenever the disk would be left with less than 1 GB free, since a full disk can damage the database. Admin shows how much is used. |
 | Maximum resolution | `max_height` | 1080 | Taller videos are scaled down to this height |
 | Encoder | `encoder` | `libx264` | `h264_nvenc`, `h264_qsv` or `h264_amf` for a GPU, see [GPU encoding](Installation.md#gpu-encoding) |
 | Delete originals | `delete_originals` | off | Whether to delete the uploaded file after a transcode (see below) |

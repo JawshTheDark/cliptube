@@ -38,6 +38,7 @@ export const DEFAULT_SETTINGS = {
   registration_mode: 'open', // open | approval | invite | closed
   max_upload_mb: '8192',
   default_quota_mb: '0', // per-user storage quota, 0 = unlimited
+  storage_limit_gb: '0', // for the whole server (its data folder), 0 = no limit; see storage.js
 
   // Legal and abuse handling.
   legal_contact_email: '',

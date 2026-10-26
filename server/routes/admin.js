@@ -6,6 +6,7 @@ import { DIRS } from '../config.js';
 import { requireAdmin, userToPublic, setUserRole, setUserStatus } from '../auth.js';
 import { HttpError } from '../util.js';
 import { queueInfo, ffmpegInfo } from '../media.js';
+import { serverStorage } from '../storage.js';
 import { enqueueAllRenditions } from '../renditions.js';
 import { deleteAccount } from '../privacy.js';
 import { logAction } from '../reports.js';
@@ -18,7 +19,7 @@ const ENCODERS = ['libx264', 'h264_nvenc', 'h264_qsv', 'h264_amf'];
 
 // Only the general site settings; keys, tokens and network settings never go to the browser from here.
 const SITE_SETTINGS = [
-  'site_name', 'registration_mode', 'max_upload_mb', 'default_quota_mb', 'max_height', 'encoder', 'delete_originals', 'public_url',
+  'site_name', 'registration_mode', 'max_upload_mb', 'default_quota_mb', 'storage_limit_gb', 'max_height', 'encoder', 'delete_originals', 'public_url',
   'hls_ladder', 'federation_rendition', 'show_dislikes', 'smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user', 'smtp_from', 'steamgriddb_auto',
 ];
 function siteSettings() {
@@ -42,6 +43,11 @@ adminRouter.patch('/settings', (req, res) => {
     if (!['open', 'approval', 'invite', 'closed'].includes(b.registration_mode)) throw new HttpError(400, 'Registration must be open, approval, invite or closed');
     setSetting('registration_mode', b.registration_mode);
     setSetting('allow_registration', b.registration_mode === 'closed' ? 'false' : 'true');
+  }
+  if (b.storage_limit_gb !== undefined) {
+    const n = Number(b.storage_limit_gb);
+    if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'The storage limit must be a number of GB, or 0 for none');
+    setSetting('storage_limit_gb', String(Math.round(n * 1000) / 1000));
   }
   if (b.default_quota_mb !== undefined) {
     const n = parseInt(b.default_quota_mb, 10);
@@ -199,5 +205,6 @@ adminRouter.get('/stats', (req, res) => {
     rendering: db.prepare("SELECT COUNT(*) AS n FROM videos WHERE render_status IN ('queued', 'rendering')").get().n,
     queue: queueInfo(),
     tools: ffmpegInfo(),
+    storage: serverStorage(),
   });
 });

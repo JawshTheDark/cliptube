@@ -26,6 +26,7 @@ import { copyTarEntry, listTar, readTarEntry, writeTar } from './tar.js';
 import { convertImage, enqueue as enqueueProcessing } from './media.js';
 import { defineUploadKind, finishedUpload } from './uploads.js';
 import { setTags, storageFor } from './routes/videos.js';
+import { checkServerSpace } from './storage.js';
 import { indexVideo } from './search.js';
 import { findGame } from './games.js';
 import { toVtt } from './watching.js';
@@ -556,7 +557,7 @@ transferRouter.get('/channel-exports/:id/download', (req, res) => {
 });
 
 // A channel archive can also go up in pieces (/api/uploads), then be imported by its upload_id.
-defineUploadKind('archive', { label: 'Channel archive', extensions: new Set(['.tar']), maxBytes: importMaxBytes });
+defineUploadKind('archive', { label: 'Channel archive', extensions: new Set(['.tar']), maxBytes: importMaxBytes, check: (user, size) => checkServerSpace(size) });
 
 const archiveStorage = multer.diskStorage({ destination: DIRS.tmp, filename: (req, f, cb) => cb(null, `import-${newId()}.tar`) });
 // Built per request, so the size limit follows the settings.
@@ -577,6 +578,13 @@ transferRouter.post('/channel-imports', (req, res, next) => {
     return next(new HttpError(409, 'An import is already running'));
   }
   const start = (fields) => {
+    // A channel coming in needs room for its videos.
+    try {
+      checkServerSpace(fields.size || 0);
+    } catch (e) {
+      if (fields.file) fs.rmSync(path.join(DIRS.tmp, fields.file), { force: true });
+      return next(e);
+    }
     const id = newId();
     db.prepare('INSERT INTO channel_imports (id, user_id, status, source_url, file, size_bytes, apply_profile, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
       id, req.user.id, 'queued', fields.source_url || null, fields.file || null, fields.size || null, fields.apply_profile ? 1 : 0, now(),

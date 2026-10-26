@@ -386,6 +386,12 @@ export default function Admin() {
             <div className="l">Kept originals</div>
           </div>
           <div className="stat">
+            <div className="n">{formatBytes(stats.storage.used)}</div>
+            <div className="l">
+              {stats.storage.limit ? `Used of ${formatBytes(stats.storage.limit)} allowed` : `Used in all${stats.storage.disk_free !== null ? ` · ${formatBytes(stats.storage.disk_free)} free on disk` : ''}`}
+            </div>
+          </div>
+          <div className="stat">
             <div className="n">{stats.queue.current ? stats.queue.waiting + 1 : stats.queue.waiting}</div>
             <div className="l">{stats.queue.current ? 'Processing now' : 'Processing queue'}{stats.rendering ? ` · ${stats.rendering} edit render(s)` : ''}</div>
           </div>
@@ -426,6 +432,14 @@ export default function Admin() {
                   <input className="input" type="number" min={0} value={form.default_quota_mb} onChange={(e) => set({ default_quota_mb: e.target.value })} />
                   <span className="hint">0 = unlimited. Override per person below.</span>
                 </div>
+              </div>
+              <div className="field">
+                <label>Storage for the whole server (GB)</label>
+                <input className="input" type="number" min={0} step="0.1" value={form.storage_limit_gb} onChange={(e) => set({ storage_limit_gb: e.target.value })} />
+                <span className="hint">
+                  0 = no limit. Counts everything OurTube keeps (videos, adaptive streaming, thumbnails, backups). Uploads and imports stop when they would go
+                  over it, and whenever the disk would have less than 1 GB free.
+                </span>
               </div>
               <div className="field">
                 <label>Max resolution</label>
