@@ -1,5 +1,5 @@
 /**
- * The ClipTube network over ActivityPub (protocol 4). network.js decides who peers with whom; this module
+ * The OurTube network over ActivityPub (protocol 4). network.js decides who peers with whom; this module
  * does the ActivityPub part and registers itself there with useApTransport:
  *
  * - follow: our instance actor follows a peer's, which is what peering is now. Videos we already had from
@@ -33,7 +33,7 @@ async function switchToActivityPub(inst) {
        uploader_username = CASE WHEN uploader_username LIKE '%\\_channel' ESCAPE '\\' THEN uploader_username ELSE uploader_username || '_channel' END
      WHERE instance_id = ? AND origin_type = 'cliptube'`,
   ).run(origin, origin, inst.id);
-  // Subscriptions to its channels become follows of the channels' actors (name_channel on ClipTube).
+  // Subscriptions to its channels become follows of the channels' actors (name_channel on OurTube).
   const subs = db.prepare("SELECT * FROM network_subscriptions WHERE instance_id = ? AND username NOT LIKE '%\\_channel' ESCAPE '\\'").all(inst.id);
   for (const s of subs) {
     try {
@@ -113,7 +113,7 @@ async function reconcile(inst, { full = false } = {}) {
       if (e.status === 404 || e.status === 410) seen.delete(id); // gone since the outbox was written
     }
   }
-  // ClipTube peers list every public video in their outbox, so anything missing from it is gone.
+  // OurTube peers list every public video in their outbox, so anything missing from it is gone.
   if (complete && (typeof top.totalItems !== 'number' || seen.size >= Math.min(top.totalItems, MAX_ITEMS))) {
     for (const r of db.prepare('SELECT remote_id, ap_id FROM network_videos WHERE instance_id = ?').all(inst.id)) {
       if (!r.ap_id || !seen.has(r.ap_id)) db.prepare('DELETE FROM network_videos WHERE instance_id = ? AND remote_id = ?').run(inst.id, r.remote_id);
@@ -156,11 +156,11 @@ async function refreshVideo(row) {
   }
 }
 
-// ---- whole comment threads from ClipTube peers ---------------------------------------------------------
+// ---- whole comment threads from OurTube peers ---------------------------------------------------------
 
 const threads = new Map(); // video ap id -> { at, items }
 /**
- * The full comment thread of a video on a ClipTube peer (protocol 4), from its comments collection with
+ * The full comment thread of a video on a OurTube peer (protocol 4), from its comments collection with
  * the notes embedded. Cached for a few seconds. Returns null when it can't be read.
  */
 export async function remoteThread(row) {

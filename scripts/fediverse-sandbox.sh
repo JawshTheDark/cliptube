@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Checks ClipTube against real fediverse software (GoToSocial, which speaks the Mastodon API, and PeerTube)
+# Checks OurTube against real fediverse software (GoToSocial, which speaks the Mastodon API, and PeerTube)
 # in a private Docker sandbox on a host reachable over SSH. Nothing is exposed: the sandbox network is
 # internal (no published ports, no internet), and Caddy issues the HTTPS certificates from its own local CA.
 #
@@ -26,7 +26,7 @@ $SSH 'set -e
   echo "==> building cliptube:sandbox"
   docker build -q -t cliptube:sandbox src >/dev/null
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
-  echo "==> starting Caddy, ClipTube, GoToSocial and PeerTube"
+  echo "==> starting Caddy, OurTube, GoToSocial and PeerTube"
   docker compose up -d >/dev/null 2>&1
   # GoToSocial makes accounts with its own CLI, against the running server once it has set itself up.
   echo "==> creating the GoToSocial test account"

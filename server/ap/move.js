@@ -1,11 +1,11 @@
 /**
  * Moving a channel to another site, the way Mastodon accounts move:
  *
- * 1. The new account lists the old one as an alias (alsoKnownAs). On ClipTube: Settings, "Moving here".
+ * 1. The new account lists the old one as an alias (alsoKnownAs). On OurTube: Settings, "Moving here".
  * 2. The old account points at the new one (movedTo) and sends Move to its followers. Their servers
  *    check the alias, then follow the new account instead.
  *
- * People subscribed through the ClipTube network are moved by a signed message from the old instance
+ * People subscribed through the OurTube network are moved by a signed message from the old instance
  * to theirs, and people on the old instance itself are moved by it directly. Mounted at /api/me.
  */
 import { Router } from 'express';
@@ -55,7 +55,7 @@ const isHere = (target) => {
 };
 
 /**
- * Moves one local person's subscription to a channel's new home: a channel on this site, a ClipTube
+ * Moves one local person's subscription to a channel's new home: a channel on this site, a OurTube
  * instance (subscribed through the network), or anywhere in the fediverse (followed). Returns how, or null.
  */
 export async function moveSubscriber(userId, target, { fromName = null, prefer = 'network' } = {}) {
@@ -130,7 +130,7 @@ export async function followMove(originId, targetId) {
   return n;
 }
 
-// Another ClipTube instance says one of its accounts moved (signed; see network.js).
+// Another OurTube instance says one of its accounts moved (signed; see network.js).
 onRemoteAccountMoved(async (inst, username, t) => {
   if (typeof t.person !== 'string') return 0;
   let target;
@@ -193,7 +193,7 @@ export function sendActorUpdates(u) {
   deliver(`c:${u.id}`, { '@context': CONTEXT, id: x.activity(), type: 'Update', actor: x.group(u.username), to: [PUBLIC], object: gj }, inboxesOf(followersOf([`c:${u.id}`])));
 }
 
-// People on this site and on other ClipTube instances follow the channel to its new home.
+// People on this site and on other OurTube instances follow the channel to its new home.
 defineJob('move.followers', {
   lane: 'network',
   maxAttempts: 3,
@@ -257,7 +257,7 @@ moveRouter.post('/aliases', requireApOn, async (req, res) => {
   if (a.domain === hostOf(apBase())) throw new HttpError(400, 'That account is on this site. Aliases are for accounts on other sites.');
   if (!['Person', 'Group'].includes(a.type)) throw new HttpError(400, "That isn't an account or a channel");
   const add = [a.id];
-  // ClipTube and PeerTube channels are called name_channel; list it too, so its followers can move.
+  // OurTube and PeerTube channels are called name_channel; list it too, so its followers can move.
   if (a.type === 'Person') {
     try {
       const g = await resolveActor(`${a.username}_channel@${a.domain}`);

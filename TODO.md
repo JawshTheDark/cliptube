@@ -1,4 +1,4 @@
-# ClipTube TODO
+# OurTube TODO
 
 Planned work. Current state (v1.12.0): a hub (clips.irc.so) plus direct peering between instances over ActivityPub, with
 cross-instance likes, comments and subscriptions signed per instance, ActivityPub so Mastodon and PeerTube can follow channels,
@@ -51,20 +51,20 @@ Not legal advice; talk to a lawyer before opening a public instance.
 
 ## 3. ActivityPub (join the fediverse)
 
-Goal: ClipTube speaks the same standard as PeerTube and Mastodon, so their users can follow ClipTube channels,
-watch and comment on clips, and ClipTube users can follow PeerTube channels.
+Goal: OurTube speaks the same standard as PeerTube and Mastodon, so their users can follow OurTube channels,
+watch and comment on clips, and OurTube users can follow PeerTube channels.
 
 - [x] **Discovery**: WebFinger (`/.well-known/webfinger`), NodeInfo (`/.well-known/nodeinfo`), host-meta.
 - [x] **Actors**: each channel as a `Person` (or PeerTube-style `Group` for channels plus `Person` for
       accounts), each instance as an `Application` actor; inbox, outbox, followers, following collections.
-- [x] **HTTP Signatures** (draft-cavage, RSA-SHA256 for compatibility; keep Ed25519 for ClipTube-to-ClipTube).
+- [x] **HTTP Signatures** (draft-cavage, RSA-SHA256 for compatibility; keep Ed25519 for OurTube-to-OurTube).
 - [x] **Videos as `Video` objects** in the outbox, following PeerTube's vocabulary so PeerTube can play them
       (duration, `url` entries for the MP4 with mediaType/height/fps, thumbnails, tags, `sensitive`).
 - [x] **Follow / Accept / Undo** so remote users can subscribe to channels; deliver `Create Video` to
       followers' inboxes on publish; `Update` and `Delete` on edits and removal.
 - [x] **Likes and dislikes**: `Like` / `Dislike` / `Undo` in the inbox, counted like local ones.
 - [x] **Comments as `Note` objects** with `inReplyTo` pointing at the video or a parent comment, so replies
-      from Mastodon land in the comment thread and ClipTube comments show up as replies on Mastodon.
+      from Mastodon land in the comment thread and OurTube comments show up as replies on Mastodon.
 - [x] **Announce** (boosts/shares) counted and shown.
 - [x] **Delivery queue** with retries and backoff; shared inbox support.
 - [x] **Moderation**: domain blocks apply to ActivityPub traffic; `Flag` activities for reports.
@@ -74,13 +74,13 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
 
 ### PeerTube
 
-- [x] Let ClipTube follow PeerTube channels and instances; show their videos in Network and search.
-- [x] Make ClipTube videos playable from PeerTube (MP4 `url` entries; PeerTube prefers HLS, so add an HLS
+- [x] Let OurTube follow PeerTube channels and instances; show their videos in Network and search.
+- [x] Make OurTube videos playable from PeerTube (MP4 `url` entries; PeerTube prefers HLS, so add an HLS
       rendition, see "Playback" below).
-- [x] Decide: stay a lightweight ClipTube-native network that also speaks ActivityPub, or recommend PeerTube
+- [x] Decide: stay a lightweight OurTube-native network that also speaks ActivityPub, or recommend PeerTube
       for people who want the full fediverse feature set. Write up the trade-offs.
-      Decided: stay ClipTube and speak ActivityPub; point people who need live streaming, P2P or plugins to
-      PeerTube. ClipTube instances keep their own protocol for the instance layer. See docs/federation.md.
+      Decided: stay OurTube and speak ActivityPub; point people who need live streaming, P2P or plugins to
+      PeerTube. OurTube instances keep their own protocol for the instance layer. See docs/federation.md.
 - [x] Test against a real PeerTube instance (docker image) in CI or a local script.
       `scripts/fediverse-sandbox.sh <ssh-host>`: PeerTube 7.3 in a private Docker sandbox, all checks passing.
 
@@ -94,7 +94,7 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
       The leading @mention Mastodon adds to replies is dropped, since the thread shows it already.
 - [x] Test against a real Mastodon instance (or GoToSocial for something lighter).
       GoToSocial 0.22 in the same sandbox: follows, timeline with video, replies, favourites, boosts, both ways.
-- [x] ClipTube instances talk ActivityPub to each other too (protocol 4, ClipTube 1.3): peering is a follow
+- [x] OurTube instances talk ActivityPub to each other too (protocol 4, OurTube 1.3): peering is a follow
       between instance actors, comments get Accept or Reject answers, and outboxes are reconciled each round.
 - [x] The hub's game catalog syncs to members, so not everyone builds one; a game deleted on the hub goes
       from every member's catalog.
@@ -107,8 +107,8 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
       dragging, played in order or shuffled, with a feed per public playlist.
 - [x] Watch parties: a link anyone can join (guests pick a name), playback kept in step against the server's
       clock, a queue, chat and reactions, with host controls (who steers, lock, remove people, end).
-- [x] Live streaming: OBS streams to MediaMTX next to ClipTube with a per-channel key, viewers watch low-latency
-      HLS through ClipTube with a live chat, subscribers and fediverse followers hear about it, other servers
+- [x] Live streaming: OBS streams to MediaMTX next to OurTube with a per-channel key, viewers watch low-latency
+      HLS through OurTube with a live chat, subscribers and fediverse followers hear about it, other servers
       list it, and the recording becomes a draft video.
 - [x] Uploads in pieces (32 MB, under Cloudflare's 100 MB request cap) that resume after a dropped connection,
       for videos and channel archives; the single-request upload stays for API clients.
@@ -118,7 +118,7 @@ watch and comment on clips, and ClipTube users can follow PeerTube channels.
 
 ## 4. Better than YouTube (ideas from common complaints)
 
-Things people dislike about YouTube that ClipTube can do better. Checked items already exist.
+Things people dislike about YouTube that OurTube can do better. Checked items already exist.
 
 ### Feeds and discovery
 
@@ -139,7 +139,7 @@ Things people dislike about YouTube that ClipTube can do better. Checked items a
 - [x] Full channel export (videos, metadata, comments, subscribers list) and import on another instance;
       account moves between instances keep subscribers (ActivityPub `Move`, see section 3).
       Settings, "Moving to another site". The new instance can fetch the archive itself from the export's
-      private link. Subscribers on the old instance and on other ClipTube instances move along too.
+      private link. Subscribers on the old instance and on other OurTube instances move along too.
 - [x] Creator analytics that are honest and simple: views over time, where viewers came from, retention graph.
 
 ### Watching

@@ -93,7 +93,7 @@ lawyer before opening sign-ups. For the US, the short version:
   years), remove material quickly when they get a valid notice, and have and enforce a policy that ends repeat
   infringers' accounts. Put the agent's details in Admin → Legal so they show on `/legal`.
 - **Counter-notices.** After a valid counter-notice, the law expects the host to put the material back in 10 to
-  14 business days unless the claimant says they have gone to court. ClipTube records the counter-notice and
+  14 business days unless the claimant says they have gone to court. OurTube records the counter-notice and
   leaves the decision to you.
 - **Section 230** generally shields hosts from liability for what users post, but not for copyright or federal
   crimes. Child sexual abuse material must be reported to NCMEC; remove it and preserve what you're told to.

@@ -1,7 +1,7 @@
 /**
  * ActivityPub endpoints: discovery (WebFinger, NodeInfo, host-meta), actors and their collections,
  * video and comment objects, inboxes, and content negotiation on /watch and /c pages, so pasting a
- * ClipTube link into Mastodon or PeerTube search finds the video or channel.
+ * OurTube link into Mastodon or PeerTube search finds the video or channel.
  */
 import { Router } from 'express';
 import { db, getSettings } from '../db.js';
@@ -207,7 +207,7 @@ apRouter.get('/videos/:id/comments', (req, res) => {
   const base = apBase(req);
   const v = federatedVideo(req.params.id);
   const rows = db.prepare("SELECT * FROM comments WHERE video_id = ? AND status = 'visible' ORDER BY created_at LIMIT 500").all(v.id);
-  // ?embed=1 (what ClipTube instances ask for): the whole thread at once, with who wrote what.
+  // ?embed=1 (what OurTube instances ask for): the whole thread at once, with who wrote what.
   if (req.query.embed === '1') {
     send(res, collection(`${base}/ap/videos/${v.id}/comments`, rows.length, { orderedItems: rows.map((c) => embeddedNote(c, v, base)) }));
     return;

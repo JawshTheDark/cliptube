@@ -64,8 +64,11 @@ test("a published video goes to its owner's webhooks only, signed where there is
   const v = await uploadReady(bob, { title: 'Bob hooks a clip', tags: 'ace' });
   await waitFor(() => sent('/bob-json', 'video.published').length === 1, { what: "bob's delivery" });
   const j = sent('/bob-json', 'video.published')[0];
-  assert.equal(j.headers['x-cliptube-signature'], `sha256=${crypto.createHmac('sha256', 's3cret').update(j.raw).digest('hex')}`);
-  assert.match(j.headers['user-agent'], /^ClipTube\//);
+  const signature = `sha256=${crypto.createHmac('sha256', 's3cret').update(j.raw).digest('hex')}`;
+  assert.equal(j.headers['x-ourtube-signature'], signature);
+  assert.equal(j.headers['x-cliptube-signature'], signature, 'the old header name is still sent');
+  assert.equal(j.headers['x-ourtube-event'], 'video.published');
+  assert.match(j.headers['user-agent'], /^OurTube\//);
   assert.equal(j.body.event, 'video.published');
   assert.equal(j.body.site.name, 'Hook Site');
   assert.equal(j.body.video.title, 'Bob hooks a clip');
@@ -77,6 +80,7 @@ test("a published video goes to its owner's webhooks only, signed where there is
   await uploadReady(alice, { title: 'Alice hooks one too' });
   await waitFor(() => sent('/alice-discord', 'video.published').length === 1, { what: "alice's delivery" });
   const d = sent('/alice-discord', 'video.published')[0];
+  assert.equal(d.headers['x-ourtube-signature'], undefined);
   assert.equal(d.headers['x-cliptube-signature'], undefined);
   assert.equal(d.body.username, 'Hook Site');
   assert.match(d.body.content, /alice posted a new video: Alice hooks one too/);

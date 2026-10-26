@@ -267,7 +267,7 @@ async function download(url, dest) {
   let target = url;
   for (let hop = 0; hop < 4; hop++) {
     await assertPublic(target);
-    const res = await fetch(target, { redirect: 'manual', headers: { 'User-Agent': `ClipTube/${VERSION} (channel import)` }, signal: AbortSignal.timeout(6 * 3600_000) });
+    const res = await fetch(target, { redirect: 'manual', headers: { 'User-Agent': `OurTube/${VERSION} (channel import)` }, signal: AbortSignal.timeout(6 * 3600_000) });
     if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
       target = new URL(res.headers.get('location'), target).href;
       continue;
@@ -312,7 +312,7 @@ async function runImport(id) {
 
   const entries = await listTar(file);
   const meta = entries.find((e) => e.name === 'channel.json' || e.name.endsWith('/channel.json'));
-  if (!meta) throw new Error("This isn't a ClipTube channel export (channel.json is missing)");
+  if (!meta) throw new Error("This isn't a OurTube channel export (channel.json is missing)");
   if (meta.size > 64 * 1048576) throw new Error('channel.json is too large');
   const root = meta.name.slice(0, meta.name.length - 'channel.json'.length);
   let data;
@@ -552,7 +552,7 @@ transferRouter.get('/channel-exports/:id/download', (req, res) => {
   const r = db.prepare("SELECT * FROM channel_exports WHERE id = ? AND user_id = ? AND status = 'ready'").get(String(req.params.id), req.user.id);
   const full = r?.file && path.join(DIRS.exports, path.basename(r.file));
   if (!full || !fs.existsSync(full)) throw new HttpError(404, 'This export has expired');
-  res.download(full, `cliptube-channel-${req.user.username}.tar`);
+  res.download(full, `ourtube-channel-${req.user.username}.tar`);
 });
 
 // A channel archive can also go up in pieces (/api/uploads), then be imported by its upload_id.
@@ -564,7 +564,7 @@ const archiveUpload = () =>
   multer({
     storage: archiveStorage,
     limits: { files: 1, fileSize: importMaxBytes() },
-    fileFilter: (req, f, cb) => (/\.tar$/i.test(f.originalname) ? cb(null, true) : cb(new HttpError(400, 'Choose the .tar file from a ClipTube channel export'))),
+    fileFilter: (req, f, cb) => (/\.tar$/i.test(f.originalname) ? cb(null, true) : cb(new HttpError(400, 'Choose the .tar file from a OurTube channel export'))),
   }).single('archive');
 
 transferRouter.get('/channel-imports', (req, res) => {
@@ -621,5 +621,5 @@ channelExportPublicRouter.get('/api/channel-exports/:id', (req, res) => {
   const full = ok && r.file && path.join(DIRS.exports, path.basename(r.file));
   if (!full || !fs.existsSync(full)) throw new HttpError(404, 'This export link has expired or is wrong');
   res.set('Cache-Control', 'no-store');
-  res.download(full, 'cliptube-channel.tar');
+  res.download(full, 'ourtube-channel.tar');
 });

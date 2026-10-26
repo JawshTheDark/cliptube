@@ -247,7 +247,7 @@ export function videoJson(v, base, { singleAuthor = false } = {}) {
     dislikes: `${id}/dislikes`,
     shares: `${id}/shares`,
     comments: `${id}/comments`,
-    // Current counts, so other ClipTube instances can show them without crawling the collections.
+    // Current counts, so other OurTube instances can show them without crawling the collections.
     counts: { likes: v.like_count || 0, dislikes: v.dislike_count || 0, comments: v.comment_count || 0, shares: v.ap_shares || 0 },
     attributedTo: singleAuthor
       ? u.person(v.username)

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="web/public/favicon.svg" width="84" height="84" alt="ClipTube logo">
+<img src="web/public/favicon.svg" width="84" height="84" alt="OurTube logo">
 
-# ClipTube
+# OurTube
 
 **A self-hosted YouTube for gaming clips.**<br>
 Upload your best moments, share them with friends, and link your server with theirs.
@@ -20,13 +20,13 @@ Upload your best moments, share them with friends, and link your server with the
 [Wiki](docs/wiki/Home.md) •
 [Development](#development)
 
-<img src="docs/images/game.jpg" alt="A ClipTube game page: SteamGridDB banner, title logo and cover above the game's clips" width="100%">
+<img src="docs/images/game.jpg" alt="A OurTube game page: SteamGridDB banner, title logo and cover above the game's clips" width="100%">
 
 </div>
 
-## Why ClipTube
+## Why OurTube
 
-Your clips shouldn't live on a platform you don't control. ClipTube is a video site you run yourself, built
+Your clips shouldn't live on a platform you don't control. OurTube is a video site you run yourself, built
 around what a clip site needs:
 
 - **Clips go up fast.** Drop in a pile of recordings, fill in the details while they upload, and publish when
@@ -34,7 +34,7 @@ around what a clip site needs:
   you have one.
 - **Every friend runs their own.** Each person hosts their own clips. The servers link up into one network, so
   everyone's clips show up in everyone's feed, and likes, comments and subscriptions work across servers.
-- **It speaks the fediverse.** Channels can be followed from Mastodon and PeerTube, and ClipTube follows
+- **It speaks the fediverse.** Channels can be followed from Mastodon and PeerTube, and OurTube follows
   PeerTube channels back.
 - **It's yours.** One container, one SQLite database, one folder to back up. No ads, and analytics that count
   views without recording who watched.
@@ -163,7 +163,7 @@ proxy with HTTPS in front (Nginx Proxy Manager, Caddy, nginx or a tunnel).
 git clone https://github.com/JawshTheDark/ourtube.git
 cd ourtube
 mkdir -p data
-docker network create proxy-net    # the network your reverse proxy shares with ClipTube (once)
+docker network create proxy-net    # the network your reverse proxy shares with OurTube (once)
 docker compose up -d --build
 docker logs cliptube               # shows the one-time setup code
 ```
@@ -175,7 +175,7 @@ Then:
 2. Open the site and **create the first account**. It becomes the admin; the form asks for the setup code
    from the log, so nobody else can claim a fresh server.
 3. In **Admin → Overview**, set the **Public URL** to your `https://` address and choose who may sign up.
-4. Optional: **Admin → Network → Join network** with `https://clips.irc.so` to link up with the ClipTube
+4. Optional: **Admin → Network → Join network** with `https://clips.irc.so` to link up with the OurTube
    network, and add a SteamGridDB key under **Admin → Games** for game artwork.
 
 No reverse proxy yet, or no Docker? The [Installation](docs/wiki/Installation.md) guide covers a standalone
@@ -298,7 +298,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 
 ## Status
 
-ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
+OurTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
 milestone in [PLAN.md](PLAN.md) is done (current release: **v1.12.0**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
 [releases page](https://github.com/JawshTheDark/ourtube/releases).

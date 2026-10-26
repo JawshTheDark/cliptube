@@ -1,13 +1,13 @@
-// ClipTube service worker: shows web push notifications and opens their link when clicked.
+// OurTube service worker: shows web push notifications and opens their link when clicked.
 self.addEventListener('push', (event) => {
   let data = {};
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: event.data ? event.data.text() : 'ClipTube' };
+    data = { title: event.data ? event.data.text() : 'OurTube' };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'ClipTube', {
+    self.registration.showNotification(data.title || 'OurTube', {
       body: data.body || '',
       icon: data.icon || undefined,
       tag: data.tag || undefined,

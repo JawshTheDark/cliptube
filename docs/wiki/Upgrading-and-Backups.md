@@ -105,7 +105,7 @@ The copy lands in `data/backups/`, which `rsync` then sends along with the video
 
 ## Moving to a new machine
 
-1. Install ClipTube on the new machine ([Installation](Installation.md)), but don't create an account.
+1. Install OurTube on the new machine ([Installation](Installation.md)), but don't create an account.
 2. Stop the old server and copy its data folder across, for example
    `rsync -a old-host:cliptube/data/ ~/cliptube/data/`.
 3. Fix the ownership (`sudo chown -R 1000:1000 data`), start the new server, and point your DNS or reverse

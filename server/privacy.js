@@ -87,7 +87,7 @@ defineJob('user.export', {
     if (!u) return;
     fs.mkdirSync(DIRS.exports, { recursive: true });
     const data = exportData(userId);
-    const root = `cliptube-${u.username}`;
+    const root = `ourtube-${u.username}`;
     const entries = [{ name: `${root}/export.json`, data: JSON.stringify(data, null, 2) }];
     for (const v of db.prepare('SELECT * FROM videos WHERE user_id = ?').all(userId)) {
       if (v.file_path && fs.existsSync(path.join(DIRS.videos, v.file_path))) entries.push({ name: `${root}/videos/${v.id}.mp4`, file: path.join(DIRS.videos, v.file_path) });
@@ -138,7 +138,7 @@ privacyRouter.get('/exports/:file', (req, res) => {
   if (!file.startsWith(`export-${req.user.id}-`) || !file.endsWith('.tar')) throw new HttpError(404, 'Not found');
   const full = path.join(DIRS.exports, file);
   if (!fs.existsSync(full)) throw new HttpError(404, 'This export has expired');
-  res.download(full, `cliptube-${req.user.username}-export.tar`);
+  res.download(full, `ourtube-${req.user.username}-export.tar`);
 });
 
 // ---- deletion -----------------------------------------------------------------------------------

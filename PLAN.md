@@ -1,4 +1,4 @@
-# ClipTube implementation plan
+# OurTube implementation plan
 
 How to build everything in [TODO.md](TODO.md). Drafted 2026-10-25 against v0.3.0 (branch `network-hub`).
 
@@ -25,7 +25,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Security pass before going public: sign-in and sign-up limits, SECURITY.md, no private details in the repo | Done | v1.6.1, 2026-10-25 |
 | Playlists and Watch later | Done | v1.7.0, 2026-10-25 |
 | Watch parties | Done | v1.8.0, 2026-10-25 |
-| Live streaming (MediaMTX next to ClipTube) | Done | v1.9.0, 2026-10-25 |
+| Live streaming (MediaMTX next to OurTube) | Done | v1.9.0, 2026-10-25 |
 | ARM64 servers: the image adds Debian's ffprobe where the bundled one has no build | Done | v1.9.1, 2026-10-25 |
 | Uploads in pieces that resume, for proxies with a request cap such as Cloudflare's | Done | v1.10.0, 2026-10-25 |
 | The hub shows each member's current version, not the one it joined with | Done | v1.10.1, 2026-10-25 |
@@ -36,6 +36,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Webhooks are each person's own, in Settings, and can't reach the server's own network | Done | v1.12.0, 2026-10-25 |
 | The OurTube look: dark purple theme, new logo and fonts, Everything / Videos / Shorts on Home with a Shorts shelf, every video tagged with its server | Done | v1.13.0, 2026-10-25 |
 | Game pages: sort chips sit cleanly on the artwork, and game pages count videos, not clips | Done | v1.13.1, 2026-10-25 |
+| The name OurTube everywhere (repository JawshTheDark/ourtube); webhooks send X-OurTube-* headers as well as the old ones | Done | v1.13.2, 2026-10-26 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you
@@ -48,7 +49,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
   more disk. Turn it on under Admin → Overview → Adaptive streaming; existing videos are rebuilt in the
   background. I tested the ladder, quality switching and skipping in a browser, not playback on a throttled link.
 - Fediverse checks (M6, M7): done without subdomains. `scripts/fediverse-sandbox.sh <ssh-host>` runs a
-  real PeerTube (7.3) and GoToSocial (0.22, Mastodon-compatible) next to ClipTube in a private Docker sandbox on
+  real PeerTube (7.3) and GoToSocial (0.22, Mastodon-compatible) next to OurTube in a private Docker sandbox on
   the laptop, with no ports opened, and all 17 checks pass. It cleans up after itself; the images stay cached
   (about 2.3 GB). A check from a real Mastodon account is still worth a try: search for
   @Jawsh_channel@clips.irc.so and follow it.
@@ -90,17 +91,17 @@ together, then M5, M6, M7 and M8. See "Parallel workstreams" for which files eac
 
 Each has a recommendation. None blocks anything before the milestone named.
 
-1. **One federation protocol in the long run (decide by M6).** ClipTube speaks its own protocol today.
+1. **One federation protocol in the long run (decide by M6).** OurTube speaks its own protocol today.
    ActivityPub can do the same job: PeerTube servers mirror each other's video lists by having their instance
    accounts follow each other. Running both protocols forever doubles the federation code to maintain.
-   *Recommendation:* build ActivityPub as the main protocol, keep the ClipTube protocol working until
+   *Recommendation:* build ActivityPub as the main protocol, keep the OurTube protocol working until
    ActivityPub covers everything it does, and decide in M8 whether to retire it.
 2. **Channel model (M6).** PeerTube expects every video to belong to a channel (an ActivityPub `Group`) as
-   well as an account (a `Person`). *Recommendation:* expose each ClipTube user as both, with one default
+   well as an account (a `Person`). *Recommendation:* expose each OurTube user as both, with one default
    channel. Several channels per user can come later.
 3. **Fediverse test sandbox (M6 and M7).** Real interop needs real servers. *Recommendation:* for the length
    of M6 and M7, run a small PeerTube and a GoToSocial server (a lightweight Mastodon-compatible server) on
-   test subdomains of irc.so, plus a staging ClipTube. That needs DNS records and a few GB of RAM on the
+   test subdomains of irc.so, plus a staging OurTube. That needs DNS records and a few GB of RAM on the
    server. *Alternative:* a full Mastodon, which is heavier but is what most people use.
 4. **Storage budget (M4).** Adaptive streaming adds roughly 50 to 100% more disk per video depending on the
    quality ladder, and keeping originals adds more. *Recommendation:* make the ladder an instance setting
@@ -279,7 +280,7 @@ and search finds clips by game, length and phrase.
 
 ## M6: ActivityPub core and PeerTube (v1.0), size XL
 
-**Setup:** the fediverse sandbox from decision 3, plus a staging ClipTube.
+**Setup:** the fediverse sandbox from decision 3, plus a staging OurTube.
 
 - ✅ **Discovery**: WebFinger, NodeInfo and host-meta. (S)
 - ✅ **Actors**: an instance `Application` actor, and each user as a `Person` plus a default channel `Group`,
@@ -301,14 +302,14 @@ and search finds clips by game, length and phrase.
   remote accounts can be silenced or suspended. (S)
 - ✅ **Remote video ingestion**: ActivityPub videos go into the same network index, so Network, search and
   feeds show them, and the player picks the best MP4 or HLS source. (M)
-- ◐ **PeerTube interop** (built to PeerTube's vocabulary and tested against a stand-in server in the tests, with object shapes taken from a live PeerTube; not yet checked against a real PeerTube, see Needs you): ClipTube follows PeerTube channels and whole instances; PeerTube follows ClipTube
+- ◐ **PeerTube interop** (built to PeerTube's vocabulary and tested against a stand-in server in the tests, with object shapes taken from a live PeerTube; not yet checked against a real PeerTube, see Needs you): OurTube follows PeerTube channels and whole instances; PeerTube follows OurTube
   channels and plays their videos; comments and likes flow both ways. Checked against the sandbox. (M)
 
 **Schema:** `ap_actors` (cache of remote actors and keys), `ap_objects` (seen activity and object ids, for
 deduplication), `users.ap_public_key`, `users.ap_private_key`, `network_videos.ap_id`,
 `network_videos.origin_type`, `comments.ap_id`.
-**Done when:** the sandbox PeerTube follows a ClipTube channel, plays a new upload within a minute, and a
-comment posted there shows up on ClipTube, and the reverse works too.
+**Done when:** the sandbox PeerTube follows a OurTube channel, plays a new upload within a minute, and a
+comment posted there shows up on OurTube, and the reverse works too.
 
 ## M7: Mastodon, account moves, export and import (v1.1), size L to XL
 
@@ -324,21 +325,21 @@ comment posted there shows up on ClipTube, and the reverse works too.
   through a phone. Comments keep their authors as linked placeholder accounts, the owner's own comments
   become the new account's, and old videos are not announced as new uploads. Videos taken down by
   moderators stay behind.
-- ✅ **Account moves**: ActivityPub `Move` with `alsoKnownAs`, so followers carry over. The ClipTube network
+- ✅ **Account moves**: ActivityPub `Move` with `alsoKnownAs`, so followers carry over. The OurTube network
   learns about the move too. (M)
-  *As built:* subscribers on the old instance are moved by it, and other ClipTube instances get a signed
+  *As built:* subscribers on the old instance are moved by it, and other OurTube instances get a signed
   "account moved" message and move their people, after checking the new account lists the old one.
-- ✅ **Public docs**: how to follow ClipTube channels from Mastodon and PeerTube. (S) At `/help/fediverse`.
+- ✅ **Public docs**: how to follow OurTube channels from Mastodon and PeerTube. (S) At `/help/fediverse`.
 
 **Schema:** `users.moved_to`, `users.also_known_as`; export archives run as jobs.
-**Done when:** a sandbox Mastodon or GoToSocial account follows a ClipTube channel, watches a clip in its
+**Done when:** a sandbox Mastodon or GoToSocial account follows a OurTube channel, watches a clip in its
 timeline, replies, and the reply appears as a comment.
 
 ## M8: One federation protocol, size M
 
-- ✅ Compare the ClipTube protocol with ActivityPub for ClipTube-to-ClipTube traffic: features, reliability and
+- ✅ Compare the OurTube protocol with ActivityPub for OurTube-to-OurTube traffic: features, reliability and
   how much code each needs. The comparison is in [docs/federation.md](docs/federation.md).
-- ✅ *Recommended outcome* if ActivityPub covers everything: ClipTube instances talk ActivityPub to each other,
+- ✅ *Recommended outcome* if ActivityPub covers everything: OurTube instances talk ActivityPub to each other,
   the hub becomes an optional directory and blocklist service (like the instance index PeerTube runs at
   joinpeertube.org), and the old protocol stays read-only for one release before it's removed.
   *Outcome:* first decided (v1.2.0) to keep two layers, because moving would lose immediate comment verdicts,
@@ -377,7 +378,7 @@ After M0 the work splits into separate sessions with clear file ownership:
   the sandbox, and reading their published ActivityPub notes before building.
 - **Storage growth** from streaming renditions, originals and federation renditions. *Mitigation:* instance
   settings, quotas, and a disk-usage view in Admin.
-- **Spam and abuse** once ClipTube talks to the wider fediverse. *Mitigation:* M1's tools ship before M6, and
+- **Spam and abuse** once OurTube talks to the wider fediverse. *Mitigation:* M1's tools ship before M6, and
   new remote accounts start rate-limited.
 - **Legal.** The plan reduces exposure but isn't legal advice. *Mitigation:* decision 7.
 - **Home hosting.** The laptop depends on your connection, router and changing IP. Fine as staging, not as a
@@ -395,7 +396,7 @@ Every item in TODO.md and where it's built.
 | 3. ActivityPub | Discovery, actors, signatures, `Video` objects, follows, likes, comments, announces, moderation | M6 |
 | 3. ActivityPub | Delivery queue | M0 (queue) and M6 (delivery) |
 | 3. ActivityPub | Account moves | M7 |
-| 3. PeerTube | Follow PeerTube, play ClipTube videos on PeerTube, interop tests | M6 |
+| 3. PeerTube | Follow PeerTube, play OurTube videos on PeerTube, interop tests | M6 |
 | 3. PeerTube | Stay native or recommend PeerTube | M8 |
 | 3. Mastodon | Follows, timeline posts, replies as comments, interop tests | M7 |
 | 4. Feeds and discovery | RSS, notifications, transparent feed, vertical clips tab, search filters | M5 |

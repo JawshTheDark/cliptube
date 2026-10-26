@@ -46,7 +46,7 @@ async function call(p, params = {}) {
   let res;
   try {
     res = await fetch(`${BASE}${p}${qs ? `?${qs}` : ''}`, {
-      headers: { Authorization: `Bearer ${key}`, Accept: 'application/json', 'User-Agent': `ClipTube/${VERSION}` },
+      headers: { Authorization: `Bearer ${key}`, Accept: 'application/json', 'User-Agent': `OurTube/${VERSION}` },
       signal: AbortSignal.timeout(15000),
     });
   } catch (e) {
@@ -113,7 +113,7 @@ export async function applyImage(game, kind, image, sgdbId = null) {
   if (!/^https?:$/.test(u.protocol) || !imageHostOk(u.host)) throw new HttpError(400, 'Images come from SteamGridDB only');
   let res;
   try {
-    res = await fetch(u, { headers: { 'User-Agent': `ClipTube/${VERSION}` }, signal: AbortSignal.timeout(30000), redirect: 'error' });
+    res = await fetch(u, { headers: { 'User-Agent': `OurTube/${VERSION}` }, signal: AbortSignal.timeout(30000), redirect: 'error' });
   } catch (e) {
     throw new HttpError(502, `Could not download the image: ${e.cause?.code || e.message}`);
   }

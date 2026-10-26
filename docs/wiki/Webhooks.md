@@ -53,17 +53,18 @@ person has their own, for their own videos and streams.
 
 `live.started` has a `stream` instead: `id`, `title`, `description`, `url` (the live page), `game`, `started_at`
 and `channel`. A test delivery has `"event": "test"`, with your latest public video when you have one. Each
-request carries the `X-ClipTube-Event` and `X-ClipTube-Delivery` headers and a `User-Agent` starting with
-`ClipTube/`. The links are complete when the site's admin has set its Public URL.
+request carries the `X-OurTube-Event` and `X-OurTube-Delivery` headers and a `User-Agent` starting with
+`OurTube/`. The links are complete when the site's admin has set its Public URL. Every `X-OurTube-` header is
+also sent as `X-ClipTube-`, the name from before the rename, so receivers set up earlier keep working.
 
 ## Checking the signature
 
-With a **secret**, `X-ClipTube-Signature` is `sha256=` followed by the HMAC-SHA256 of the raw body with the secret,
+With a **secret**, `X-OurTube-Signature` is `sha256=` followed by the HMAC-SHA256 of the raw body with the secret,
 so the other end can check that the request came from this site:
 
 ```js
 const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-const ok = crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(req.headers['x-cliptube-signature'] || ''));
+const ok = crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(req.headers['x-ourtube-signature'] || ''));
 ```
 
 The secret is never shown again after you save it; leave it out when editing to keep it.

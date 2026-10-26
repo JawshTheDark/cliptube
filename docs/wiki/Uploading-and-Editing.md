@@ -61,7 +61,7 @@ processed.
 
 ## How uploads are processed
 
-When a file arrives, ClipTube reads it with FFprobe and decides:
+When a file arrives, OurTube reads it with FFprobe and decides:
 
 - **Remux** (seconds, no quality loss) when the video is H.264 in yuv420p with AAC or MP3 audio, and no taller
   than the site's maximum resolution. That covers the default recordings of tools like NVIDIA ShadowPlay and OBS. The

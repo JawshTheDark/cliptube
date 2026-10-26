@@ -1,4 +1,4 @@
-// Live streaming: MediaMTX asks ClipTube who may publish and read; viewers watch the HLS through ClipTube,
+// Live streaming: MediaMTX asks OurTube who may publish and read; viewers watch the HLS through OurTube,
 // chat and are counted; when a stream stops, its recording becomes a draft video (or is thrown away).
 // A small stand-in plays MediaMTX's control API and HLS server.
 import { test, before, after } from 'node:test';
@@ -102,7 +102,7 @@ after(async () => {
   fake?.server.close();
 });
 
-test('MediaMTX asks ClipTube who may publish, and only ClipTube may read', async () => {
+test('MediaMTX asks OurTube who may publish, and only OurTube may read', async () => {
   const me = (await alice.get('/api/live/me')).data;
   assert.equal(me.enabled, true);
   assert.equal(me.server_url, `rtmp://127.0.0.1/live`);
@@ -136,7 +136,7 @@ test('MediaMTX asks ClipTube who may publish, and only ClipTube may read', async
   assert.equal(await auth({ action: 'publish', path: 'live/alice', query: `key=${key}` }), 401);
 });
 
-test('viewers watch through ClipTube, are counted, and chat', async () => {
+test('viewers watch through OurTube, are counted, and chat', async () => {
   const hls = await fetch(`${inst.url}/live/hls/alice/index.m3u8`, { redirect: 'manual' });
   assert.equal(hls.status, 200, 'no cookie check for the player');
   assert.equal(hls.headers.get('access-control-allow-origin'), '*');

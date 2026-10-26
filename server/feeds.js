@@ -53,7 +53,7 @@ ${thumb ? `      <media:thumbnail url="${esc(thumb)}"/>\n` : ''}      <media:des
 ${subtitle ? `  <subtitle>${esc(subtitle)}</subtitle>\n` : ''}  <link rel="self" type="application/atom+xml" href="${esc(self)}"/>
   <link rel="alternate" type="text/html" href="${esc(link)}"/>
   <updated>${updated}</updated>
-  <generator>ClipTube</generator>
+  <generator>OurTube</generator>
 ${entries.join('\n')}
 </feed>
 `;
@@ -81,7 +81,7 @@ ${thumb ? `      <media:thumbnail url="${esc(thumb)}"/>\n` : ''}    </item>`;
     <link>${esc(link)}</link>
     <description>${esc(subtitle || title)}</description>
     <atom:link href="${esc(self)}" rel="self" type="application/rss+xml"/>
-    <generator>ClipTube</generator>
+    <generator>OurTube</generator>
 ${items.join('\n')}
   </channel>
 </rss>

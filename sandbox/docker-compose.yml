@@ -1,4 +1,4 @@
-# A private fediverse sandbox: ClipTube next to real GoToSocial (Mastodon-compatible) and PeerTube servers,
+# A private fediverse sandbox: OurTube next to real GoToSocial (Mastodon-compatible) and PeerTube servers,
 # for checking interop with real software. Run it with scripts/fediverse-sandbox.sh, which builds
 # cliptube:sandbox from the current commit, starts this, runs check.mjs and tears it all down.
 #
@@ -98,7 +98,7 @@ services:
       PEERTUBE_SECRET: 3f0c1d6a2b9e48c7a5d4e3f2b1c0a9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2
       PT_INITIAL_ROOT_PASSWORD: sandbox-root-pass-1
       NODE_EXTRA_CA_CERTS: /ca/root.crt
-      # Private addresses again, MP4 files for ClipTube to play, and the database name the image expects.
+      # Private addresses again, MP4 files for OurTube to play, and the database name the image expects.
       NODE_CONFIG: '{"federation":{"prevent_ssrf":false},"transcoding":{"web_videos":{"enabled":true},"hls":{"enabled":true}},"database":{"name":"peertube","suffix":""}}'
     volumes:
       - peertube_data:/data

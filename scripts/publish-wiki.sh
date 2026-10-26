@@ -36,7 +36,7 @@ if git -C "$TMP/wiki" diff --cached --quiet; then
   echo "The wiki is already up to date."
   exit 0
 fi
-git -C "$TMP/wiki" -c user.name="${NAME:-ClipTube}" -c user.email="${EMAIL:-wiki@localhost}" \
+git -C "$TMP/wiki" -c user.name="${NAME:-OurTube}" -c user.email="${EMAIL:-wiki@localhost}" \
   commit -q -m "Update from docs/wiki at $COMMIT"
 git -C "$TMP/wiki" push -q
 echo "Published docs/wiki to $WIKI"

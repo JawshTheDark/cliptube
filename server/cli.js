@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ClipTube admin command line, for server operators (no web login needed).
+ * OurTube admin command line, for server operators (no web login needed).
  * Run it where the server's data lives, for example inside the container:
  *
  *   docker exec cliptube node server/cli.js <command>

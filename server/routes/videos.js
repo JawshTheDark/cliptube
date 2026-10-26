@@ -758,7 +758,7 @@ videosRouter.patch('/:id/comments/:cid', requireAuth, (req, res) => {
     db.prepare("UPDATE comments SET status = 'visible', held_reason = NULL WHERE id = ?").run(c.id);
     notifyComment(c.id);
     apCommentCreated(c.id);
-    if (c.status === 'held') apCommentVerdict(c, true).catch(() => {}); // a ClipTube peer is waiting to hear
+    if (c.status === 'held') apCommentVerdict(c, true).catch(() => {}); // a OurTube peer is waiting to hear
     if (req.user.id !== v.user_id) logAction(req.user, 'comment.approve', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });
   }
   if (b.pinned !== undefined || b.hearted !== undefined) {
@@ -802,7 +802,7 @@ videosRouter.delete('/:id/comments/:cid', requireAuth, (req, res) => {
   db.prepare('DELETE FROM comments WHERE id = ?').run(c.id);
   const author = db.prepare('SELECT username, remote_instance_id FROM users WHERE id = ?').get(c.user_id);
   if (author && !author.remote_instance_id) sendCommentDelete(c, author.username, v.user_id);
-  // Deleting a held comment from a ClipTube peer is the answer to it.
+  // Deleting a held comment from a OurTube peer is the answer to it.
   if (c.status === 'held' && c.ap_id) apCommentVerdict(c, false, 'Not approved').catch(() => {});
   if (req.user.is_moderator && req.user.id !== c.user_id && req.user.id !== v.user_id) {
     logAction(req.user, 'comment.delete', { targetType: 'comment', targetId: c.id, targetLabel: c.body.slice(0, 120) });

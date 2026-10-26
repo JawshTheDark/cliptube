@@ -37,7 +37,7 @@ server/              the Express app
 ├── index.js         startup, routes, static files
 ├── routes/          the videos, users, media and admin APIs
 ├── ap/              ActivityPub: actors, inbox, delivery, HTTP signatures, keys, peering, moves
-├── network.js       the ClipTube network: hub directory, admission switches, block lists, game catalog
+├── network.js       the OurTube network: hub directory, admission switches, block lists, game catalog
 ├── media.js         FFprobe and FFmpeg: processing, thumbnails, editor filmstrips and waveforms
 ├── jobs.js          the persistent job queue
 ├── migrations.js    numbered database migrations
@@ -60,7 +60,7 @@ npm run test:unit                     # the quick unit tests only
 node --test test/network.test.js      # one file
 ```
 
-Most suites start **real ClipTube servers** in temporary data folders, with private-address federation allowed,
+Most suites start **real OurTube servers** in temporary data folders, with private-address federation allowed,
 and talk to them over HTTP. Network and ActivityPub tests therefore exercise the real code, including
 signatures and the job queue (`waitFor` in `test/helpers.js` waits for asynchronous deliveries). Outside
 services are replaced by small stand-ins: `STEAMGRIDDB_BASE_URL`, for example, points the SteamGridDB client at
@@ -94,24 +94,24 @@ deliveries:
 
 ## Federation work
 
-- The design, the ClipTube extensions and the reasoning behind them are in
+- The design, the OurTube extensions and the reasoning behind them are in
   [docs/federation.md](https://github.com/JawshTheDark/ourtube/blob/main/docs/federation.md).
 - To check changes against real fediverse software, run
-  `scripts/fediverse-sandbox.sh <ssh-host> [--keep]`: it builds ClipTube from your working tree and runs the
+  `scripts/fediverse-sandbox.sh <ssh-host> [--keep]`: it builds OurTube from your working tree and runs the
   interop checks against PeerTube and GoToSocial in a private Docker sandbox on that host (see
   [Fediverse](Fediverse.md#checked-against-real-servers)).
 
 ## Live streaming work
 
 Tests replace MediaMTX with a small stand-in (`test/live.test.js`). To check against the real one,
-`scripts/live-sandbox.sh <ssh-host>` builds ClipTube from your working tree, runs it with MediaMTX in a private
-Docker sandbox, streams a test picture with ffmpeg, and checks the stream, the HLS through ClipTube and the saved
+`scripts/live-sandbox.sh <ssh-host>` builds OurTube from your working tree, runs it with MediaMTX in a private
+Docker sandbox, streams a test picture with ffmpeg, and checks the stream, the HLS through OurTube and the saved
 recording (see [Live Streaming](Live-Streaming.md#how-it-works)). With `--keep` the sandbox stays up, and
 `ssh -N -L 3320:127.0.0.1:3320 <ssh-host>` shows it in your browser at http://localhost:3320.
 
 To work on a live player (the live page, or the Android app) without Docker, `scripts/fake-live.mjs` stands in
 for MediaMTX next to a local server: it makes a live test picture with the bundled ffmpeg, serves it as HLS and
-tells ClipTube the channel went live. Start ClipTube pointed at it, copy a channel's stream key from Settings, and
+tells OurTube the channel went live. Start OurTube pointed at it, copy a channel's stream key from Settings, and
 run the script with the same secret:
 
 ```bash

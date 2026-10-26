@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Checks live streaming end to end, with the real MediaMTX, in a private Docker sandbox on a host reachable
-# over SSH: ClipTube built from this working tree, MediaMTX with live/mediamtx.yml, a test stream sent with
-# ffmpeg, the HLS read back through ClipTube, and the recording saved as a draft video. Nothing is published.
+# over SSH: OurTube built from this working tree, MediaMTX with live/mediamtx.yml, a test stream sent with
+# ffmpeg, the HLS read back through OurTube, and the recording saved as a draft video. Nothing is published.
 #
 #   scripts/live-sandbox.sh user@docker-host          # build this working tree, run the checks, clean up
 #   scripts/live-sandbox.sh user@docker-host --keep   # leave the sandbox running for a look around, in a
@@ -31,7 +31,7 @@ $SSH "PEEK='$PEEK';"'set -e
   docker build -q -t cliptube:sandbox-live src >/dev/null
   docker compose pull -q cliptube-live >/dev/null 2>&1 || true
   docker compose --profile peek down -v --remove-orphans >/dev/null 2>&1 || true
-  echo "==> starting ClipTube and MediaMTX"
+  echo "==> starting OurTube and MediaMTX"
   docker compose $PEEK up -d >/dev/null 2>&1
   echo "==> running the checks"
   set +e

@@ -17,7 +17,7 @@ services:
       - TRUST_PROXY=1
       - DATA_DIR=/data
       # Live streaming, with the "live" profile (see below): MediaMTX's name here, the secret it shares with
-      # ClipTube, and the addresses shown to streamers (rtmp://your.site/live by default; SRT only when set).
+      # OurTube, and the addresses shown to streamers (rtmp://your.site/live by default; SRT only when set).
       - LIVE_SERVER=${LIVE_SERVER:-}
       - LIVE_SECRET=${LIVE_SECRET:-}
       - LIVE_RTMP_URL=${LIVE_RTMP_URL:-}

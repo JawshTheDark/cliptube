@@ -1,5 +1,5 @@
-# Live streaming sandbox (scripts/live-sandbox.sh): ClipTube built from the working tree and MediaMTX, on a
-# network of their own with nothing published. The check streams to MediaMTX from inside ClipTube's container.
+# Live streaming sandbox (scripts/live-sandbox.sh): OurTube built from the working tree and MediaMTX, on a
+# network of their own with nothing published. The check streams to MediaMTX from inside OurTube's container.
 name: cliptube-live-sandbox
 
 services:
@@ -28,7 +28,7 @@ services:
       - ./data/live:/recordings
     networks: [livenet]
 
-  # Only with --keep: ClipTube on the host's 127.0.0.1:3320 for a browser, through this relay, so ClipTube itself
+  # Only with --keep: OurTube on the host's 127.0.0.1:3320 for a browser, through this relay, so OurTube itself
   # still has no way out.
   peek:
     image: cliptube:sandbox-live

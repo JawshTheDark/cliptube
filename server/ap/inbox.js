@@ -2,7 +2,7 @@
  * Incoming ActivityPub activities, processed through the job queue after the HTTP signature was checked.
  * Follows of local actors are accepted (subscriptions), comments land in the thread through the same
  * spam checks as local ones, likes and dislikes count, and videos from followed channels or instances go
- * into the network index next to ClipTube peers' videos.
+ * into the network index next to OurTube peers' videos.
  */
 import crypto from 'node:crypto';
 import { db, getSettings } from '../db.js';
@@ -22,7 +22,7 @@ import { remoteActorChanged } from '../links.js';
 
 /**
  * What this instance accepts from the sender's server: its own switches, plus the network's for other
- * ClipTube instances in the network (the hub's switches cover traffic between members).
+ * OurTube instances in the network (the hub's switches cover traffic between members).
  */
 const accepts = (actorId) => {
   const inst = actorId ? db.prepare('SELECT * FROM instances WHERE url = ?').get(originOf(actorId)) : null;
@@ -31,7 +31,7 @@ const accepts = (actorId) => {
   return { comments: s.network_accept_comments === 'true', likes: s.network_accept_likes === 'true', subscriptions: s.network_accept_subscriptions === 'true' };
 };
 
-/** A ClipTube peer on protocol 4, which expects an answer to each comment (Accept or Reject). */
+/** A OurTube peer on protocol 4, which expects an answer to each comment (Accept or Reject). */
 const wantsVerdict = (actorId) => {
   const inst = db.prepare('SELECT ap_actor, protocol FROM instances WHERE url = ?').get(originOf(actorId));
   return !!inst?.ap_actor && (inst.protocol || 0) >= 4;
@@ -148,7 +148,7 @@ async function onFollow(a, actorId, base) {
   if (!target) return;
   const actor = await getActor(actorId);
   const follow = { id: a.id, type: 'Follow', actor: actorId, object: idOf(a.object) };
-  // Another server following this one: peering (ClipTube) or mirroring (PeerTube), under the admission switches.
+  // Another server following this one: peering (OurTube) or mirroring (PeerTube), under the admission switches.
   if (target.key === 'i') {
     const decision = await peerFollowReceived(actor, a.id);
     if (decision === 'pending') return;
@@ -201,7 +201,7 @@ async function onAnswer(a, actorId, base, accepted) {
   }
   if (!f) return onVerdict(o, actorId, accepted, a);
   db.prepare('UPDATE ap_follows SET status = ? WHERE local_actor = ? AND remote_actor = ?').run(accepted ? 'accepted' : 'rejected', f.local_actor, f.remote_actor);
-  // Our instance following a ClipTube peer: that is the peering, and network.js keeps track of it.
+  // Our instance following a OurTube peer: that is the peering, and network.js keeps track of it.
   if (f.local_actor === 'i' && db.prepare('SELECT 1 FROM instances WHERE ap_actor = ?').get(actorId)) return peerFollowAnswered(actorId, accepted);
   if (accepted) enqueueJob('ap.backfill', { actor: actorId }, { dedupe: `ap-backfill:${actorId}` });
 }
@@ -254,7 +254,7 @@ export async function ingestVideo(obj) {
   const html = links.find((l) => l && l.mediaType === 'text/html')?.href || obj.id;
   const icons = (Array.isArray(obj.icon) ? obj.icon : obj.icon ? [obj.icon] : []).filter((i) => i && idOf(i.url));
   const thumb = icons.sort((x, y) => (Number(y.width) || 0) - (Number(x.width) || 0))[0];
-  // ClipTube videos keep their own id, so a video also known through the ClipTube network is one row.
+  // OurTube videos keep their own id, so a video also known through the OurTube network is one row.
   const clipTubeId = /\/ap\/videos\/([A-Za-z0-9_-]{4,40})$/.exec(new URL(obj.id).pathname)?.[1];
   const remoteId = clipTubeId || (typeof obj.uuid === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(obj.uuid) ? obj.uuid : crypto.createHash('sha256').update(obj.id).digest('base64url').slice(0, 22));
   const game = obj.game && typeof obj.game === 'object' && /^[a-z0-9][a-z0-9-]{0,59}$/.test(String(obj.game.slug || '')) ? obj.game : null;
@@ -272,7 +272,7 @@ export async function ingestVideo(obj) {
     width: Math.round(Number(mp4?.width) || 0) || Math.round((Number(mp4?.height) || 0) * (Number(obj.aspectRatio) || 16 / 9)),
     height: Math.round(Number(mp4?.height) || 0),
     views: Math.max(0, Math.round(Number(obj.views) || 0)),
-    // ClipTube sends its counts (the `counts` extension); others may embed a collection with totalItems.
+    // OurTube sends its counts (the `counts` extension); others may embed a collection with totalItems.
     likes: Number.isFinite(Number(obj.counts?.likes))
       ? Math.max(0, Math.round(Number(obj.counts.likes)))
       : typeof obj.likes === 'number'
@@ -478,7 +478,7 @@ async function onFlag(a, actorId, base) {
   const objects = (Array.isArray(a.object) ? a.object : [a.object]).map(idOf).filter(Boolean);
   const details = str(a.content || a.summary, 2000);
   const reporter = `${hostOf(actorId)} (${isNetworkPeer(inst) ? 'network' : 'fediverse'})`;
-  // ClipTube sends the reason as its own field; anyone else's report counts as "other".
+  // OurTube sends the reason as its own field; anyone else's report counts as "other".
   const reason = typeof a.reason === 'string' && REPORT_REASONS[a.reason] ? a.reason : 'other';
   for (const o of objects) {
     const p = parseLocal(o, base);

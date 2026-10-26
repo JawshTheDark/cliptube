@@ -1,6 +1,6 @@
 # Installation
 
-ClipTube runs wherever Docker or Node.js runs. This page takes you from nothing to a working site; the
+OurTube runs wherever Docker or Node.js runs. This page takes you from nothing to a working site; the
 settings you can change afterwards are in [Configuration](Configuration.md).
 
 - [What you need](#what-you-need)
@@ -29,7 +29,7 @@ settings you can change afterwards are in [Configuration](Configuration.md).
 
 ## Docker behind a reverse proxy (recommended)
 
-This is how clips.irc.so runs: ClipTube in a container with no published port, and a reverse proxy on the same
+This is how clips.irc.so runs: OurTube in a container with no published port, and a reverse proxy on the same
 Docker network that handles HTTPS.
 
 **1. Get the code and make the data folder**
@@ -99,7 +99,7 @@ proxy_send_timeout 3600s;
 ```
 
 > [!NOTE]
-> If Nginx Proxy Manager is **not** on the same Docker network as ClipTube, publish a port
+> If Nginx Proxy Manager is **not** on the same Docker network as OurTube, publish a port
 > ([Docker on its own](#docker-on-its-own)) and forward to the host's LAN address, for example
 > `192.168.1.10:3100`. Don't use `127.0.0.1`: inside the proxy's container, that is the proxy itself.
 
@@ -160,7 +160,7 @@ plan; the upload page sends files in 32 MB pieces, so that doesn't cap uploads (
 
 ## Docker on its own
 
-For trying ClipTube out on your LAN, or for a reverse proxy outside Docker, publish a port with a
+For trying OurTube out on your LAN, or for a reverse proxy outside Docker, publish a port with a
 `docker-compose.override.yml` next to `docker-compose.yml`:
 
 ```yaml
@@ -196,13 +196,13 @@ Data goes to `./data` unless you set `DATA_DIR`. Behind a reverse proxy, set `TR
 prints its LAN address at startup so friends on your network can connect.
 
 On Linux on ARM (a Raspberry Pi, for example), also install FFmpeg from your package manager
-(`sudo apt install ffmpeg`): the bundled ffprobe has no ARM build, so ClipTube uses the one on your PATH.
+(`sudo apt install ffmpeg`): the bundled ffprobe has no ARM build, so OurTube uses the one on your PATH.
 
 To keep it running on Linux, a systemd unit such as `/etc/systemd/system/cliptube.service`:
 
 ```ini
 [Unit]
-Description=ClipTube
+Description=OurTube
 After=network-online.target
 Wants=network-online.target
 
@@ -270,7 +270,7 @@ Within a sync round the hub's games appear under Admin → Games, and other serv
 
 ## Hosting at home
 
-1. **Forward ports 80 and 443** on your router to the machine running ClipTube (or its reverse proxy).
+1. **Forward ports 80 and 443** on your router to the machine running OurTube (or its reverse proxy).
 2. **Give it a name.** Point a domain or subdomain at your home IP. If your IP changes, keep the record
    current with dynamic DNS, for example ddclient with your registrar's DDNS protocol.
 3. **Get a certificate** with your reverse proxy (Nginx Proxy Manager, Caddy, or nginx with Certbot).
@@ -291,7 +291,7 @@ Pick the encoder in **Admin → Overview**:
 | `h264_qsv` | Intel Quick Sync |
 | `h264_amf` | AMD (Windows) |
 
-If a hardware encoder fails, ClipTube encodes that video on the CPU instead and logs
+If a hardware encoder fails, OurTube encodes that video on the CPU instead and logs
 `encoder h264_nvenc failed, falling back to libx264`. H.264 uploads are remuxed rather than encoded, so the
 GPU matters for other formats, edits, clips and adaptive-streaming renditions.
 

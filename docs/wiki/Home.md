@@ -1,8 +1,8 @@
-# ClipTube Wiki
+# OurTube Wiki
 
-<img src="../images/game.jpg" alt="A ClipTube game page with SteamGridDB artwork" width="100%">
+<img src="../images/game.jpg" alt="A OurTube game page with SteamGridDB artwork" width="100%">
 
-**ClipTube** is a self-hosted, YouTube-style video site for gaming clips. Each friend runs their own server
+**OurTube** is a self-hosted, YouTube-style video site for gaming clips. Each friend runs their own server
 and hosts their own clips; the servers link up into one network with [clips.irc.so](https://clips.irc.so) as
 its hub, and Mastodon and PeerTube can follow along.
 
@@ -14,10 +14,10 @@ its hub, and Mastodon and PeerTube can follow along.
 | Change how my server works | [Configuration](Configuration.md) |
 | Update, back up or move a server | [Upgrading and Backups](Upgrading-and-Backups.md) |
 | Link my server with my friends' | [Network](Network.md) |
-| Use ClipTube on my phone | [Android App](Android-App.md) |
+| Use OurTube on my phone | [Android App](Android-App.md) |
 | Fix something | [Troubleshooting](Troubleshooting.md) |
 
-## Using ClipTube
+## Using OurTube
 
 - [Uploading and Editing](Uploading-and-Editing.md): uploads, drafts, processing, the timeline editor,
   captions and skippable parts
@@ -51,4 +51,4 @@ its hub, and Mastodon and PeerTube can follow along.
 
 ---
 
-<sub>Written for ClipTube 1.6. The pages live in the repository under `docs/wiki/` and change with the code.</sub>
+<sub>Written for OurTube 1.6. The pages live in the repository under `docs/wiki/` and change with the code.</sub>

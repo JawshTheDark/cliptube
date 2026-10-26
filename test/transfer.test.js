@@ -1,5 +1,5 @@
 // Moving a channel between instances: export, import from the export link, aliases, the move itself
-// (fediverse followers get Move, subscribers here and on other ClipTube instances follow along), and
+// (fediverse followers get Move, subscribers here and on other OurTube instances follow along), and
 // moves announced by fediverse accounts that people here follow. A small Mastodon-like server plays
 // the fediverse side.
 import { test, before, after } from 'node:test';

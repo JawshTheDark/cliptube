@@ -1,6 +1,6 @@
-// Runs inside the sandbox's ClipTube container (scripts/live-sandbox.sh): makes a streamer account, streams a
+// Runs inside the sandbox's OurTube container (scripts/live-sandbox.sh): makes a streamer account, streams a
 // test picture to MediaMTX over RTMP with the bundled ffmpeg, and checks the stream goes live, plays as HLS
-// through ClipTube, ends, and comes back as a draft video. Exit code 0 when every check passed.
+// through OurTube, ends, and comes back as a draft video. Exit code 0 when every check passed.
 import { spawn } from 'node:child_process';
 import dns from 'node:dns/promises';
 
@@ -30,7 +30,7 @@ async function until(fn, ms, what) {
   return null;
 }
 
-await until(async () => (await fetch(`${BASE}/api/site`)).ok, 60_000, 'ClipTube started');
+await until(async () => (await fetch(`${BASE}/api/site`)).ok, 60_000, 'OurTube started');
 const reg = await api('/api/auth/register', { method: 'POST', body: { username: 'streamer', password: 'sandbox-streamer-pass-1', setup_code: 'sandbox' } });
 ok(reg.status === 201, 'made the streamer account');
 await api('/api/admin/settings', { method: 'PATCH', body: { public_url: 'https://live.sandbox.test' } });
@@ -67,7 +67,7 @@ const master = await until(async () => {
   const t = await r.text();
   lastHls = `${r.status} ${t.slice(0, 120).replace(/\s+/g, ' ')}`;
   return r.ok && t.includes('#EXTM3U') ? t : null;
-}, 30_000, 'the HLS playlist comes through ClipTube');
+}, 30_000, 'the HLS playlist comes through OurTube');
 if (!master) console.log(`      last answer: ${lastHls}`);
 if (master) {
   const variant = master.split('\n').find((l) => l && !l.startsWith('#'));

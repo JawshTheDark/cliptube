@@ -43,7 +43,7 @@ delivered by the running server's job queue.
 ## Examples
 
 ```bash
-# Join the ClipTube network
+# Join the OurTube network
 docker exec cliptube node server/cli.js network join https://clips.irc.so
 
 # Make someone a moderator

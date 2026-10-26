@@ -1,8 +1,8 @@
 // Outgoing webhooks, each person's own: when they publish a video or start a public live stream, this site
 // POSTs it to the addresses they set up in Settings, for their bots, bridges and chat channels. Each webhook picks
 // its events and a format: the full event as JSON, or a ready-made message for Discord or Slack (and Mattermost,
-// which reads Slack's). With a secret, every delivery is signed (X-ClipTube-Signature: sha256=<HMAC of the
-// body>). Failed deliveries are tried again through the job queue.
+// which reads Slack's). With a secret, every delivery is signed (X-OurTube-Signature: sha256=<HMAC of the body>,
+// also sent as X-ClipTube-Signature from before the rename). Failed deliveries are tried again through the job queue.
 //
 // Anyone signed in can make this server send requests this way, so a webhook may not point into the server's
 // own network (localhost, the LAN, its other containers): the address is checked when it is saved, and the
@@ -172,11 +172,13 @@ async function deliver(hook, event, data, deliveryId = newId()) {
   );
   const headers = {
     'Content-Type': 'application/json',
-    'User-Agent': `ClipTube/${VERSION} (webhook)`,
-    'X-ClipTube-Event': event,
-    'X-ClipTube-Delivery': deliveryId,
+    'User-Agent': `OurTube/${VERSION} (webhook)`,
+    'X-OurTube-Event': event,
+    'X-OurTube-Delivery': deliveryId,
   };
-  if (hook.secret) headers['X-ClipTube-Signature'] = `sha256=${crypto.createHmac('sha256', hook.secret).update(body).digest('hex')}`;
+  if (hook.secret) headers['X-OurTube-Signature'] = `sha256=${crypto.createHmac('sha256', hook.secret).update(body).digest('hex')}`;
+  // The same headers under the old name, for receivers set up before the rename.
+  for (const k of ['Event', 'Delivery', 'Signature']) if (headers[`X-OurTube-${k}`]) headers[`X-ClipTube-${k}`] = headers[`X-OurTube-${k}`];
   const t = now();
   let status = 0;
   let error = null;

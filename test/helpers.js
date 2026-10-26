@@ -37,10 +37,10 @@ export async function waitFor(fn, { timeout = 20000, interval = 150, what = 'con
 }
 
 export function tempDir(name) {
-  return fs.mkdtempSync(path.join(os.tmpdir(), `cliptube-${name}-`));
+  return fs.mkdtempSync(path.join(os.tmpdir(), `ourtube-${name}-`));
 }
 
-/** Starts a real ClipTube server on a free port with its own temporary data folder. */
+/** Starts a real OurTube server on a free port with its own temporary data folder. */
 export async function startInstance(name = 'test', { env = {}, args = [], allowPrivate = true } = {}) {
   const port = await freePort();
   const dataDir = tempDir(name);
@@ -148,7 +148,7 @@ export async function registerUser(inst, username) {
   return c;
 }
 
-const clipCache = path.join(os.tmpdir(), 'cliptube-test-clips');
+const clipCache = path.join(os.tmpdir(), 'ourtube-test-clips');
 
 /** Generates (once, cached) a small test clip: 'h264' (remux path), 'vp9' (transcode path) or 'hd' (1080p60 H.264). */
 export function testClip(kind = 'h264') {

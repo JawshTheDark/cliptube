@@ -64,9 +64,9 @@ H.264 uploads are remuxed rather than encoded, so they never touch the GPU.
 ## Reaching the site
 
 **`502 Bad Gateway` from Nginx Proxy Manager**
-The proxy can't reach ClipTube. If both are on the same Docker network, forward to `cliptube` port `3000`. If
+The proxy can't reach OurTube. If both are on the same Docker network, forward to `cliptube` port `3000`. If
 not, publish a port and forward to the host's **LAN address** (for example `192.168.1.10:3100`), not
-`127.0.0.1`, which inside the proxy's container is the proxy itself. Check that ClipTube is healthy with
+`127.0.0.1`, which inside the proxy's container is the proxy itself. Check that OurTube is healthy with
 `docker ps`.
 
 **The site works for everyone except me at home**

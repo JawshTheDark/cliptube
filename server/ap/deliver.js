@@ -68,14 +68,14 @@ export function sendVerdict(localActor, noteId, remoteActor, accepted, reason = 
   );
 }
 
-/** The owner approved (or deleted) a held comment that came from a ClipTube peer: answer its server. */
+/** The owner approved (or deleted) a held comment that came from a OurTube peer: answer its server. */
 export async function apCommentVerdict(comment, accepted, reason = null) {
   if (!comment?.ap_id || !apEnabled()) return;
   const author = db.prepare('SELECT ap_actor FROM users WHERE id = ?').get(comment.user_id);
   const video = db.prepare('SELECT user_id FROM videos WHERE id = ?').get(comment.video_id);
   if (!author?.ap_actor || !video) return;
   const inst = db.prepare('SELECT i.ap_actor, i.protocol FROM instances i JOIN ap_actors a ON a.instance_id = i.id WHERE a.id = ?').get(author.ap_actor);
-  if (!inst?.ap_actor || (inst.protocol || 0) < 4) return; // only ClipTube peers wait for an answer
+  if (!inst?.ap_actor || (inst.protocol || 0) < 4) return; // only OurTube peers wait for an answer
   const actor = await getActor(author.ap_actor).catch(() => null);
   if (actor) sendVerdict(`u:${video.user_id}`, comment.ap_id, actor, accepted, reason);
 }
@@ -96,7 +96,7 @@ export function deliver(localActor, activity, inboxes, { key = null } = {}) {
 
 /**
  * An account is being deleted: tell every fediverse server this site knows (not only followers), so
- * its comments and likes go everywhere, the way the ClipTube network's deletion notice already does.
+ * its comments and likes go everywhere, the way the OurTube network's deletion notice already does.
  */
 export function sendActorDelete(user) {
   const base = apBase();

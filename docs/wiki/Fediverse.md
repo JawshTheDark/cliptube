@@ -1,6 +1,6 @@
 # Fediverse
 
-ClipTube speaks **ActivityPub**, the protocol of Mastodon, PeerTube and the rest of the fediverse. It is on by
+OurTube speaks **ActivityPub**, the protocol of Mastodon, PeerTube and the rest of the fediverse. It is on by
 default (Admin → Network → *Fediverse*) and needs the Public URL set to the site's `https://` address.
 
 - [Being followed](#being-followed)
@@ -60,7 +60,7 @@ Admins can also follow a **whole PeerTube server**, the way PeerTube servers mir
 
 ## PeerTube
 
-PeerTube channels can be followed from ClipTube and the other way round, and each side plays the other's videos.
+PeerTube channels can be followed from OurTube and the other way round, and each side plays the other's videos.
 PeerTube comments and likes work in both directions.
 
 ## Moderation
@@ -71,7 +71,7 @@ PeerTube comments and likes work in both directions.
 
 ## Linked accounts
 
-If you have accounts on several ClipTube servers (or a ClipTube account and a Mastodon one), link them, and
+If you have accounts on several OurTube servers (or a OurTube account and a Mastodon one), link them, and
 every server shows them as one person. Unlike a move, nothing goes away: each account keeps its own videos,
 subscribers and login.
 
@@ -81,8 +81,8 @@ claim an account that isn't theirs. When you link on one site first, the other o
 *These accounts say they're you*, with a **Link back** button. Up to five accounts can be linked.
 
 **Mastodon** accounts take part through an account alias: on Mastodon, open Preferences → Account → *Moving
-from a different account* and add your ClipTube account there (it moves nothing). Then click *Check again* on
-ClipTube.
+from a different account* and add your OurTube account there (it moves nothing). Then click *Check again* on
+OurTube.
 
 **What people see** once a link counts:
 
@@ -109,12 +109,12 @@ To move to another server (Settings → *Moving to another site*):
 4. On the old server, **move**.
 
 Fediverse followers get an ActivityPub `Move` and follow the new channel; subscribers on the old server and on
-other ClipTube servers are moved too, and the old channel points to the new one. When a fediverse account that
-people here follow moves, ClipTube follows the move.
+other OurTube servers are moved too, and the old channel points to the new one. When a fediverse account that
+people here follow moves, OurTube follows the move.
 
 ## Checked against real servers
 
-`scripts/fediverse-sandbox.sh <ssh-host>` starts **PeerTube 7.3**, **GoToSocial 0.22** and a ClipTube built
+`scripts/fediverse-sandbox.sh <ssh-host>` starts **PeerTube 7.3**, **GoToSocial 0.22** and a OurTube built
 from your working tree in a private Docker sandbox on that host (an internal network with its own certificate
 authority; nothing is exposed), runs the interop checks and cleans up. Add `--keep` to leave it running for a
 look around.
@@ -129,6 +129,6 @@ scripts/fediverse-sandbox.sh user@docker-host
 - **Security:** RSA HTTP Signatures (draft-cavage, `rsa-sha256`) on every delivery and fetch, checked on every
   incoming activity.
 - **Delivery:** through the job queue, retried for up to three days.
-- **Extensions:** a few ClipTube fields (the game, counts, a report reason) under the `cliptube:` context; other
+- **Extensions:** a few OurTube fields (the game, counts, a report reason) under the `cliptube:` context; other
   software ignores them. Details in
   [docs/federation.md](https://github.com/JawshTheDark/ourtube/blob/main/docs/federation.md).

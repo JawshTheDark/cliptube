@@ -49,7 +49,7 @@ A connection that drops and comes back within those 45 seconds continues the sam
 
 ## Turning it on (admins)
 
-Live streaming runs a second container, [MediaMTX](https://github.com/bluenviron/mediamtx), next to ClipTube.
+Live streaming runs a second container, [MediaMTX](https://github.com/bluenviron/mediamtx), next to OurTube.
 It is off until you turn it on:
 
 1. Add these lines to `.env` next to `docker-compose.yml` (pick your own long random secret):
@@ -62,14 +62,14 @@ It is off until you turn it on:
 
    `LIVE_RTMP_URL` sets the address shown to streamers if it isn't `rtmp://<your public host>/live`.
 
-2. Make sure `data/live` exists and belongs to the container user (ClipTube creates it at startup, so this
+2. Make sure `data/live` exists and belongs to the container user (OurTube creates it at startup, so this
    normally is already the case).
-3. `docker compose up -d`. The `cliptube-live` container starts next to ClipTube.
+3. `docker compose up -d`. The `cliptube-live` container starts next to OurTube.
 4. Let streamers reach **TCP port 1935** (RTMP): the `cliptube-live` container listens on that port of the host
    itself. Open it in the firewall, or forward it on your router for a server at home. SRT is optional: UDP port
    8890, with `LIVE_SRT_URL=srt://your.site:8890`.
 
-Viewers need nothing extra: the stream reaches them through ClipTube's own address (`/live/hls/...`), so the
+Viewers need nothing extra: the stream reaches them through OurTube's own address (`/live/hls/...`), so the
 reverse proxy you already have is enough.
 
 **What it costs:** almost no CPU, since nothing is re-encoded. Bandwidth adds up: every viewer pulls the stream
@@ -78,14 +78,14 @@ while a stream runs (about 2.7 GB per hour at 6 Mbps) until they are saved as a 
 
 ## How it works
 
-- MediaMTX asks ClipTube about every connection (`/api/live/auth`, with the shared secret). A stream to
-  `live/<name>` is accepted only with that channel's key; reading is allowed only to ClipTube itself, so the HLS
-  can only be watched through ClipTube.
-- ClipTube asks MediaMTX's control API which streams are coming in, to notice when one ends.
-- MediaMTX records every stream as fragmented MP4; when the stream ends, ClipTube joins the pieces and hands them
+- MediaMTX asks OurTube about every connection (`/api/live/auth`, with the shared secret). A stream to
+  `live/<name>` is accepted only with that channel's key; reading is allowed only to OurTube itself, so the HLS
+  can only be watched through OurTube.
+- OurTube asks MediaMTX's control API which streams are coming in, to notice when one ends.
+- MediaMTX records every stream as fragmented MP4; when the stream ends, OurTube joins the pieces and hands them
   to the normal upload pipeline (an OBS stream is H.264, so it is ready in seconds).
 - Viewers follow the chat and the viewer count over server-sent events, like watch parties.
-- Other ClipTube servers in the network read `GET /api/live/now` to show your streams in their **Live now**.
+- Other OurTube servers in the network read `GET /api/live/now` to show your streams in their **Live now**.
   Fediverse followers get a post with a link when a public stream starts.
 
 `scripts/live-sandbox.sh <ssh-host>` runs all of this with the real MediaMTX in a private Docker sandbox: it

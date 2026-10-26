@@ -41,7 +41,7 @@ export function Webhooks() {
       <h2>Webhooks</h2>
       <p className="hint">
         Tell a bot, a bridge or a chat channel when you publish a video or go live. JSON sends the whole event; Discord and Slack send a message with the
-        link. With a secret, each delivery is signed in <code>X-ClipTube-Signature</code>.
+        link. With a secret, each delivery is signed in <code>X-OurTube-Signature</code> (also sent as <code>X-ClipTube-Signature</code>).
       </p>
       <form onSubmit={create}>
         <div className="field-row align-end">

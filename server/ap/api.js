@@ -1,5 +1,5 @@
 /**
- * ClipTube's own API for the fediverse: people follow fediverse channels by handle, admins follow whole
+ * OurTube's own API for the fediverse: people follow fediverse channels by handle, admins follow whole
  * servers (PeerTube-style mirroring) and switch ActivityPub on or off, and the remote-video pages get
  * comments, likes and subscriptions for videos that came from the fediverse.
  */
@@ -137,8 +137,8 @@ fediverseAdminRouter.delete('/follow', async (req, res) => {
   res.json(adminState(req));
 });
 
-// ---- the remote video pages: videos from the fediverse and from ClipTube peers on protocol 4 ----------------
-// (mounted before the ClipTube network routes, which still serve videos from peers on protocol v3)
+// ---- the remote video pages: videos from the fediverse and from OurTube peers on protocol 4 ----------------
+// (mounted before the OurTube network routes, which still serve videos from peers on protocol v3)
 
 export const apNetworkRouter = Router();
 
@@ -152,10 +152,10 @@ function apVideo(req) {
 }
 
 const instOf = (instanceId) => db.prepare('SELECT * FROM instances WHERE id = ?').get(Number(instanceId));
-/** A ClipTube peer on protocol 4: answers each comment, and serves its whole thread. */
+/** A OurTube peer on protocol 4: answers each comment, and serves its whole thread. */
 const clipTubePeer = (inst) => !!inst?.ap_actor && (inst.protocol || 0) >= 4;
 
-/** The ClipTube network's switches cover ClipTube peers; other servers only answer to their own settings. */
+/** The OurTube network's switches cover OurTube peers; other servers only answer to their own settings. */
 function allowedHere(instanceId, kind) {
   const inst = instOf(instanceId);
   if (inst && isNetworkPeer(inst) && !networkPolicy()[kind]) throw new HttpError(403, `The network has turned off ${kind} between instances`);
@@ -199,7 +199,7 @@ const commentShape = (c, me) => {
   };
 };
 
-/** A note from a ClipTube peer's thread, in the shape of the comments API. */
+/** A note from a OurTube peer's thread, in the shape of the comments API. */
 function threadComment(n, v, me, mine, inThread, base) {
   const a = n.attributedTo && typeof n.attributedTo === 'object' ? n.attributedTo : { id: idOf(n.attributedTo) };
   const actorId = idOf(a.id) || '';
@@ -241,7 +241,7 @@ apNetworkRouter.get('/videos/:iid/:rid/comments', async (req, res, next) => {
   const canPost = !!v.comments_enabled && apEnabled() && (!isNetworkPeer(inst) || networkPolicy().comments);
   const rows = db.prepare('SELECT * FROM network_comments WHERE instance_id = ? AND remote_id = ? ORDER BY created_at').all(v.instance_id, v.remote_id);
   const mine = new Map(rows.filter((c) => c.ap_id).map((c) => [c.ap_id, c]));
-  // A ClipTube peer serves the whole thread; elsewhere, show the comments that were delivered here.
+  // A OurTube peer serves the whole thread; elsewhere, show the comments that were delivered here.
   const thread = clipTubePeer(inst) ? await remoteThread(v) : null;
   if (thread) {
     const inThread = new Set(thread.map((n) => n.id));
@@ -300,7 +300,7 @@ apNetworkRouter.post('/videos/:iid/:rid/comments', requireAuth, requireApOn, asy
   const apId = `${base}/ap/notes/${id}`;
   const t = now();
   const inst = instOf(v.instance_id);
-  // ClipTube peers answer with Accept or Reject; until then it waits.
+  // OurTube peers answer with Accept or Reject; until then it waits.
   const status = clipTubePeer(inst) ? 'pending' : 'visible';
   db.prepare('INSERT INTO network_comments (id, instance_id, remote_id, ap_id, in_reply_to, parent_id, user_id, body, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
     id, v.instance_id, v.remote_id, apId, parentApId || v.ap_id, parentKey, req.user.id, body, status, t,
@@ -367,7 +367,7 @@ apNetworkRouter.post('/videos/:iid/:rid/like', requireAuth, requireApOn, async (
 });
 
 /**
- * A fediverse channel's actor, for the remote channel links. On a ClipTube peer (protocol 4) a channel we
+ * A fediverse channel's actor, for the remote channel links. On a OurTube peer (protocol 4) a channel we
  * haven't seen yet is fetched from its usual address (name_channel is /ap/channels/name).
  */
 async function apChannel(req) {

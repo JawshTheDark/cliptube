@@ -28,7 +28,7 @@ flowchart TB
 
 - **Video files are never copied.** Viewers stream a clip from the server that hosts it. What travels between
   servers is the clip's details (title, thumbnail, game, counts) and the interactions.
-- **Servers peer directly**, over ActivityPub (since ClipTube 1.3): their instance actors follow each other,
+- **Servers peer directly**, over ActivityPub (since OurTube 1.3): their instance actors follow each other,
   new clips arrive within seconds, and every round each server reads its peers' outboxes so nothing is missed.
 - **Likes, comments and subscriptions** go to the server hosting the clip, so counts and comment threads are the
   same everywhere. That server answers each comment (shown, held for review, or refused). People from elsewhere
@@ -120,13 +120,13 @@ The hub also keeps the network's game catalog, and with a SteamGridDB key its ar
 Protocol version 4, in short:
 
 - `GET /.well-known/cliptube` describes a server: its admission switches and its instance actor.
-- **Peering, clips and interactions are ActivityPub**, with a few ClipTube extensions. The full design is in
+- **Peering, clips and interactions are ActivityPub**, with a few OurTube extensions. The full design is in
   [docs/federation.md](https://github.com/JawshTheDark/ourtube/blob/main/docs/federation.md).
 - **The instance layer is plain JSON over HTTPS:** `GET /api/network/known-peers` exchanges peer lists (signed
   with each server's Ed25519 key and checked at its own address), `GET /api/network/blocklist` publishes blocks,
   and members register with the hub (`POST /api/hub/join`, with a nonce callback to `/api/network/verify`) and
   read its directory, switches and game catalog (`/api/hub/directory`, `/api/hub/status`, `/api/hub/games`).
-- Servers on ClipTube 1.2 and earlier (protocol v3) are still understood during the transition: a newer server
+- Servers on OurTube 1.2 and earlier (protocol v3) are still understood during the transition: a newer server
   serves its v3 feed to them, reads theirs, and moves each one to ActivityPub once it has upgraded.
 
 Check a server's view of the network at any time:

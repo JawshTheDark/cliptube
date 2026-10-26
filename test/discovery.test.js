@@ -141,7 +141,7 @@ test('VAPID: the JWT is signed with the key browsers are given', async () => {
 });
 
 test('email: address check, notification emails and password reset through SMTP', async () => {
-  await admin.patch('/api/admin/settings', { smtp_host: '127.0.0.1', smtp_port: smtp.address().port, smtp_secure: 'none', smtp_from: 'ClipTube <clips@example.com>' });
+  await admin.patch('/api/admin/settings', { smtp_host: '127.0.0.1', smtp_port: smtp.address().port, smtp_secure: 'none', smtp_from: 'OurTube <clips@example.com>' });
   assert.equal((await admin.post('/api/admin/mail/test', { to: 'alice@example.com' })).status, 200);
   assert.ok(mails.some((m) => /To: alice@example.com/.test(m)));
 

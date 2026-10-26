@@ -1,4 +1,4 @@
-**[ClipTube Wiki](Home.md)**
+**[OurTube Wiki](Home.md)**
 
 **Running a server**
 
@@ -9,7 +9,7 @@
 - [Admin CLI](Admin-CLI.md)
 - [Troubleshooting](Troubleshooting.md)
 
-**Using ClipTube**
+**Using OurTube**
 
 - [Uploading and Editing](Uploading-and-Editing.md)
 - [Watching and Discovery](Watching-and-Discovery.md)

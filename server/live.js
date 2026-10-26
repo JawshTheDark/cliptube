@@ -1,7 +1,7 @@
 /**
- * Live streaming. A MediaMTX container next to ClipTube takes the streams (RTMP or SRT, from OBS or a phone
- * app) and repackages them as low-latency HLS without re-encoding. ClipTube decides who may publish (every
- * channel has a stream key) and who may read (only ClipTube itself, which passes the HLS on to viewers under
+ * Live streaming. A MediaMTX container next to OurTube takes the streams (RTMP or SRT, from OBS or a phone
+ * app) and repackages them as low-latency HLS without re-encoding. OurTube decides who may publish (every
+ * channel has a stream key) and who may read (only OurTube itself, which passes the HLS on to viewers under
  * its own address), notices when a stream starts and ends, runs the live chat, tells subscribers, and turns
  * the recording into a draft video when the stream ends.
  *

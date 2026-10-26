@@ -347,7 +347,7 @@ mailAdminRouter.use(requireAdmin);
 mailAdminRouter.post('/test', async (req, res) => {
   const to = str(req.body?.to, 200).trim();
   try {
-    await sendMail({ to, subject: `${getSettings().site_name}: test email`, text: 'Email from ClipTube works.' });
+    await sendMail({ to, subject: `${getSettings().site_name}: test email`, text: 'Email from OurTube works.' });
   } catch (e) {
     throw new HttpError(400, e.message);
   }

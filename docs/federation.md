@@ -1,7 +1,7 @@
-# Federation: how ClipTube instances talk
+# Federation: how OurTube instances talk
 
-Since ClipTube 1.3 (protocol 4), ClipTube instances talk ActivityPub to each other, the same standard
-they use with Mastodon, PeerTube and the rest of the fediverse. The ClipTube-specific part shrank to the
+Since OurTube 1.3 (protocol 4), OurTube instances talk ActivityPub to each other, the same standard
+they use with Mastodon, PeerTube and the rest of the fediverse. The OurTube-specific part shrank to the
 instance layer: finding each other, the hub's directory and switches, shared block lists and the hub's game
 catalog.
 
@@ -17,7 +17,7 @@ catalog.
   missed delivery is caught and deletions are never missed.
 - **People.** Subscriptions are follows of a channel's actor (`name_channel`), likes and dislikes are Like
   and Dislike, comments are Notes, reports are Flags, deleted accounts are Delete, and moves are Move.
-- **Comment answers.** The server hosting a video answers each comment from a ClipTube instance with
+- **Comment answers.** The server hosting a video answers each comment from a OurTube instance with
   Accept (shown, right away or once its owner approves a held one) or Reject (refused, with the reason).
   Until then the author sees it as waiting. A server that refuses the delivery outright (because it blocks
   the sender) marks it refused too.
@@ -39,7 +39,7 @@ Members can still add games of their own. A member that leaves the hub keeps the
 
 ## What was given up, and how it was won back
 
-Moving off the ClipTube protocol meant giving up four things it did in a single request. They are back:
+Moving off the OurTube protocol meant giving up four things it did in a single request. They are back:
 
 | Before (protocol v3) | Now (protocol 4, over ActivityPub) |
 | --- | --- |
@@ -54,7 +54,7 @@ are refreshed when its page opens.
 
 ## Extensions
 
-ClipTube adds a few things that other software ignores. The context term is:
+OurTube adds a few things that other software ignores. The context term is:
 
 ```json
 { "cliptube": "https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md#", "game": "cliptube:game", "counts": "cliptube:counts" }
@@ -77,29 +77,29 @@ address). It names the terms rather than linking to them, so it stays the same o
 Checked against real servers in a private sandbox (`scripts/fediverse-sandbox.sh`, which runs them in
 Docker on a host with no ports opened):
 
-- **PeerTube 7.3:** subscribing to a ClipTube channel imports its videos, which PeerTube plays from the MP4;
-  comments and likes go both ways; ClipTube follows PeerTube channels and whole servers and plays their videos.
-- **GoToSocial 0.22** (it speaks Mastodon's API): following a ClipTube account, new clips in the timeline with
-  a playable video, replies becoming comments, favourites and boosts counting, ClipTube's replies arriving,
-  and ClipTube following GoToSocial accounts.
+- **PeerTube 7.3:** subscribing to a OurTube channel imports its videos, which PeerTube plays from the MP4;
+  comments and likes go both ways; OurTube follows PeerTube channels and whole servers and plays their videos.
+- **GoToSocial 0.22** (it speaks Mastodon's API): following a OurTube account, new clips in the timeline with
+  a playable video, replies becoming comments, favourites and boosts counting, OurTube's replies arriving,
+  and OurTube following GoToSocial accounts.
 
 GoToSocial only takes one `attributedTo`, while PeerTube needs the account and the channel, so GoToSocial
 gets the account alone.
 
 ## Older instances
 
-Instances on ClipTube 1.2 and earlier speak protocol v3. For one release, a 1.3 instance still serves its
+Instances on OurTube 1.2 and earlier speak protocol v3. For one release, a 1.3 instance still serves its
 v3 feed to them, pulls theirs, and takes their v3 messages, so a network can upgrade one instance at a
 time. Each round, an upgraded instance checks whether its v3 peers have upgraded and moves them to
 ActivityPub, including the subscriptions of people here to their channels.
 
-## ClipTube or PeerTube?
+## OurTube or PeerTube?
 
-**Stay ClipTube, and speak ActivityPub.** ClipTube is built for gaming clips: one process, SQLite and ffmpeg,
+**Stay OurTube, and speak ActivityPub.** OurTube is built for gaming clips: one process, SQLite and ffmpeg,
 cheap to run on a laptop or a small VPS, with clip tools PeerTube doesn't have (the timeline editor,
 clipping from other videos, GIF and MP4 exports, games, side-by-side compare) and a network with hub
 controls. Its channels can be followed from PeerTube and Mastodon, so nobody is cut off.
 
 **Recommend PeerTube** to people who need live streaming, peer-to-peer delivery for big audiences, plugins,
 remote transcoding runners, object storage, or a mobile app. It is the mature, general-purpose choice; a
-PeerTube channel can be followed from ClipTube too.
+PeerTube channel can be followed from OurTube too.

@@ -4,7 +4,7 @@
  * Each account lists the others. They go out in its alsoKnownAs, next to the old accounts from "Moving
  * here", and a link counts as verified only while the other account lists this one back, so nobody can
  * claim an account that isn't theirs. Any software that publishes alsoKnownAs can take part: another
- * ClipTube, or a Mastodon account that adds this one as an alias.
+ * OurTube, or a Mastodon account that adds this one as an alias.
  *
  * Verified links show on the channel page ("Also on"), give comments from the other accounts the uploader's
  * mark, let viewers subscribe to all of them at once, and can list the other channels' videos with this

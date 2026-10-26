@@ -26,7 +26,7 @@ needs before it starts are environment variables.
 | `LOG_REQUESTS` | unset | `1` prints every request (same as `--log`) |
 | `FEDERATION_ALLOW_PRIVATE` | unset | `1` lets the network contact LAN and localhost addresses (same as `--allow-private-federation`). Only for testing several servers on one machine. |
 | `LIVE_SERVER` | unset | MediaMTX's host name on the Docker network (`cliptube-live`); turns on [live streaming](Live-Streaming.md#turning-it-on-admins) with `LIVE_SECRET` |
-| `LIVE_SECRET` | unset | The secret ClipTube and MediaMTX share |
+| `LIVE_SECRET` | unset | The secret OurTube and MediaMTX share |
 | `LIVE_RTMP_URL` | `rtmp://<public host>/live` | The RTMP address shown to streamers |
 | `LIVE_SRT_URL` | unset | An SRT address to show streamers, such as `srt://your.site:8890` |
 
@@ -38,7 +38,7 @@ With Docker, put these under `environment:` in a `docker-compose.override.yml`. 
 
 | Setting | Key | Default | Notes |
 | --- | --- | --- | --- |
-| Site name | `site_name` | ClipTube | Shown in the header, link previews and emails |
+| Site name | `site_name` | OurTube | Shown in the header, link previews and emails |
 | Public URL | `public_url` | empty | The `https://` address people use. Needed for link previews, feeds, emails, the network and the fediverse. |
 | Sign-up | `registration_mode` | open | `open`, `approval`, `invite` or `closed`. See [Moderation and Legal](Moderation-and-Legal.md#sign-up). |
 | Upload limit | `max_upload_mb` | 8192 MB | Per file. Your reverse proxy must allow at least this much. |
@@ -156,7 +156,7 @@ streaming rebuilds the videos, for example), so prefer the Admin pages for anyth
 
 ## The data folder
 
-Everything ClipTube stores is in one folder (`./data`, or `/data` in the container):
+Everything OurTube stores is in one folder (`./data`, or `/data` in the container):
 
 ```text
 data/

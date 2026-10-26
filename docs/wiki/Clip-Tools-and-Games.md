@@ -73,7 +73,7 @@ In a network, the **hub keeps the catalog**:
 
 ## Game artwork from SteamGridDB
 
-[SteamGridDB](https://www.steamgriddb.com) is a community collection of game artwork. With an API key, ClipTube
+[SteamGridDB](https://www.steamgriddb.com) is a community collection of game artwork. With an API key, OurTube
 uses it for three kinds of images:
 
 | Kind | Where it shows | What is kept here |

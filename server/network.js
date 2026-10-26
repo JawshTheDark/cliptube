@@ -1,7 +1,7 @@
 /**
- * ClipTube network (protocol v4): instances talk ActivityPub to each other; a hub is optional.
+ * OurTube network (protocol v4): instances talk ActivityPub to each other; a hub is optional.
  *
- * Protocol v4 (ClipTube 1.3):
+ * Protocol v4 (OurTube 1.3):
  * - Peering is a follow between the two instance actors, decided by the same admission switches as
  *   before (accept new instances, approval, HTTPS only, blocks, the hub's bans). Videos arrive as they
  *   change (Create, Announce, Update, Delete) and are reconciled from the peer's outbox each round, so
@@ -118,16 +118,16 @@ export function onHubGames(fn) {
   applyHubGames = fn;
 }
 const apOn = () => !!ap && apEnabled() && !!apBase();
-/** A peer that speaks protocol 4 (the ClipTube network over ActivityPub). */
+/** A peer that speaks protocol 4 (the OurTube network over ActivityPub). */
 const apPeer = (inst) => !!inst?.ap_actor && (inst.protocol || 0) >= 4;
 
-/** A ClipTube instance in this network (peered, or listed by our hub): the network's switches apply to it. */
+/** A OurTube instance in this network (peered, or listed by our hub): the network's switches apply to it. */
 export function isNetworkPeer(inst) {
   return !!inst && (inst.protocol || 0) >= 2 && peerAllowed(inst);
 }
 
 /**
- * Another server's instance actor asks to follow ours: a ClipTube peer (protocol 4 peering) or a server
+ * Another server's instance actor asks to follow ours: a OurTube peer (protocol 4 peering) or a server
  * mirroring this one (PeerTube does this). The admission switches decide. Returns accept, reject or pending.
  */
 export async function peerFollowReceived(actor, followId) {
@@ -139,7 +139,7 @@ export async function peerFollowReceived(actor, followId) {
   if (!apPeer(inst)) {
     try {
       inst = recordDescriptor(inst.url, await fetchDescriptor(inst.url), inst.source === 'activitypub' ? 'inbound' : inst.source || 'inbound');
-    } catch {} // not a ClipTube instance: still subject to the switches below
+    } catch {} // not a OurTube instance: still subject to the switches below
   }
   if (inst.blocked || ['banned', 'suspended'].includes(inst.hub_status)) return 'reject';
   const adm = admission();
@@ -152,7 +152,7 @@ export async function peerFollowReceived(actor, followId) {
     return 'pending';
   }
   db.prepare("UPDATE instances SET peer_status = 'approved', ap_follow_id = NULL, last_seen_at = ?, next_try_at = NULL WHERE id = ?").run(now(), inst.id);
-  // A ClipTube peer gets followed back, so videos flow both ways (what "hello" did in protocol v3).
+  // A OurTube peer gets followed back, so videos flow both ways (what "hello" did in protocol v3).
   if (apPeer(inst) && inst.ap_actor === actor.id && apOn() && participating()) ap.follow(instById(inst.id)).catch(() => {});
   return 'accept';
 }
@@ -348,7 +348,7 @@ function validPublicKey(pem) {
 /** What an instance says about itself at its own address. Its TLS certificate vouches for the key. */
 async function fetchDescriptor(url) {
   const d = await fetchJson(`${url}/.well-known/cliptube`, { timeout: 10000 });
-  if (d.software !== 'cliptube') throw new RemoteError(0, `${url} is not a ClipTube instance`);
+  if (d.software !== 'cliptube') throw new RemoteError(0, `${url} is not a OurTube instance`);
   let claimed = null;
   try {
     claimed = normalizeInstanceUrl(d.url);
@@ -450,7 +450,7 @@ async function peerAuth(req, { allowNew = false } = {}) {
 }
 
 /**
- * The version another ClipTube gives in its User-Agent ("ClipTube/1.10.0 (network v4)"). Every request it makes
+ * The version another OurTube gives in its User-Agent ("ClipTube/1.10.0 (network v4)"). Every request it makes
  * says so, which keeps the version shown for it current; its own address is only checked about once a day.
  */
 function uaVersion(req) {
@@ -624,7 +624,7 @@ export function cleanItem(it, origin) {
   };
 }
 
-// One video, one row: a ClipTube video seen through both protocols merges, and once it has come over
+// One video, one row: a OurTube video seen through both protocols merges, and once it has come over
 // ActivityPub it stays on that path (protocol 4 peers no longer take interactions the old way).
 const UPSERT_VIDEO = `INSERT INTO network_videos (instance_id, remote_id, title, description, tags, duration, width, height, views, likes,
     created_at, updated_at, thumbnail_url, video_url, watch_url, uploader_username, uploader_display_name, uploader_avatar_url, uploader_url, fetched_at,
@@ -1456,9 +1456,9 @@ export async function joinHub(meInput, hubInput) {
   try {
     desc = await fetchJson(`${hubUrl}/.well-known/cliptube`);
   } catch (e) {
-    throw new HttpError(400, e.status === 404 ? `${hubUrl} is not running a ClipTube network hub` : `Could not reach ${hubUrl}: ${e.message}`);
+    throw new HttpError(400, e.status === 404 ? `${hubUrl} is not running a OurTube network hub` : `Could not reach ${hubUrl}: ${e.message}`);
   }
-  if (desc.software !== 'cliptube' || !desc.hub?.enabled) throw new HttpError(400, `${hubUrl} is not running a ClipTube network hub`);
+  if (desc.software !== 'cliptube' || !desc.hub?.enabled) throw new HttpError(400, `${hubUrl} is not running a OurTube network hub`);
 
   const nonce = crypto.randomBytes(24).toString('base64url');
   const feedToken = crypto.randomBytes(32).toString('base64url');
@@ -1513,10 +1513,10 @@ export async function joinNetwork(meInput, targetInput) {
   try {
     d = await fetchDescriptor(target);
   } catch (e) {
-    throw new HttpError(400, e.status === 404 ? `${target} is not part of a ClipTube network` : `Could not reach ${target}: ${e.message}`);
+    throw new HttpError(400, e.status === 404 ? `${target} is not part of a OurTube network` : `Could not reach ${target}: ${e.message}`);
   }
   if (d.hub?.enabled && !isHub()) return joinHub(me, target);
-  if ((Number(d.protocol) || 2) < 3) throw new HttpError(400, `${target} runs an older ClipTube that can only be joined through its hub${d.hub?.url ? ` (${d.hub.url})` : ''}`);
+  if ((Number(d.protocol) || 2) < 3) throw new HttpError(400, `${target} runs an older OurTube that can only be joined through its hub${d.hub?.url ? ` (${d.hub.url})` : ''}`);
   ensureKeys();
   if (!isHub()) {
     setSetting('network_self_url', me);
@@ -1876,7 +1876,7 @@ networkProtocolRouter.post('/api/network/inbox', async (req, res) => {
 
   const kind = KIND[b.type];
   if (!kind) throw new HttpError(400, 'Unknown request type');
-  if (apPeer(inst)) throw new HttpError(410, 'Instances on ClipTube 1.3 or later send likes, comments and subscriptions over ActivityPub');
+  if (apPeer(inst)) throw new HttpError(410, 'Instances on OurTube 1.3 or later send likes, comments and subscriptions over ActivityPub');
   if (!networkPolicy()[kind]) throw new HttpError(403, `The network has turned off ${kind} between instances`);
   if (!acceptsFromNetwork()[kind]) throw new HttpError(403, `${site} does not accept ${kind} from other instances`);
 
@@ -2018,7 +2018,7 @@ export async function announceAccountMove(user, target) {
   return sent;
 }
 
-/** The ClipTube peer at this address, if it is one we can subscribe through. */
+/** The OurTube peer at this address, if it is one we can subscribe through. */
 export function clipTubePeer(origin) {
   let url;
   try {
@@ -2031,7 +2031,7 @@ export function clipTubePeer(origin) {
   return inst && !apPeer(inst) && peerAllowed(inst) && inst.allow_interactions && inst.public_key && (inst.protocol || 0) >= 2 ? inst : null;
 }
 
-/** Peers with another ClipTube instance (found through a move), when this one may take new peers. */
+/** Peers with another OurTube instance (found through a move), when this one may take new peers. */
 export async function peerWith(origin) {
   if (!participating() || !storedSelf()) return null;
   try {
@@ -2092,14 +2092,14 @@ networkRouter.get('/videos/:iid/:rid', async (req, res) => {
   const u = req.user;
   const policy = networkPolicy();
   const can = !!inst.allow_interactions;
-  // Videos from the fediverse aren't covered by the ClipTube network's switches.
+  // Videos from the fediverse aren't covered by the OurTube network's switches.
   const isAp = row.origin_type === 'activitypub';
   res.json({
     video: serializeRemote(row),
     related: related.map(serializeRemote),
     my_like: u ? db.prepare('SELECT value FROM network_likes WHERE user_id = ? AND instance_id = ? AND remote_id = ?').get(u.id, inst.id, row.remote_id)?.value || 0 : 0,
     subscribed: u ? !!db.prepare('SELECT 1 FROM network_subscriptions WHERE user_id = ? AND instance_id = ? AND username = ?').get(u.id, inst.id, row.uploader_username) : false,
-    // The network's switches cover ClipTube peers; other fediverse servers only their own settings.
+    // The network's switches cover OurTube peers; other fediverse servers only their own settings.
     interactions: isAp
       ? isNetworkPeer(inst)
         ? { likes: policy.likes, comments: policy.comments && !!row.comments_enabled, subscriptions: policy.subscriptions }
@@ -2224,7 +2224,7 @@ export const networkAdminRouter = Router();
 networkAdminRouter.use(requireAdmin);
 
 const HUB_FIELDS = {
-  network_name: ['hub_network_name', (v) => str(v, 60).trim() || 'ClipTube Network'],
+  network_name: ['hub_network_name', (v) => str(v, 60).trim() || 'OurTube Network'],
   accept_new: ['hub_accept_new', (v) => (yes(v) ? 'true' : 'false')],
   require_approval: ['hub_require_approval', (v) => (yes(v) ? 'true' : 'false')],
   require_https: ['hub_require_https', (v) => (yes(v) ? 'true' : 'false')],

@@ -1,6 +1,6 @@
 // ActivityPub: discovery, actors, signatures, follows both ways, videos out and in, comments and likes
 // both ways, blocking. A small PeerTube-like server in this file plays the other side and checks
-// ClipTube's HTTP signatures with its own code.
+// OurTube's HTTP signatures with its own code.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -100,7 +100,7 @@ function fakeTube() {
       to: [PUBLIC, `${F.channel}/followers`],
       cc: [`${F.account}/followers`],
     }),
-    /** Checks a request from ClipTube the way Mastodon does: fetch the key, check digest and signature. */
+    /** Checks a request from OurTube the way Mastodon does: fetch the key, check digest and signature. */
     async verify(req, raw) {
       const header = req.headers.signature || '';
       const p = Object.fromEntries([...header.matchAll(/(\w+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));
@@ -113,7 +113,7 @@ function fakeTube() {
       assert.ok(crypto.verify('sha256', Buffer.from(text), actor.publicKey.publicKeyPem, Buffer.from(p.signature, 'base64')), 'signature checks out');
       return p.keyId;
     },
-    /** Sends a signed activity to ClipTube. */
+    /** Sends a signed activity to OurTube. */
     async send(inbox, activity, keyOwner = F.account) {
       const body = JSON.stringify({ '@context': AS, id: `${F.origin}/activities/${crypto.randomUUID()}`, ...activity });
       const u = new URL(inbox);
@@ -188,7 +188,7 @@ test('discovery: WebFinger, NodeInfo, actors and content negotiation', async () 
   assert.match(html, /rel="alternate" type="application\/activity\+json"/);
 });
 
-test('a fediverse channel follows a ClipTube channel and gets its new uploads', async () => {
+test('a fediverse channel follows a OurTube channel and gets its new uploads', async () => {
   const r = await fake.send(`${base}/ap/channels/bob/inbox`, { type: 'Follow', actor: fake.account, object: `${base}/ap/channels/bob` });
   assert.equal(r.status, 202, await r.text());
   const accept = await waitFor(() => fake.find((b) => b.type === 'Accept'), { what: 'Accept' });
@@ -252,11 +252,11 @@ test('people here follow fediverse channels: backfill, new uploads, comments and
   await waitFor(async () => (await carol.get('/api/notifications')).data.notifications.some((n) => /Fresh fake speedrun/.test(n.title)), { what: 'upload notification' });
 
   const { peer_id: iid, remote_id: rid } = nv.remote;
-  const posted = await carol.post(`/api/network/videos/${iid}/${rid}/comments`, { body: 'hello from ClipTube' });
+  const posted = await carol.post(`/api/network/videos/${iid}/${rid}/comments`, { body: 'hello from OurTube' });
   assert.equal(posted.status, 201, JSON.stringify(posted.data));
-  const note = await waitFor(() => fake.find((b) => b.type === 'Create' && b.object?.type === 'Note' && /hello from ClipTube/.test(b.object.content)), { what: 'outgoing note' });
+  const note = await waitFor(() => fake.find((b) => b.type === 'Create' && b.object?.type === 'Note' && /hello from OurTube/.test(b.object.content)), { what: 'outgoing note' });
   assert.equal(note.object.inReplyTo, `${fake.origin}/videos/watch/brand-new-1`);
-  assert.equal((await carol.get(`/api/network/videos/${iid}/${rid}/comments`)).data.comments[0].body, 'hello from ClipTube');
+  assert.equal((await carol.get(`/api/network/videos/${iid}/${rid}/comments`)).data.comments[0].body, 'hello from OurTube');
   assert.equal((await carol.post(`/api/network/videos/${iid}/${rid}/like`, { value: 1 })).status, 200);
   await waitFor(() => fake.find((b) => b.type === 'Like' && b.object === `${fake.origin}/videos/watch/brand-new-1`), { what: 'outgoing like' });
 });

@@ -721,9 +721,9 @@ CREATE INDEX idx_channel_imports_user ON channel_imports(user_id, created_at);
   },
   {
     version: 10,
-    name: 'ClipTube network over ActivityPub: peer instance actors, pending peer follows, comment verdicts',
+    name: 'OurTube network over ActivityPub: peer instance actors, pending peer follows, comment verdicts',
     up(db) {
-      addColumn(db, 'instances', 'ap_actor', 'TEXT'); // the instance actor of a ClipTube peer that speaks protocol 4
+      addColumn(db, 'instances', 'ap_actor', 'TEXT'); // the instance actor of a OurTube peer that speaks protocol 4
       addColumn(db, 'instances', 'ap_follow_id', 'TEXT'); // its Follow of our instance actor, while it waits for approval
       addColumn(db, 'network_comments', 'status', "TEXT NOT NULL DEFAULT 'visible'"); // visible | pending | rejected
       addColumn(db, 'network_comments', 'status_reason', 'TEXT');
@@ -757,7 +757,7 @@ CREATE TABLE IF NOT EXISTS account_links (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   actor_id TEXT NOT NULL,      -- the other account (its Person, or a Group when that is all there is)
-  group_id TEXT,               -- its channel, when it has one (ClipTube, PeerTube)
+  group_id TEXT,               -- its channel, when it has one (OurTube, PeerTube)
   handle TEXT NOT NULL,        -- @name@host, as shown
   profile_url TEXT,            -- its page, for links and rel=me
   created_at INTEGER NOT NULL,
