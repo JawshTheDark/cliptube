@@ -73,6 +73,7 @@ around what a video streaming site needs:
 - Drag in many files at once, with progress bars; big files go up in pieces that resume after a dropped
   connection and get through Cloudflare's 100 MB limit
 - Uploads stay **drafts** until you click *Save details*
+- **API keys** for ShareX and other uploaders, with a ready-made ShareX config
 - Lossless remux for H.264, transcoding for MKV, HEVC, WebM and the rest, with NVENC, Quick Sync or AMF
 - **Timeline editor**: trim, split, cut, volume, fades, frame-picked thumbnails; non-destructive, so the
   original is one click away

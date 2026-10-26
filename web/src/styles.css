@@ -4568,3 +4568,16 @@ h2,
 .game-head.with-hero .chip:not(.active):hover {
   background: rgba(14, 13, 22, 0.75);
 }
+
+/* A command to copy, such as the curl example for API keys. */
+.code-block {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

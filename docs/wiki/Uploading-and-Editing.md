@@ -1,6 +1,7 @@
 # Uploading and Editing
 
 - [Uploading](#uploading)
+- [Uploading from ShareX and other tools](#uploading-from-sharex-and-other-tools)
 - [Drafts: nothing goes out until you save](#drafts-nothing-goes-out-until-you-save)
 - [How uploads are processed](#how-uploads-are-processed)
 - [Video details](#video-details)
@@ -43,6 +44,30 @@ For scripts and apps, the same works over the API (signed in, with the session c
    as a normal upload) makes the video; for an archive, `POST /api/me/channel-imports` with `{"upload_id"}`.
 
 Sending the whole file as `multipart/form-data` to `POST /api/videos` still works too, where no proxy is in the way.
+
+## Uploading from ShareX and other tools
+
+An **API key** lets ShareX, a script or anything else that can send a file with a header upload videos as you.
+Make one in **Settings → API keys**. Each key says what its uploads are when the upload doesn't say: unlisted,
+public or private, and whether they're published right away or wait as [drafts](#drafts-nothing-goes-out-until-you-save).
+The key is shown once, so copy it then; the list afterwards shows only its first characters and when it was last
+used. A key can only upload: it can't read your videos, change settings or do anything else, and deleting it
+stops it at once.
+
+**ShareX:** after making a key, click **ShareX config** and open the downloaded `.sxcu` file, then pick it under
+*Destinations → File uploader*. Screen recordings then go up as you finish them, and ShareX copies the link.
+
+**Anything else** sends the file as `file` in a multipart `POST` to `/api/videos`, with the key as a bearer token.
+`title`, `description`, `tags`, `visibility` (`public`, `unlisted`, `private`) and `draft` (`true` or
+`false`) are optional; without a title, the file name is used:
+
+```bash
+curl -H "Authorization: Bearer ot_..." -F "file=@match.mp4" -F "title=Clutch round" https://your.site/api/videos
+```
+
+The answer is the video as JSON, with `url`, its watch page; it plays once it's processed. A tool that sends the
+whole file in one request is limited by your reverse proxy (Cloudflare's 100 MB, for one); bigger files can go up in
+pieces through `/api/uploads` with the same key, the way the upload page does.
 
 ## Drafts: nothing goes out until you save
 

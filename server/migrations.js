@@ -948,6 +948,26 @@ CREATE TABLE IF NOT EXISTS webhooks (
       addColumn(db, 'webhooks', 'include_network', 'INTEGER NOT NULL DEFAULT 0'); // site: also videos from the network
     },
   },
+  {
+    version: 20,
+    name: 'API keys for uploading',
+    up(db) {
+      db.exec(`
+CREATE TABLE api_keys (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  key_hash TEXT NOT NULL UNIQUE,         -- sha256 of the key; the key itself is shown once
+  prefix TEXT NOT NULL,                  -- its first characters, to tell keys apart
+  visibility TEXT NOT NULL DEFAULT 'unlisted',
+  publish INTEGER NOT NULL DEFAULT 1,    -- 0: uploads stay drafts until their details are saved
+  created_at INTEGER NOT NULL,
+  last_used_at INTEGER
+);
+CREATE INDEX idx_api_keys_user ON api_keys(user_id);
+`);
+    },
+  },
 ];
 
 export function currentVersion(db) {

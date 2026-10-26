@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast.jsx';
 import { MoveSettings } from '../components/MoveChannel.jsx';
 import { LinkedAccounts } from '../components/LinkedAccounts.jsx';
 import { Webhooks } from '../components/Webhooks.jsx';
+import { ApiKeys } from '../components/ApiKeys.jsx';
 import { LiveSettings } from './Live.jsx';
 import { formatBytes, formatDate, isAnonymous, setAnonymous, usePref } from '../util.js';
 
@@ -186,6 +187,7 @@ function MoreSettings() {
       <LiveSettings />
       <LinkedAccounts />
       <Webhooks />
+      <ApiKeys />
       <MoveSettings />
       <DeleteAccount initial={s.delete_requested_at} />
     </>

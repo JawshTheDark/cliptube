@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db, getSettings, userCount } from './db.js';
-import { HttpError, newId, newToken, now, str } from './util.js';
+import { HttpError, newId, newToken, now, sha256, str } from './util.js';
 
 const SESSION_MS = 30 * 24 * 3600 * 1000;
 const COOKIE = 'ct_session';
@@ -45,8 +45,13 @@ export function sessionToken(req) {
 /** Login and register return the session token in the body, instead of a cookie, when the app asks for it. */
 const wantsToken = (req) => req.body?.return_token === true;
 
+/** API keys (see apikeys.js) start with this, and can only upload. */
+export const API_KEY_PREFIX = 'ot_';
+const keyMayDo = (method, p) => (method === 'POST' && p === '/api/videos') || p === '/api/uploads' || p.startsWith('/api/uploads/');
+
 export function attachUser(req, res, next) {
   req.user = null;
+  req.apiKey = null;
   const token = sessionToken(req);
   if (token) {
     // Suspended and banned accounts lose their sessions immediately.
@@ -56,6 +61,19 @@ export function attachUser(req, res, next) {
       )
       .get(token, now());
     if (row) req.user = userToPublic(row);
+    else if (token.startsWith(API_KEY_PREFIX)) {
+      const k = db
+        .prepare(
+          "SELECT k.id AS key_id, k.visibility AS key_visibility, k.publish AS key_publish, k.last_used_at AS key_used_at, u.* FROM api_keys k JOIN users u ON u.id = k.user_id WHERE k.key_hash = ? AND u.remote_instance_id IS NULL AND u.status = 'active'",
+        )
+        .get(sha256(token));
+      if (k) {
+        if (!keyMayDo(req.method, req.path)) throw new HttpError(403, 'An API key can only upload videos');
+        req.user = userToPublic(k);
+        req.apiKey = { id: k.key_id, visibility: k.key_visibility, publish: !!k.key_publish };
+        if (now() - (k.key_used_at || 0) > 60_000) db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?').run(now(), k.key_id);
+      }
+    }
   }
   next();
 }

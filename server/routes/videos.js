@@ -4,6 +4,7 @@ import path from 'node:path';
 import { db, touchVideo, getSettings } from '../db.js';
 import { DIRS, VIDEO_EXTENSIONS } from '../config.js';
 import { requireAuth } from '../auth.js';
+import { apBase } from '../ap/common.js';
 import { videoUpload, imageUpload, discard, defineUploadKind, finishedUpload } from '../uploads.js';
 import { HttpError, newId, now, parseTags, str, clampInt, sha256 } from '../util.js';
 import { enqueue, enqueueRender, convertImage, grabFrame, editorAssets, editorDir, queueRenditions } from '../media.js';
@@ -393,12 +394,14 @@ videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
   pieces?.done();
 
   const fallbackTitle = path.basename(file.originalname, ext).replace(/_+/g, ' ').trim().slice(0, 120);
-  const title = str(req.body.title, 120).trim() || fallbackTitle || 'Untitled clip';
-  const visibility = VISIBILITIES.includes(req.body.visibility) ? req.body.visibility : 'public';
+  const title = str(req.body.title, 120).trim() || fallbackTitle || 'Untitled video';
+  // With an API key, the key's defaults fill in what the request leaves out.
+  const key = req.apiKey;
+  const visibility = VISIBILITIES.includes(req.body.visibility) ? req.body.visibility : key?.visibility || 'public';
   const t = now();
   const allowClips = req.body.allow_clips === 'true' || req.body.allow_clips === true ? 1 : 0;
   // The upload page sends drafts: nothing is published until its details are saved.
-  const draft = req.body.draft === 'true' || req.body.draft === true ? 1 : 0;
+  const draft = req.body.draft !== undefined ? (req.body.draft === 'true' || req.body.draft === true ? 1 : 0) : key && !key.publish ? 1 : 0;
 
   db.prepare(
     "INSERT INTO videos (id, user_id, title, description, visibility, status, original_name, original_path, size_bytes, created_at, updated_at, game_id, allow_clips, draft, draft_visibility) VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -409,7 +412,8 @@ videosRouter.post('/', requireAuth, videoUpload, (req, res) => {
   setTags(id, parseTags(req.body.tags));
   indexVideo(id);
   enqueue(id);
-  res.status(201).json({ video: fullVideo(id, req.user) });
+  // `url` is the watch page, for uploaders that copy a link when they're done (ShareX: {json:url}).
+  res.status(201).json({ video: fullVideo(id, req.user), url: `${apBase(req) || `${req.protocol}://${req.get('host')}`}/watch/${id}` });
 });
 
 // ---- single video -----------------------------------------------------------
