@@ -10,6 +10,7 @@ import { ago, duration, plural } from '@/lib/format';
 import { colors, thumbRadius } from '@/lib/theme';
 import type { Video } from '@/lib/types';
 import { ServerTag } from './ServerTag';
+import { shortsHref } from './Shorts';
 import { Text } from './Text';
 import { Avatar, Icon } from './ui';
 
@@ -98,11 +99,14 @@ export const VideoCard = memo(function VideoCard({ v, showChannel = true }: { v:
   );
 });
 
-/** A Short: a 9:16 thumbnail with the title and views under it. The width comes from the shelf or grid. */
-export const ShortCard = memo(function ShortCard({ v, style }: { v: Video; style?: StyleProp<ViewStyle> }) {
+/**
+ * A Short: a 9:16 thumbnail with the title and views under it. The width comes from the shelf or grid. It opens the
+ * Shorts viewer, which goes on with the Shorts after it (`scope` 'local': only this server's).
+ */
+export const ShortCard = memo(function ShortCard({ v, style, scope }: { v: Video; style?: StyleProp<ViewStyle>; scope?: 'all' | 'local' }) {
   const { foreign } = useScope();
   return (
-    <Pressable onPress={() => router.push(withServer(videoHref(v), foreign) as any)} style={({ pressed }) => [style, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={titleOf(v)}>
+    <Pressable onPress={() => router.push(shortsHref(v, { scope, foreign }) as any)} style={({ pressed }) => [style, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={titleOf(v)}>
       <Thumb v={v} style={s.shortThumb} small />
       <Text style={s.shortTitle} numberOfLines={2}>
         {titleOf(v)}

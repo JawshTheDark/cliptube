@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Button, Icon, IconButton, toast } from '@/components/ui';
 import { f } from '@/components/VideoForm';
 import { hostLabel, normalizeServerUrl } from '@/lib/api';
+import { useOurTubePeers } from '@/lib/profiles';
 import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
 
@@ -21,9 +22,11 @@ export default function Servers() {
 
   const saved = new Set(servers.map((x) => x.url));
   // Suggestions: the open server's network peers that aren't saved yet.
-  const suggestions = (site?.network_peers || [])
-    .map((p) => ({ url: safeUrl(p.url), name: p.name }))
+  // Only the ones running OurTube: the list also holds the PeerTube instances the server follows.
+  const peers = (site?.network_peers || [])
+    .map((p) => ({ url: safeUrl(p.url) as string, name: p.name }))
     .filter((p, i, all) => p.url && !saved.has(p.url) && all.findIndex((x) => x.url === p.url) === i);
+  const suggestions = useOurTubePeers(peers);
 
   const makeMain = async (url: string) => {
     setBusy(url);

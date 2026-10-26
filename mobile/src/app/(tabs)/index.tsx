@@ -82,7 +82,7 @@ export default function Home() {
   const shape = kind === 'shorts' ? '&shape=vertical' : kind === 'videos' || shelf ? '&shape=landscape' : '';
   const paged = usePaged<Video>(api, current.mixed ? current.path : `${current.path}${shape}`);
 
-  const shelfScope = current.key === 'local' ? 'local' : scope;
+  const shelfScope: 'all' | 'local' = current.key === 'local' ? 'local' : scope;
   useEffect(() => {
     if (!shelf) {
       setShorts([]);
@@ -153,7 +153,7 @@ export default function Home() {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 12 }}>
         {shorts.map((v) => (
-          <ShortCard key={v.id} v={v} style={{ width: 140 }} />
+          <ShortCard key={v.id} v={v} scope={shelfScope} style={{ width: 140 }} />
         ))}
       </ScrollView>
     </View>
@@ -180,7 +180,7 @@ export default function Home() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppHeader />
       {!!siteError && <ErrorBox message={siteError} onRetry={refresh} />}
-      <VideoList paged={paged} header={header} empty={empty} shorts={kind === 'shorts'} slot={shelf ? shelfView : null} slotAfter={SHELF_AFTER} />
+      <VideoList paged={paged} header={header} empty={empty} shorts={kind === 'shorts'} shortsScope={shelfScope} slot={shelf ? shelfView : null} slotAfter={SHELF_AFTER} />
     </View>
   );
 }

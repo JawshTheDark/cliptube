@@ -17,6 +17,8 @@ the website, so nothing needs setting up on the server beyond running version 1.
 - [Servers and signing in](#servers-and-signing-in)
 - [What you can do](#what-you-can-do)
 - [Which server a video is on](#which-server-a-video-is-on)
+- [Shorts](#shorts)
+- [Comments and times](#comments-and-times)
 - [Playlists and Watch later](#playlists-and-watch-later)
 - [Watch parties](#watch-parties)
 - [Live streams](#live-streams)
@@ -65,7 +67,7 @@ older than 1.5 can be browsed and watched, but signing in says the server needs 
 | --- | --- |
 | Home | **Everything**, **Videos** and **Shorts** at the top, then All, This site, For you, Subscriptions, Trending, Top rated and popular tags, as on the website |
 | Watch | The native player with fullscreen, picture-in-picture and resume; likes, subscribe, share, related videos |
-| Comments | Read and write comments and replies; uploaders and moderators approve held comments and delete any |
+| Comments | Read and write comments and replies, with times that jump the video and **Add time**; uploaders and moderators approve held comments and delete any |
 | Explore | Search with sorting, and the game catalog with its artwork; game pages and channel pages |
 | Upload | Pick a video and fill in the title, description, game, tags, visibility and clipping |
 | Inbox | Your notifications, with an unread count on the tab, checked every minute while the app is open |
@@ -77,7 +79,8 @@ older than 1.5 can be browsed and watched, but signing in says the server needs 
 
 **Home** works like the website's (see [Home](Watching-and-Discovery.md#home)). Shorts are videos taller than they
 are wide. *Everything* shows the landscape videos with the newest Shorts on a shelf of their own after the first
-eight; *See all* on the shelf, or *Shorts* at the top, shows them two to a row as 9:16 cards. *Videos* or *Shorts*
+eight; *See all* on the shelf, or *Shorts* at the top, shows them two to a row as 9:16 cards. Tapping a Short
+opens the [Shorts viewer](#shorts). *Videos* or *Shorts*
 stays picked while you switch chips. *For you* and *Subscriptions* mix every kind, so picking *Videos* or *Shorts*
 there goes back to *All*.
 
@@ -101,6 +104,36 @@ colored dot and the name of the server the video lives on, this server's own vid
 pages and live cards show the same tag. The color comes from the server's address, so a server has the same color
 in the app and on every server's website (see [Network](Network.md)). A server that isn't in a network shows no
 tags, except on videos and streams from other servers.
+
+## Shorts
+
+Tapping a Short, on the shelf or in the Shorts grid, opens the Shorts viewer. It works like the website's
+(see [Shorts](Watching-and-Discovery.md#shorts)).
+
+- **One Short fills the screen,** in a frame of its own shape, so there are no black bars beside it. Swipe up for
+  the next one and down for the one before. The viewer starts on the Short you tapped and goes on with the ones
+  after it, newest first; from *This site*, it keeps to this server's Shorts.
+- **The one on screen plays and loops.** Tap it to pause or play. The others wait at their start, and only the
+  ones next to it keep a player loaded. The speaker button at the top mutes and unmutes, and a thin line along the
+  bottom of the video shows how far along it is.
+- **Beside it:** like (with the count), dislike, comments, share and *Full page*, which opens the normal watch
+  page. Likes need you to be signed in on that server.
+- **Over the bottom:** the channel's avatar and name (tap for the channel), the server tag and the title.
+- **Comments** open as a sheet over the lower part of the screen, so the Short keeps playing above it. Tap above
+  the sheet to close it.
+
+The viewer needs OurTube 1.17 or newer on the server. Opening a video from it, or another video anywhere, pauses
+the Short; going Back picks it up again.
+
+## Comments and times
+
+- **Times are links.** "1:23" or "1:02:03" in a comment, or in a video's description, jumps the video there.
+  From the comments page the app goes back to the video; in the Shorts sheet the Short jumps in place.
+- **Add time** (the clock button beside Send) puts the video's current time where the cursor is, as m:ss or
+  h:mm:ss, so it becomes one of those links.
+- **Comments on PeerTube videos** show the whole thread from PeerTube, not just the comments made after your
+  server followed the channel: names and avatars come from PeerTube, and replies sit under the comment they
+  answer. Tap a name or avatar to open that person's profile. This needs OurTube 1.17 on your server.
 
 ## Playlists and Watch later
 
@@ -171,7 +204,7 @@ by the server's admin, and the upload screen shows it.
 
 ## Links that open in the app
 
-Links to videos (`/watch/…`, `/n/…`), channels (`/c/…`), playlists (`/playlist/…`), watch parties
+Links to videos (`/watch/…`, `/n/…`), Shorts (`/shorts/…`), channels (`/c/…`), playlists (`/playlist/…`), watch parties
 (`/party/…`) and live streams (`/live/…`) on clips.irc.so, clips.quitlyingto.us and clips.6697.pro offer to open
 in the app. A link from a server other than the one you're using opens from that server, signed out, with a
 **Switch** button to move over and sign in there.

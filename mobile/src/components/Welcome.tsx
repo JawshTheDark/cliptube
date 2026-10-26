@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Api, hostLabel, normalizeServerUrl } from '@/lib/api';
 import { NETWORK_DIRECTORY, useSession } from '@/lib/session';
+import { isOurTube } from '@/lib/profiles';
 import { colors, fonts } from '@/lib/theme';
 import { LogoMark } from './Logo';
 import type { Site } from '@/lib/types';
@@ -38,7 +39,9 @@ export function Welcome() {
             /* skip */
           }
         }
-        setSuggestions(list);
+        // Only OurTube servers: the peer list also holds PeerTube instances the hub follows.
+        setSuggestions([list[0]]);
+        for (const x of list.slice(1)) isOurTube(x.url).then((yes) => yes && setSuggestions((cur) => (cur.some((c) => c.url === x.url) ? cur : [...cur, x])));
       })
       .catch(() => setSuggestions([]));
   }, []);

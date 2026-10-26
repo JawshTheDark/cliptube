@@ -2,7 +2,7 @@
   "expo": {
     "name": "OurTube",
     "slug": "cliptube",
-    "version": "1.4.1",
+    "version": "1.5.0",
     "scheme": "cliptube",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "so.irc.cliptube",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "backgroundColor": "#0e0d16",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -34,6 +34,11 @@
               "scheme": "https",
               "host": "clips.irc.so",
               "pathPrefix": "/watch/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/shorts/"
             },
             {
               "scheme": "https",
@@ -64,6 +69,11 @@
               "scheme": "https",
               "host": "clips.quitlyingto.us",
               "pathPrefix": "/watch/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/shorts/"
             },
             {
               "scheme": "https",
@@ -94,6 +104,11 @@
               "scheme": "https",
               "host": "clips.6697.pro",
               "pathPrefix": "/watch/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/shorts/"
             },
             {
               "scheme": "https",

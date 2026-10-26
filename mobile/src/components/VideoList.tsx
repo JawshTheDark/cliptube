@@ -28,6 +28,7 @@ export function VideoList({
   empty,
   rows = false,
   shorts = false,
+  shortsScope,
   showChannel = true,
   slot = null,
   slotAfter = 8,
@@ -37,6 +38,7 @@ export function VideoList({
   empty?: ReactElement | null;
   rows?: boolean;
   shorts?: boolean;
+  shortsScope?: 'all' | 'local';
   showChannel?: boolean;
   slot?: ReactElement | null;
   slotAfter?: number;
@@ -61,7 +63,7 @@ export function VideoList({
         item.kind === 'slot' ? (
           slot
         ) : shorts ? (
-          <ShortCard v={item.v} style={{ width: shortWidth, marginBottom: 18 }} />
+          <ShortCard v={item.v} scope={shortsScope} style={{ width: shortWidth, marginBottom: 18 }} />
         ) : rows ? (
           <VideoRow v={item.v} />
         ) : (

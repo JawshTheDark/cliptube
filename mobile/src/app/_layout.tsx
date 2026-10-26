@@ -59,6 +59,9 @@ function Root() {
       <Stack.Screen name="party/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ title: 'App settings' }} />
       <Stack.Screen name="live/[username]" options={{ headerShown: false }} />
+      <Stack.Screen name="shorts/[id]" options={{ headerShown: false, animation: 'fade' }} />
+      <Stack.Screen name="shorts/n/[peer]/[remote]" options={{ headerShown: false, animation: 'fade' }} />
+      <Stack.Screen name="comments-sheet" options={{ headerShown: false, presentation: 'transparentModal', animation: 'slide_from_bottom', contentStyle: { backgroundColor: 'transparent' } }} />
     </Stack>
     {/* No server chosen yet: pick one first. The navigator stays mounted underneath, so links still work after. */}
     {needsSetup && (

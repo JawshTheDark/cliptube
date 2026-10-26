@@ -30,7 +30,8 @@ Watching and browsing work on any version.
 | Home | Everything, Videos and Shorts, then All, This site, For you, Subscriptions, Trending, Top rated and popular tags, like the website; a Shorts shelf after the first eight videos and a 9:16 grid for Shorts |
 | Watch | Native player (Media3) with fullscreen, picture-in-picture and resume; likes, subscribe, share, related videos |
 | Network | Videos from other servers stream from their own server; likes, comments and subscriptions go through yours. In a network every card, watch page, channel and live card shows the server it lives on, with the website's color for it |
-| Comments | Threads with replies, held and pending states, approve and delete for uploaders and moderators |
+| Comments | Threads with replies, held and pending states, approve and delete for uploaders and moderators; times like 1:23 jump the video, Add time inserts the current one, and PeerTube videos show their whole thread (1.17+) |
+| Shorts | A full-screen vertical viewer: one Short per page in a frame of its own shape, swipe for the next, tap to pause, mute, a progress line, like, dislike, comments in a sheet, share and the full page (1.17+) |
 | Explore | Search with sorting, and the game catalog with SteamGridDB artwork; game and channel pages |
 | Upload | Pick a video, set title, description, game, tags, visibility and clipping, watch progress and processing. On 1.10+ it goes up in 8 MB pieces that survive dropped connections and resume after the app is closed |
 | You | Your videos (edit, publish drafts, delete), history, liked videos, subscriptions, sign out |
@@ -40,7 +41,7 @@ Watching and browsing work on any version.
 | Live streams | Who's live on Home, live pages with the HLS stream, live chat (signed in or as a guest), reactions and chat moderation (1.9+) |
 | Inbox | Notifications with an unread badge on the tab, checked every minute while the app is open |
 | Servers | Pick your main server on first launch (the app opens on it; change it under You → App settings), keep more servers with a sign-in for each, and switch between them |
-| Links | `https://<server>/watch/…`, `/c/…` and `/n/…` links for the three known servers can open in the app |
+| Links | `https://<server>/watch/…`, `/shorts/…`, `/c/…` and `/n/…` links for the three known servers can open in the app |
 
 Not in the app yet (use the website): the timeline editor, thumbnails, captions, analytics, admin and
 moderation pages, push notifications.

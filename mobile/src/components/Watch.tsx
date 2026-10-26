@@ -8,13 +8,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Api } from '@/lib/api';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
-import { useOnePlayerAtATime } from '@/lib/playback';
+import { seekCurrent, useOnePlayerAtATime } from '@/lib/playback';
 import { ago, compact, hostOf, plural } from '@/lib/format';
 import { colors, fonts } from '@/lib/theme';
 import type { RemoteWatch, Video } from '@/lib/types';
 import { knownServers, openChannelLink } from '@/lib/profiles';
 import { refFromRoute } from '@/lib/refs';
 import { PlaylistBar, type PlaylistNav } from './PlaylistBar';
+import { RichText } from './RichText';
 import { ServerTag } from './ServerTag';
 import { VideoRow } from './VideoCard';
 import { Avatar, Button, Empty, Icon, IconButton, Loading, toast } from './ui';
@@ -308,9 +309,8 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
               <Text style={{ color: colors.text, fontSize: 13 }}>{v.game.name}</Text>
             </Pressable>
           )}
-          <Text style={s.desc} selectable>
-            {v.description?.trim() || 'No description.'}
-          </Text>
+          {/* Times in the description (1:23) jump the video there, as on the website. */}
+          <RichText text={v.description?.trim() || 'No description.'} onSeek={(t) => seekCurrent(t)} style={s.desc} />
           {!!v.tags?.length && <Text style={[s.desc, { color: colors.link }]}>{v.tags.map((t) => `#${t}`).join('  ')}</Text>}
         </View>
       )}

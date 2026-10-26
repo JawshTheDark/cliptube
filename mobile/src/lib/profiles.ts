@@ -1,19 +1,15 @@
+import { useEffect, useState } from 'react';
 import { Linking } from 'react-native';
 import { router } from 'expo-router';
-import { Api, normalizeServerUrl } from './api';
+import { Api } from './api';
 import type { Site } from './types';
 
-/** Addresses the app knows to be OurTube servers: the saved ones and the active server's network. */
-export function knownServers(saved: { url: string }[], site: Site | null): Set<string> {
-  const out = new Set(saved.map((s) => s.url));
-  for (const p of site?.network_peers || []) {
-    try {
-      out.add(normalizeServerUrl(p.url));
-    } catch {
-      /* skip */
-    }
-  }
-  return out;
+/**
+ * Addresses the app knows to be OurTube servers: the saved ones. A server's network peers aren't trusted as such any
+ * more: since 1.16 the list also holds the PeerTube instances it follows; links to them are checked first.
+ */
+export function knownServers(saved: { url: string }[], _site?: Site | null): Set<string> {
+  return new Set(saved.map((s) => s.url));
 }
 
 /**
@@ -26,7 +22,7 @@ export function openProfile(url: string, known: Set<string>) {
 
 // Servers found (or not) to be OurTube by asking them, so each is asked once.
 const probed = new Map<string, Promise<boolean>>();
-const isOurTube = (origin: string) => {
+export const isOurTube = (origin: string) => {
   let p = probed.get(origin);
   if (!p) {
     p = Promise.race([
@@ -56,4 +52,26 @@ export async function openChannelLink(url: string, known: Set<string>) {
     /* not a URL: let the system try */
   }
   Linking.openURL(url).catch(() => {});
+}
+
+/**
+ * The network peers that are OurTube servers, asked once each: the others (PeerTube instances the server follows)
+ * can't be added or signed in to. Fills in as the answers arrive.
+ */
+export function useOurTubePeers(peers: { url: string; name: string }[]): { url: string; name: string }[] {
+  const [ok, setOk] = useState<Set<string>>(new Set());
+  const key = peers.map((p) => p.url).join(' ');
+  useEffect(() => {
+    let live = true;
+    for (const p of peers) {
+      isOurTube(p.url).then((yes) => {
+        if (yes && live) setOk((x) => (x.has(p.url) ? x : new Set(x).add(p.url)));
+      });
+    }
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return peers.filter((p) => ok.has(p.url));
 }
