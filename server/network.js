@@ -46,6 +46,7 @@ import { requireAuth, requireAdmin } from './auth.js';
 import { intakeComment, intakeLike } from './intake.js';
 import { createReport } from './reports.js';
 import { notifyComment, notifyRemoteUpload } from './notify.js';
+import { fireNetworkWebhooks } from './webhooks.js';
 import { isPrivateIp } from './util.js';
 
 export { isPrivateIp };
@@ -654,6 +655,10 @@ function upsertVideo(instanceId, c, t, instanceUrl = null, origin = 'cliptube') 
     .prepare("SELECT s.url FROM blocklist_entries e JOIN blocklist_subscriptions s ON s.id = e.subscription_id WHERE e.kind = 'video' AND e.target = ? AND e.status = 'applied' LIMIT 1")
     .get(`${url}|${c.remote_id}`);
   if (hide) db.prepare('UPDATE network_videos SET hidden = 1, hidden_by = ? WHERE instance_id = ? AND remote_id = ? AND hidden = 0').run(hide.url, instanceId, c.remote_id);
+  // Admins' site-wide webhooks that take the network's videos hear about new ones people here can see.
+  else if (isNew && db.prepare(`${REMOTE_SELECT} WHERE ${NETWORK_VISIBLE} AND r.instance_id = ? AND r.remote_id = ?`).get(instanceId, c.remote_id)) {
+    fireNetworkWebhooks(instanceId, c.remote_id, c.created_at);
+  }
 }
 
 /** Adds or updates a network video that arrived over ActivityPub. */

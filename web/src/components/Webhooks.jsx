@@ -4,11 +4,12 @@ import { Icon } from './Icons.jsx';
 import { useToast } from './Toast.jsx';
 import { formatDate } from '../util.js';
 
-/** Your webhooks: your new videos and live streams, sent to your bots, bridges or chat channels. */
+/** Your webhooks: your new videos and live streams (an admin's can cover the whole server), sent to bots, bridges or chat channels. */
 export function Webhooks() {
   const toast = useToast();
   const [data, setData] = useState(null);
-  const [draft, setDraft] = useState({ url: '', format: 'json', secret: '', events: ['video.published', 'live.started'] });
+  const [draft, setDraft] = useState({ url: '', format: 'json', secret: '', events: ['video.published', 'live.started'], scope: 'mine', include_network: false });
+  const siteWide = !!data?.scopes?.site;
   const load = () => api('/me/webhooks').then(setData).catch((e) => toast(e.message));
   useEffect(() => {
     load();
@@ -42,6 +43,7 @@ export function Webhooks() {
       <p className="hint">
         Tell a bot, a bridge or a chat channel when you publish a video or go live. JSON sends the whole event; Discord and Slack send a message with the
         link. With a secret, each delivery is signed in <code>X-OurTube-Signature</code> (also sent as <code>X-ClipTube-Signature</code>).
+        {siteWide && ' As an admin, you can also send everything published on this server, and new videos from the rest of the network.'}
       </p>
       <form onSubmit={create}>
         <div className="field-row align-end">
@@ -64,6 +66,26 @@ export function Webhooks() {
             <input className="input" value={draft.secret} maxLength={200} autoComplete="off" onChange={(e) => setDraft({ ...draft, secret: e.target.value })} />
           </div>
         </div>
+        {siteWide && (
+          <div className="row-actions">
+            <div className="field">
+              <label>Sends</label>
+              <select className="select" value={draft.scope} onChange={(e) => setDraft({ ...draft, scope: e.target.value })}>
+                {Object.entries(data.scopes).map(([k, label]) => (
+                  <option key={k} value={k}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {draft.scope === 'site' && (
+              <label className="check-row">
+                <input type="checkbox" checked={draft.include_network} onChange={(e) => setDraft({ ...draft, include_network: e.target.checked })} /> Also new videos from other
+                servers in the network
+              </label>
+            )}
+          </div>
+        )}
         <div className="row-actions">
           {Object.entries(data?.events || {}).map(([ev, label]) => (
             <label key={ev} className="check-row">
@@ -89,6 +111,7 @@ export function Webhooks() {
                   <span className="badge">{h.format}</span>
                   {!h.enabled && <span className="badge">off</span>}
                   {h.has_secret && <span className="badge">signed</span>}
+                  {h.scope === 'site' && <span className="badge">{h.include_network ? 'whole server + network' : 'whole server'}</span>}
                 </div>
                 <div className="fed-sub">
                   {h.events.join(', ')}

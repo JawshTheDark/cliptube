@@ -4,6 +4,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { startInstance, Client, setupAdmin, uploadReady, waitFor } from './helpers.js';
@@ -43,6 +44,50 @@ test('hub mode, open joining and two-way sync', async () => {
   // They peer over ActivityPub.
   const peers = (await B.get('/api/admin/network')).data.peers;
   assert.equal(peers.find((p) => p.url === hub.url)?.transport, 'activitypub', JSON.stringify(peers));
+});
+
+test("a site-wide webhook also hears of the network's new videos, not of what was already there", async () => {
+  const got = [];
+  const receiver = http.createServer((req, res) => {
+    let raw = '';
+    req.on('data', (c) => (raw += c));
+    req.on('end', () => {
+      got.push(JSON.parse(raw));
+      res.writeHead(204).end();
+    });
+  });
+  await new Promise((r) => receiver.listen(0, '127.0.0.1', r));
+  try {
+    const url = `http://127.0.0.1:${receiver.address().port}/hook`;
+    const hook = await A.post('/api/me/webhooks', { url, events: ['video.published'], scope: 'site', include_network: true });
+    assert.equal(hook.status, 201, JSON.stringify(hook.data));
+    const fresh = await uploadReady(B, { title: 'Bob, new on the member' });
+    const arrived = await waitFor(
+      async () => {
+        await A.post('/api/admin/network/sync');
+        return got.find((e) => e.video?.title === 'Bob, new on the member');
+      },
+      { what: "the member's new video at the hub's webhook" },
+    );
+    assert.equal(arrived.video.from_network, true);
+    assert.equal(arrived.video.server.name, 'Member B');
+    assert.equal(arrived.video.server.url, member.url);
+    assert.ok(arrived.video.url.startsWith(`${hub.url}/n/`), arrived.video.url);
+    assert.match(arrived.video.channel.username, /^bob/);
+    assert.ok(!got.some((e) => e.video?.title === 'Bob on the member'), 'videos from before the webhook are not replayed');
+    await A.del(`/api/me/webhooks/${hook.data.webhook.id}`);
+    // The tests after this one expect bob's first video to be the only one from the member.
+    await B.del(`/api/videos/${fresh.id}`);
+    await waitFor(
+      async () => {
+        await A.post('/api/admin/network/sync');
+        return !(await net(A)).some((v) => v.title === 'Bob, new on the member');
+      },
+      { what: 'the deleted video to leave the hub' },
+    );
+  } finally {
+    receiver.close();
+  }
 });
 
 test("the hub shows each member's current version, not the one it joined with", async () => {

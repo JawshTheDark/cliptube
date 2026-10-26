@@ -940,6 +940,14 @@ CREATE TABLE IF NOT EXISTS webhooks (
       db.exec('CREATE INDEX IF NOT EXISTS idx_webhooks_user ON webhooks(user_id)');
     },
   },
+  {
+    version: 19,
+    name: 'site-wide webhooks for admins',
+    up(db) {
+      addColumn(db, 'webhooks', 'scope', "TEXT NOT NULL DEFAULT 'mine'"); // mine | site (everything published here)
+      addColumn(db, 'webhooks', 'include_network', 'INTEGER NOT NULL DEFAULT 0'); // site: also videos from the network
+    },
+  },
 ];
 
 export function currentVersion(db) {

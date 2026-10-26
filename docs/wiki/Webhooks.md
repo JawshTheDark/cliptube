@@ -1,9 +1,11 @@
 # Webhooks
 
 A webhook tells a bot, a bridge or a chat channel when you post. Set yours up in **Settings → Webhooks**; each
-person has their own, for their own videos and streams.
+person has their own, for their own videos and streams. An admin's webhook can cover the whole server instead
+(see [Whole-server webhooks](#whole-server-webhooks)).
 
 - [Events](#events)
+- [Whole-server webhooks](#whole-server-webhooks)
 - [Formats](#formats)
 - [What a JSON delivery looks like](#what-a-json-delivery-looks-like)
 - [Checking the signature](#checking-the-signature)
@@ -15,6 +17,22 @@ person has their own, for their own videos and streams.
 | --- | --- |
 | `video.published` | You publish a video: public and done processing (a draft when you save its details). Once per video. |
 | `live.started` | You start a public [live stream](Live-Streaming.md) |
+
+## Whole-server webhooks
+
+An admin picks what a webhook **sends**:
+
+- **Your own videos and live streams**, like everyone else's webhooks.
+- **Everything published on this server**: every person's public videos and live streams here, for a bot that
+  announces the whole site in a chat channel or bridges it somewhere.
+  - **Also new videos from other servers in the network** (optional): videos that reach this server from the rest of
+    the [network](Network.md), as they arrive. Their `url` opens them
+    on this server, `original_url` on their own, and `video.server` says where they live (with
+    `"from_network": true`). Only videos newer than the webhook and at most two days old count, so joining a
+    network or turning the webhook on doesn't send a server's whole back catalogue. Live streams on other
+    servers aren't sent.
+
+A whole-server webhook stops when its owner is no longer an admin, and turns back on if they are made one again.
 
 ## Formats
 
@@ -46,7 +64,8 @@ person has their own, for their own videos and streams.
     "game": { "id": "umamusume-pretty-derby", "name": "Umamusume: Pretty Derby" },
     "tags": ["dogs"],
     "published_at": "2026-10-25T22:01:00.000Z",
-    "channel": { "username": "amiantos", "display_name": "amiantos", "url": "https://video.bradroot.me/c/amiantos", "avatar_url": null }
+    "channel": { "username": "amiantos", "display_name": "amiantos", "url": "https://video.bradroot.me/c/amiantos", "avatar_url": null },
+    "server": { "name": "Brad's Vidya", "url": "https://video.bradroot.me" }
   }
 }
 ```

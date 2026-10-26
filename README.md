@@ -75,7 +75,7 @@ around what a clip site needs:
 - Theater mode, keyboard shortcuts, resume where you left off
 - Community titles and thumbnails, visible dislikes, support links
 - Link previews with an inline player in Discord and Slack
-- Webhooks, each person's own, for their new videos and live streams: JSON for bots and bridges, or messages for Discord and Slack
+- Webhooks for each person's new videos and live streams, or for everything on the server and its network: JSON for bots and bridges, or messages for Discord and Slack
 - Original downloads when the uploader allows them
 - **Playlists** and Watch later, mixing clips from any server, with shuffle, loop and autoplay
 - **Watch together**: parties that play in sync for everyone, with a queue, chat and reactions

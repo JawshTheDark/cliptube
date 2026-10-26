@@ -1,6 +1,7 @@
 // Outgoing webhooks, each person's own: someone points theirs at a bot, a bridge or a chat channel, and their
-// published videos (and public live streams) go out to it, signed when there is a secret, in its format. A small
-// server stands in for the other end. Webhooks can't reach the server's own network, except an admin's.
+// published videos (and public live streams) go out to it, signed when there is a secret, in its format. An
+// admin's can cover the whole server. A small server stands in for the other end. Webhooks can't reach the
+// server's own network, except an admin's.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -146,4 +147,26 @@ test("webhooks can't reach the server's own network, except an admin's", async (
   } finally {
     await strict.stop();
   }
+});
+
+test("an admin's site-wide webhook gets everyone's published videos, and only admins can make one", async () => {
+  assert.equal((await bob.post('/api/me/webhooks', { url: at('/bob-site'), scope: 'site' })).status, 403);
+  assert.deepEqual(Object.keys((await bob.get('/api/me/webhooks')).data.scopes), ['mine']);
+  const site = await alice.post('/api/me/webhooks', { url: at('/site-json'), events: ['video.published'], scope: 'site', include_network: true });
+  assert.equal(site.status, 201, JSON.stringify(site.data));
+  assert.equal(site.data.webhook.scope, 'site');
+  assert.equal(site.data.webhook.include_network, true);
+
+  await uploadReady(bob, { title: 'Bob for the whole site' });
+  const forSite = () => sent('/site-json', 'video.published').filter((g) => g.body.video.title === 'Bob for the whole site');
+  await waitFor(() => forSite().length === 1, { what: 'the site-wide delivery' });
+  assert.equal(forSite()[0].body.video.channel.username, 'bob');
+  assert.deepEqual(forSite()[0].body.video.server, { name: 'Hook Site', url: inst.url });
+
+  // Back to only her own: the network option goes with it, and bob's next video doesn't reach it.
+  const mine = await alice.patch(`/api/me/webhooks/${site.data.webhook.id}`, { scope: 'mine' });
+  assert.equal(mine.data.webhook.include_network, false);
+  await uploadReady(bob, { title: 'Bob, not for alice' });
+  await quiet();
+  assert.ok(!sent('/site-json').some((g) => g.body?.video?.title === 'Bob, not for alice'));
 });

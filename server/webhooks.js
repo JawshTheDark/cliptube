@@ -1,5 +1,6 @@
 // Outgoing webhooks, each person's own: when they publish a video or start a public live stream, this site
-// POSTs it to the addresses they set up in Settings, for their bots, bridges and chat channels. Each webhook picks
+// POSTs it to the addresses they set up in Settings, for their bots, bridges and chat channels. An admin's
+// webhook can instead cover everything published on this server, and also videos arriving from the network. Each webhook picks
 // its events and a format: the full event as JSON, or a ready-made message for Discord or Slack (and Mattermost,
 // which reads Slack's). With a secret, every delivery is signed (X-OurTube-Signature: sha256=<HMAC of the body>,
 // also sent as X-ClipTube-Signature from before the rename). Failed deliveries are tried again through the job queue.
@@ -22,8 +23,12 @@ import { apBase } from './ap/common.js';
 import { HttpError, newId, now, str } from './util.js';
 
 export const EVENTS = {
-  'video.published': 'You publish a video (public, and done processing)',
-  'live.started': 'You start a public live stream',
+  'video.published': 'A video is published (public, and done processing)',
+  'live.started': 'A public live stream starts',
+};
+const SCOPES = {
+  mine: 'Your own videos and live streams',
+  site: 'Everything published on this server',
 };
 const FORMATS = {
   json: 'JSON: the whole event, for bots and bridges',
@@ -32,10 +37,19 @@ const FORMATS = {
 };
 const MAX_PER_PERSON = 10;
 const TESTS_PER_10_MIN = 10;
+// A video from the network older than this when it arrives is old news (a new peer's back catalogue, say).
+const RECENT_MS = 2 * 24 * 3600_000;
 
 const siteBase = () => apBase() || '';
 const iso = (t) => (t ? new Date(Number(t)).toISOString() : null);
 const eventsOf = (hook) => String(hook.events || '').split(',').filter((e) => EVENTS[e]);
+const hostOf = (url) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url || '';
+  }
+};
 
 function view(hook) {
   return {
@@ -43,6 +57,8 @@ function view(hook) {
     url: hook.url,
     format: hook.format,
     events: eventsOf(hook),
+    scope: hook.scope || 'mine',
+    include_network: !!hook.include_network,
     enabled: !!hook.enabled,
     has_secret: !!hook.secret,
     created_at: hook.created_at,
@@ -76,6 +92,41 @@ export function videoEvent(videoId) {
       tags: db.prepare('SELECT tag FROM tags WHERE video_id = ? ORDER BY tag').all(v.id).map((t) => t.tag),
       published_at: iso(v.published_at || v.created_at),
       channel: channelOf(v, base),
+      server: { name: getSettings().site_name, url: base || null },
+    },
+  };
+}
+
+/** The same for a video that arrived from another server in the network; its link opens it here. */
+export function networkVideoEvent(instanceId, remoteId) {
+  const r = db
+    .prepare('SELECT r.*, p.name AS peer_name, p.url AS peer_url FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE r.instance_id = ? AND r.remote_id = ?')
+    .get(instanceId, remoteId);
+  if (!r) return null;
+  const base = siteBase();
+  return {
+    video: {
+      id: r.remote_id,
+      title: r.title,
+      description: r.description || '',
+      url: `${base}/n/${r.instance_id}/${encodeURIComponent(r.remote_id)}`,
+      original_url: r.watch_url || null,
+      thumbnail_url: r.thumbnail_url || null,
+      video_url: r.video_url || null,
+      duration: r.duration || null,
+      width: r.width || null,
+      height: r.height || null,
+      game: r.game_name ? { id: r.game_slug || null, name: r.game_name } : null,
+      tags: r.tags ? String(r.tags).split(',').filter(Boolean) : [],
+      published_at: iso(r.created_at),
+      channel: {
+        username: r.uploader_username,
+        display_name: r.uploader_display_name || r.uploader_username,
+        url: r.uploader_url || null,
+        avatar_url: r.uploader_avatar_url || null,
+      },
+      server: { name: r.peer_name || hostOf(r.peer_url), url: r.peer_url },
+      from_network: true,
     },
   };
 }
@@ -108,7 +159,10 @@ function channelOf(u, base) {
 
 /** One line for people: what happened, and the link (chat apps then show the page's own preview). */
 function messageFor(event, data) {
-  if (event === 'video.published') return `${data.video.channel.display_name} posted a new video: ${data.video.title}\n${data.video.url}`;
+  if (event === 'video.published') {
+    const v = data.video;
+    return `${v.channel.display_name}${v.from_network ? ` on ${v.server.name}` : ''} posted a new video: ${v.title}\n${v.url}`;
+  }
   if (event === 'live.started') return `${data.stream.channel.display_name} is live: ${data.stream.title}\n${data.stream.url}`;
   return `Webhook test from ${getSettings().site_name}: this webhook works.`;
 }
@@ -206,13 +260,41 @@ defineJob('webhook.deliver', {
   },
 });
 
-/** Queues a delivery of this event to each of this person's webhooks that wants it. */
+/** Queues a delivery of this event to the webhooks that want it: this person's own, and admins' site-wide ones. */
 export function fireWebhooks(event, data, userId) {
   if (!data || !userId) return;
   const key = data.video?.id || data.stream?.id || newId();
-  for (const hook of db.prepare('SELECT * FROM webhooks WHERE enabled = 1 AND user_id = ?').all(userId)) {
+  const hooks = db
+    .prepare(
+      `SELECT h.* FROM webhooks h JOIN users u ON u.id = h.user_id
+       WHERE h.enabled = 1 AND ((COALESCE(h.scope, 'mine') = 'mine' AND h.user_id = ?) OR (h.scope = 'site' AND u.is_admin = 1))`,
+    )
+    .all(userId);
+  for (const hook of hooks) {
     if (!eventsOf(hook).includes(event)) continue;
     enqueueJob('webhook.deliver', { webhookId: hook.id, event, data, deliveryId: newId() }, { dedupe: `webhook:${hook.id}:${event}:${key}` });
+  }
+}
+
+/** A new video from another server just arrived here: site-wide webhooks that take the network's videos hear of it. */
+export function fireNetworkWebhooks(instanceId, remoteId, createdAt) {
+  const t = Number(createdAt) || 0;
+  if (now() - t > RECENT_MS) return;
+  // Only videos newer than the webhook, so turning one on doesn't replay what the network already had.
+  const hooks = db
+    .prepare(
+      `SELECT h.* FROM webhooks h JOIN users u ON u.id = h.user_id
+       WHERE h.enabled = 1 AND h.scope = 'site' AND h.include_network = 1 AND u.is_admin = 1 AND h.created_at <= ?`,
+    )
+    .all(t)
+    .filter((h) => eventsOf(h).includes('video.published'));
+  if (!hooks.length) return;
+  const data = networkVideoEvent(instanceId, remoteId);
+  if (!data) return;
+  for (const hook of hooks) {
+    enqueueJob('webhook.deliver', { webhookId: hook.id, event: 'video.published', data, deliveryId: newId() }, {
+      dedupe: `webhook:${hook.id}:video.published:${instanceId}:${remoteId}`,
+    });
   }
 }
 
@@ -241,6 +323,12 @@ function cleanFormat(input) {
   if (!FORMATS[f]) throw new HttpError(400, `The format must be ${Object.keys(FORMATS).join(', ')}`);
   return f;
 }
+function cleanScope(input, user) {
+  const scope = String(input || 'mine');
+  if (!SCOPES[scope]) throw new HttpError(400, `The scope must be ${Object.keys(SCOPES).join(' or ')}`);
+  if (scope === 'site' && !user.is_admin) throw new HttpError(403, 'Only admins can send everything published on this server');
+  return scope;
+}
 function ownHook(id, user) {
   const hook = db.prepare('SELECT * FROM webhooks WHERE id = ? AND user_id = ?').get(String(id), user.id);
   if (!hook) throw new HttpError(404, 'Webhook not found');
@@ -256,6 +344,7 @@ webhooksRouter.get('/', (req, res) => {
     webhooks: db.prepare('SELECT * FROM webhooks WHERE user_id = ? ORDER BY created_at').all(req.user.id).map(view),
     events: EVENTS,
     formats: FORMATS,
+    scopes: req.user.is_admin ? SCOPES : { mine: SCOPES.mine },
     public_url: siteBase() || null,
   });
 });
@@ -271,10 +360,12 @@ webhooksRouter.post('/', async (req, res) => {
     format: cleanFormat(b.format),
     events: cleanEvents(b.events || Object.keys(EVENTS)),
     secret: str(b.secret, 200).trim() || null,
+    scope: cleanScope(b.scope, req.user),
   };
-  db.prepare('INSERT INTO webhooks (id, user_id, url, format, events, secret, enabled, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)').run(
-    hook.id, req.user.id, hook.url, hook.format, hook.events, hook.secret, now(),
-  );
+  hook.include_network = hook.scope === 'site' && b.include_network ? 1 : 0;
+  db.prepare(
+    'INSERT INTO webhooks (id, user_id, url, format, events, secret, scope, include_network, enabled, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)',
+  ).run(hook.id, req.user.id, hook.url, hook.format, hook.events, hook.secret, hook.scope, hook.include_network, now());
   res.status(201).json({ webhook: view(ownHook(hook.id, req.user)) });
 });
 
@@ -288,9 +379,11 @@ webhooksRouter.patch('/:id', async (req, res) => {
     enabled: b.enabled !== undefined ? (b.enabled ? 1 : 0) : hook.enabled,
     // The secret is never shown again: empty clears it, leaving it out keeps it.
     secret: b.secret !== undefined ? str(b.secret, 200).trim() || null : hook.secret,
+    scope: b.scope !== undefined ? cleanScope(b.scope, req.user) : hook.scope || 'mine',
   };
-  db.prepare('UPDATE webhooks SET url = ?, format = ?, events = ?, enabled = ?, secret = ? WHERE id = ?').run(
-    next.url, next.format, next.events, next.enabled, next.secret, hook.id,
+  next.include_network = next.scope === 'site' && (b.include_network !== undefined ? !!b.include_network : !!hook.include_network) ? 1 : 0;
+  db.prepare('UPDATE webhooks SET url = ?, format = ?, events = ?, enabled = ?, secret = ?, scope = ?, include_network = ? WHERE id = ?').run(
+    next.url, next.format, next.events, next.enabled, next.secret, next.scope, next.include_network, hook.id,
   );
   res.json({ webhook: view(ownHook(hook.id, req.user)) });
 });
