@@ -67,7 +67,7 @@ export function NotificationBell() {
                   Mark all read
                 </button>
               )}
-              <Link to="/settings#notifications" className="icon-btn" title="Notification settings">
+              <Link to="/settings/notifications" className="icon-btn" title="Notification settings">
                 <Icon name="settings" />
               </Link>
             </span>

@@ -2180,6 +2180,17 @@ kbd {
 .admin-tabs {
   margin: 0 0 20px;
 }
+.settings-tabs {
+  margin: 0 0 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.settings-tabs .tab {
+  white-space: nowrap;
+}
+.settings-tabs .tab.active {
+  border-bottom-color: var(--accent);
+}
 .sub-h {
   font-size: 15px;
   margin: 20px 0 8px;

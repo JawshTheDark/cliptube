@@ -1,6 +1,6 @@
 # Webhooks
 
-A webhook tells a bot, a bridge or a chat channel when you post. Set yours up in **Settings → Webhooks**; each
+A webhook tells a bot, a bridge or a chat channel when you post. Set yours up in **Settings → Apps → Webhooks**; each
 person has their own, for their own videos and streams. An admin's webhook can cover the whole server instead
 (see [Whole-server webhooks](#whole-server-webhooks)).
 

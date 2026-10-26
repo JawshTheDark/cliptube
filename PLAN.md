@@ -52,6 +52,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Chapters from timestamps in the description, and from PeerTube for its videos | Done | v1.18.0, 2026-10-26 |
 | Peers say what software they run (`software` in /api/site network_peers), so OurTube servers and the fediverse are listed apart | Done | v1.19.0, 2026-10-26 |
 | Layout density in Settings: Comfortable, Compact or Dense cards | Done | v1.19.0, 2026-10-26 |
+| Settings in tabs (Channel, Notifications, Watching, Account, Apps), each with its own address | Done | v1.20.0, 2026-10-26 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

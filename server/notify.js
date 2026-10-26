@@ -177,7 +177,7 @@ defineJob('notify.deliver', {
       await sendMail({
         to: u.email,
         subject: `${s.site_name}: ${n.title}`.slice(0, 200),
-        text: `${n.title}\n\n${n.body ? `${n.body}\n\n` : ''}${n.url ? `${base}${n.url}\n\n` : ''}You get these emails because of your notification settings: ${base}/settings`,
+        text: `${n.title}\n\n${n.body ? `${n.body}\n\n` : ''}${n.url ? `${base}${n.url}\n\n` : ''}You get these emails because of your notification settings: ${base}/settings/notifications`,
       });
     }
   },
@@ -264,7 +264,7 @@ notificationsRouter.delete('/push', (req, res) => {
 });
 
 notificationsRouter.post('/test', (req, res) => {
-  notify(req.user.id, { kind: 'moderation', title: 'Test notification', body: 'Notifications work on this device.', url: '/settings' });
+  notify(req.user.id, { kind: 'moderation', title: 'Test notification', body: 'Notifications work on this device.', url: '/settings/notifications' });
   res.json({ ok: true });
 });
 

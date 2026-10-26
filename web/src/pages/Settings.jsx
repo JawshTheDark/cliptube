@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 import { Avatar } from '../components/Avatar.jsx';
@@ -12,18 +12,111 @@ import { ApiKeys } from '../components/ApiKeys.jsx';
 import { LiveSettings } from './Live.jsx';
 import { formatBytes, formatDate, isAnonymous, setAnonymous, usePref } from '../util.js';
 
+const TABS = [
+  ['', 'Channel'],
+  ['notifications', 'Notifications'],
+  ['watching', 'Watching'],
+  ['account', 'Account'],
+  ['apps', 'Apps'],
+];
+// Links from before the tabs (/settings#move) go to the tab that has that section.
+const SECTION_TAB = { notifications: 'notifications', move: 'account', webhooks: 'apps', 'api-keys': 'apps' };
+const tabClass = ({ isActive }) => `tab ${isActive ? 'active' : ''}`;
+
+/** Settings, in tabs: Channel, Notifications, Watching, Account, Apps (API keys and webhooks). */
 export default function Settings() {
+  const { tab = '' } = useParams();
+  const location = useLocation();
+  const nav = useNavigate();
+  const toast = useToast();
+  const [s, setS] = useState(null);
+  const hash = decodeURIComponent(location.hash.slice(1));
+  useTitle(`${TABS.find(([p]) => p === tab)?.[1] || 'Settings'} settings`);
+
+  useEffect(() => {
+    api('/me/settings').then(setS).catch((e) => toast(e.message));
+  }, [toast]);
+  useEffect(() => {
+    if (!tab && SECTION_TAB[hash]) nav(`/settings/${SECTION_TAB[hash]}#${hash}`, { replace: true });
+  }, [tab, hash, nav]);
+  // A link to a section scrolls to it once the tab has drawn it.
+  useEffect(() => {
+    if (!hash) return;
+    let tries = 0;
+    let raf;
+    const find = () => {
+      const el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ block: 'start' });
+      else if (tries++ < 120) raf = requestAnimationFrame(find);
+    };
+    raf = requestAnimationFrame(find);
+    return () => cancelAnimationFrame(raf);
+  }, [tab, hash, s]);
+
+  if (!TABS.some(([p]) => p === tab)) return <Navigate to="/settings" replace />;
+  const patch = async (body, message) => {
+    try {
+      await api('/me', { method: 'PATCH', body });
+      setS((x) => ({ ...x, ...body }));
+      if (message) toast(message);
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+
+  return (
+    <div className="page page-narrow">
+      <h1>Settings</h1>
+      <nav className="tabs settings-tabs">
+        {TABS.map(([path, label]) => (
+          <NavLink key={path} to={path ? `/settings/${path}` : '/settings'} end className={tabClass}>
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+      {tab === '' && (
+        <>
+          <ProfileSettings />
+          {s ? <SupportLinksSettings initial={s.support_links || []} /> : <div className="spinner" />}
+          <LiveSettings />
+          {s && <CommentSettings s={s} patch={patch} setS={setS} />}
+          <LinkedAccounts />
+        </>
+      )}
+      {tab === 'notifications' && <NotificationSettings />}
+      {tab === 'watching' && (
+        <>
+          <ViewingSettings />
+          {s ? <PrivacySettings s={s} patch={patch} /> : <div className="spinner" />}
+        </>
+      )}
+      {tab === 'account' && (
+        <>
+          <PasswordSettings />
+          {s ? <StorageCard storage={s.storage} /> : <div className="spinner" />}
+          <DataSettings />
+          <MoveSettings />
+          {s && <DeleteAccount initial={s.delete_requested_at} />}
+        </>
+      )}
+      {tab === 'apps' && (
+        <>
+          <ApiKeys />
+          <Webhooks />
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Your channel: picture, display name and description. */
+function ProfileSettings() {
   const { user, setUser } = useAuth();
   const toast = useToast();
   const [displayName, setDisplayName] = useState(user.display_name);
   const [bio, setBio] = useState(user.bio || '');
   const [busy, setBusy] = useState(false);
-  const [current, setCurrent] = useState('');
-  const [pw, setPw] = useState('');
-  const [pw2, setPw2] = useState('');
-  const [pwError, setPwError] = useState(null);
   const fileRef = useRef(null);
-  useTitle('Settings');
 
   const saveProfile = async (e) => {
     e.preventDefault();
@@ -34,24 +127,6 @@ export default function Settings() {
       toast('Profile saved');
     } catch (err) {
       toast(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const changePassword = async (e) => {
-    e.preventDefault();
-    setPwError(null);
-    if (pw !== pw2) return setPwError('New passwords do not match');
-    setBusy(true);
-    try {
-      await api('/me', { method: 'PATCH', body: { current_password: current, new_password: pw } });
-      setCurrent('');
-      setPw('');
-      setPw2('');
-      toast('Password changed');
-    } catch (err) {
-      setPwError(err.message);
     } finally {
       setBusy(false);
     }
@@ -82,115 +157,103 @@ export default function Settings() {
   };
 
   return (
-    <div className="page page-narrow">
-      <h1>Settings</h1>
-
-      <section className="card-panel">
-        <h2>Channel</h2>
-        <div className="avatar-edit">
-          <Avatar user={user} size={96} />
-          <div className="row-actions">
-            <button className="btn" onClick={() => fileRef.current.click()} disabled={busy}>
-              Change picture
+    <section className="card-panel">
+      <h2>Channel</h2>
+      <div className="avatar-edit">
+        <Avatar user={user} size={96} />
+        <div className="row-actions">
+          <button className="btn" onClick={() => fileRef.current.click()} disabled={busy}>
+            Change picture
+          </button>
+          {user.avatar_url && (
+            <button className="btn btn-ghost" onClick={removeAvatar}>
+              Remove
             </button>
-            {user.avatar_url && (
-              <button className="btn btn-ghost" onClick={removeAvatar}>
-                Remove
-              </button>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => {
-                if (e.target.files[0]) uploadAvatar(e.target.files[0]);
-                e.target.value = '';
-              }}
-            />
-          </div>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              if (e.target.files[0]) uploadAvatar(e.target.files[0]);
+              e.target.value = '';
+            }}
+          />
         </div>
-        <form onSubmit={saveProfile}>
-          <div className="field">
-            <label>Display name</label>
-            <input className="input" value={displayName} maxLength={50} onChange={(e) => setDisplayName(e.target.value)} required />
-          </div>
-          <div className="field">
-            <label>Username</label>
-            <input className="input" value={`@${user.username}`} disabled />
-            <span className="hint">
-              Your channel lives at <Link to={`/c/${user.username}`}>/c/{user.username}</Link>
-            </span>
-          </div>
-          <div className="field">
-            <label>Channel description</label>
-            <textarea className="textarea" rows={4} value={bio} maxLength={1000} onChange={(e) => setBio(e.target.value)} placeholder="What do you post?" />
-          </div>
-          <button className="btn btn-primary" disabled={busy}>
-            Save
-          </button>
-        </form>
-      </section>
-
-      <section className="card-panel">
-        <h2>Change password</h2>
-        {pwError && <div className="error">{pwError}</div>}
-        <form onSubmit={changePassword}>
-          <div className="field">
-            <label>Current password</label>
-            <input className="input" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
-          </div>
-          <div className="field">
-            <label>New password</label>
-            <input className="input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" minLength={6} required />
-          </div>
-          <div className="field">
-            <label>Confirm new password</label>
-            <input className="input" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" required />
-          </div>
-          <button className="btn" disabled={busy}>
-            Change password
-          </button>
-        </form>
-      </section>
-
-      <MoreSettings />
-    </div>
+      </div>
+      <form onSubmit={saveProfile}>
+        <div className="field">
+          <label>Display name</label>
+          <input className="input" value={displayName} maxLength={50} onChange={(e) => setDisplayName(e.target.value)} required />
+        </div>
+        <div className="field">
+          <label>Username</label>
+          <input className="input" value={`@${user.username}`} disabled />
+          <span className="hint">
+            Your channel lives at <Link to={`/c/${user.username}`}>/c/{user.username}</Link>
+          </span>
+        </div>
+        <div className="field">
+          <label>Channel description</label>
+          <textarea className="textarea" rows={4} value={bio} maxLength={1000} onChange={(e) => setBio(e.target.value)} placeholder="What do you post?" />
+        </div>
+        <button className="btn btn-primary" disabled={busy}>
+          Save
+        </button>
+      </form>
+    </section>
   );
 }
 
-function MoreSettings() {
+function PasswordSettings() {
   const toast = useToast();
-  const [s, setS] = useState(null);
-  useEffect(() => {
-    api('/me/settings').then(setS).catch((e) => toast(e.message));
-  }, [toast]);
-  if (!s) return <div className="spinner" />;
-  const patch = async (body, message) => {
+  const [busy, setBusy] = useState(false);
+  const [current, setCurrent] = useState('');
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [pwError, setPwError] = useState(null);
+
+  const changePassword = async (e) => {
+    e.preventDefault();
+    setPwError(null);
+    if (pw !== pw2) return setPwError('New passwords do not match');
+    setBusy(true);
     try {
-      await api('/me', { method: 'PATCH', body });
-      setS((x) => ({ ...x, ...body }));
-      if (message) toast(message);
+      await api('/me', { method: 'PATCH', body: { current_password: current, new_password: pw } });
+      setCurrent('');
+      setPw('');
+      setPw2('');
+      toast('Password changed');
     } catch (err) {
-      toast(err.message);
+      setPwError(err.message);
+    } finally {
+      setBusy(false);
     }
   };
+
   return (
-    <>
-      <NotificationSettings />
-      <ViewingSettings />
-      <SupportLinksSettings initial={s.support_links || []} />
-      <CommentSettings s={s} patch={patch} setS={setS} />
-      <PrivacySettings s={s} patch={patch} />
-      <StorageCard storage={s.storage} />
-      <DataSettings />
-      <LiveSettings />
-      <LinkedAccounts />
-      <Webhooks />
-      <ApiKeys />
-      <MoveSettings />
-      <DeleteAccount initial={s.delete_requested_at} />
-    </>
+    <section className="card-panel">
+      <h2>Change password</h2>
+      {pwError && <div className="error">{pwError}</div>}
+      <form onSubmit={changePassword}>
+        <div className="field">
+          <label>Current password</label>
+          <input className="input" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
+        </div>
+        <div className="field">
+          <label>New password</label>
+          <input className="input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" minLength={6} required />
+        </div>
+        <div className="field">
+          <label>Confirm new password</label>
+          <input className="input" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" required />
+        </div>
+        <button className="btn" disabled={busy}>
+          Change password
+        </button>
+      </form>
+    </section>
   );
 }
 

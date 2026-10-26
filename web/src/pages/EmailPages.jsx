@@ -109,7 +109,7 @@ export function VerifyEmail() {
       {state === 'ok' && <div className="notice">Your email address is confirmed. Choose which notifications reach it in Settings.</div>}
       {state === 'failed' && <div className="error">{error}</div>}
       <div className="auth-foot">
-        <Link to="/settings#notifications">Notification settings</Link>
+        <Link to="/settings/notifications">Notification settings</Link>
       </div>
     </div>
   );

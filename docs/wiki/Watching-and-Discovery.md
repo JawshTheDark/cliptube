@@ -183,7 +183,7 @@ retention curve per video. Only counts are stored, never who watched, and anonym
 
 ## Privacy
 
-Settings → *Privacy* and *Your data*:
+Settings → Watching → *Privacy*, and Settings → Account → *Your data*:
 
 - **Pause watch history**, or clear it.
 - **Anonymous mode** in a browser: nothing you watch there is recorded.

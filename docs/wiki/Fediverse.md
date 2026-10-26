@@ -101,12 +101,12 @@ as soon as either side removes it.
 
 ## Moving a channel
 
-To move to another server (Settings → *Moving to another site*):
+To move to another server (Settings → Account → *Moving to another site*):
 
 1. **Export** the channel on the old server: one archive with the videos, thumbnails, captions, comments and the
    subscriber list.
 2. **Import** it on the new server, from the export's private link or by uploading the archive.
-3. On the new server, add the old account as an alias (Settings → *Moving here*).
+3. On the new server, add the old account as an alias (Settings → Account → *Moving here*).
 4. On the old server, **move**.
 
 Fediverse followers get an ActivityPub `Move` and follow the new channel; subscribers on the old server and on

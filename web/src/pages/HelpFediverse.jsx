@@ -49,7 +49,7 @@ export default function HelpFediverse() {
       <h2>Moving a channel to another site</h2>
       <ol>
         <li>
-          On the old site: <Link to="/settings#move">Settings → Moving to another site</Link> → <b>Export channel</b>, then copy its private link.
+          On the old site: <Link to="/settings/account#move">Settings → Moving to another site</Link> → <b>Export channel</b>, then copy its private link.
         </li>
         <li>On the new site: paste the link under <b>Import a channel here</b>. Videos, comments, captions and the profile come along.</li>
         <li>On the new site: add the old account under <b>Moving here</b>.</li>

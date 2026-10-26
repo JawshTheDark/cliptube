@@ -294,6 +294,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/settings/:tab"
+                element={
+                  <RequireAuth>
+                    <Settings />
+                  </RequireAuth>
+                }
+              />
+              <Route
                 path="/admin"
                 element={
                   <RequireAuth admin>

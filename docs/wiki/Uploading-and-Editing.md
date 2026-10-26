@@ -49,7 +49,7 @@ Sending the whole file as `multipart/form-data` to `POST /api/videos` still work
 ## Uploading from ShareX and other tools
 
 An **API key** lets ShareX, a script or anything else that can send a file with a header upload videos as you.
-Make one in **Settings → API keys**. Each key says what its uploads are when the upload doesn't say: unlisted,
+Make one in **Settings → Apps → API keys**. Each key says what its uploads are when the upload doesn't say: unlisted,
 public or private, and whether they're published right away or wait as [drafts](#drafts-nothing-goes-out-until-you-save).
 The key is shown once, so copy it then; the list afterwards shows only its first characters and when it was last
 used. A key can only upload: it can't read your videos, change settings or do anything else, and deleting it

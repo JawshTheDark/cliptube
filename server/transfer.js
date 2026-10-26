@@ -194,7 +194,7 @@ defineJob('channel.export', {
       const size = fs.statSync(path.join(DIRS.exports, file)).size;
       db.prepare("UPDATE channel_exports SET status = 'ready', file = ?, size_bytes = ?, expires_at = ? WHERE id = ?").run(file, size, now() + 7 * DAY, id);
       enqueueJob('channel.export.expire', { id, file }, { delay: 7 * DAY });
-      notify(row.user_id, { kind: 'move', title: 'Your channel export is ready to download', url: '/settings#move', dedupe: `channel-export:${id}` });
+      notify(row.user_id, { kind: 'move', title: 'Your channel export is ready to download', url: '/settings/account#move', dedupe: `channel-export:${id}` });
     } catch (e) {
       try {
         fs.unlinkSync(tmp);

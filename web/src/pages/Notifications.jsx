@@ -27,7 +27,7 @@ export default function Notifications() {
               Mark all read
             </button>
           )}
-          <Link to="/settings#notifications" className="btn btn-ghost">
+          <Link to="/settings/notifications" className="btn btn-ghost">
             <Icon name="settings" /> Settings
           </Link>
         </div>
