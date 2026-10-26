@@ -5,8 +5,11 @@ import { Icon } from './Icons.jsx';
 import { ServerTag } from './ServerTag.jsx';
 import { compact, displayed, formatDuration, timeAgo, usePref } from '../util.js';
 
+/** Where a Short plays: the Shorts viewer, one after another. */
+export const shortsPath = (v) => (v.remote ? `/shorts/n/${v.remote.peer_id}/${encodeURIComponent(v.remote.remote_id)}` : `/shorts/${v.id}`);
+
 /**
- * variant: 'grid' (home / channel), 'short' (Shorts, 9:16), 'compact' (watch sidebar), 'list' (search results)
+ * variant: 'grid' (home / channel), 'short' (Shorts, 9:16, opening in the Shorts viewer), 'compact' (watch sidebar), 'list' (search results)
  */
 export function VideoCard({ video: v, variant = 'grid', showChannel = true, extra = null }) {
   const [communityPref] = usePref('community');
@@ -28,7 +31,7 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true, extr
 
   const watched = v.position > 5 && v.duration ? Math.min(100, (v.position / v.duration) * 100) : 0;
   const remote = v.remote;
-  const watchUrl = remote ? `/n/${remote.peer_id}/${remote.remote_id}` : `/watch/${v.id}`;
+  const watchUrl = variant === 'short' ? shortsPath(v) : remote ? `/n/${remote.peer_id}/${remote.remote_id}` : `/watch/${v.id}`;
   const channelUrl = remote ? u.url || remote.peer_url : `/c/${u.username}`;
   // Remote channels live on their own instance, so link out instead of routing.
   const ChannelLink = ({ className, children }) =>

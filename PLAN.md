@@ -45,6 +45,9 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | Videos marked sensitive (NSFW) on fediverse servers stay out of the network index | Done | v1.15.2, 2026-10-26 |
 | Admin -> Debugging tab, notices when a newer OurTube is on GitHub, and a GitHub link on every server | Done | v1.16.0, 2026-10-26 |
 | A storage limit for the whole server, and uploads stop before the disk fills up | Done | v1.16.0, 2026-10-26 |
+| PeerTube videos show their whole comment thread, from before the follow too | Done | v1.17.0, 2026-10-26 |
+| A Shorts viewer: one at a time, full height, each in a frame of its own shape; scroll, swipe or arrow keys | Done | v1.17.0, 2026-10-26 |
+| Times in comments jump the video there, and the comment box can add the current time | Done | v1.17.0, 2026-10-26 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

@@ -183,7 +183,7 @@ if (fs.existsSync(indexFile)) {
     let html = fs.readFileSync(indexFile, 'utf8');
     let title = settings.site_name;
     const base = (settings.public_url || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
-    const m = /^\/watch\/([A-Za-z0-9_-]+)/.exec(req.path);
+    const m = /^\/(?:watch|shorts)\/([A-Za-z0-9_-]+)/.exec(req.path); // Shorts links get the same previews
     if (m) {
       const v = db.prepare('SELECT v.*, u.display_name FROM videos v JOIN users u ON u.id = v.user_id WHERE v.id = ?').get(m[1]);
       if (v && v.visibility !== 'private' && v.status === 'ready') {

@@ -9,7 +9,7 @@ import { Avatar } from '../components/Avatar.jsx';
 import { ServerTag } from '../components/ServerTag.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { Description } from './Watch.jsx';
+import { RichText } from '../components/RichText.jsx';
 import { ReportButton } from '../components/ReportDialog.jsx';
 import { compact, formatDate, copyText } from '../util.js';
 import { PlaylistPanel, SaveDialog } from '../components/Playlists.jsx';
@@ -245,7 +245,7 @@ export default function RemoteWatch() {
             ))}
           </div>
           <div className="desc-text">
-            {video.description ? <Description text={video.description} onSeek={seek} /> : <span className="muted">No description</span>}
+            {video.description ? <RichText text={video.description} onSeek={seek} /> : <span className="muted">No description</span>}
           </div>
           <button
             className="expand"
@@ -276,6 +276,8 @@ export default function RemoteWatch() {
         {can.comments ? (
           <Comments
             base={`/network/videos/${peerId}/${encodeURIComponent(remoteId)}`}
+            onSeek={seek}
+            getTime={() => videoRef.current?.currentTime}
             reportTarget={(c) => ({
               type: 'remote_comment',
               id: `${peerId}:${remoteId}:${c.id}`,

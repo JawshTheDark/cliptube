@@ -18,8 +18,8 @@ function Item({ to, icon, label, end, active }) {
 export function Sidebar({ mini = false, drawer = false, onClose }) {
   const { user, site } = useAuth();
   const location = useLocation();
-  // Shorts is the home page filtered to vertical videos, so the two share a path.
-  const shorts = location.pathname === '/' && new URLSearchParams(location.search).get('feed') === 'vertical';
+  // Shorts plays them one after another; its grid is the home page filtered to vertical videos.
+  const shorts = location.pathname.startsWith('/shorts') || (location.pathname === '/' && new URLSearchParams(location.search).get('feed') === 'vertical');
   const [subs, setSubs] = useState([]);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function Sidebar({ mini = false, drawer = false, onClose }) {
         </div>
       )}
       <Item to="/" icon="home" label="Home" end active={location.pathname === '/' && !shorts} />
-      <Item to="/?feed=vertical" icon="shorts" label="Shorts" active={shorts} />
+      <Item to="/shorts" icon="shorts" label="Shorts" active={shorts} />
       <Item to="/trending" icon="trending" label="Trending" />
       <Item to="/games" icon="game" label="Games" />
       {site.federation && <Item to="/network" icon="public" label="Network" />}

@@ -241,17 +241,20 @@ apNetworkRouter.get('/videos/:iid/:rid/comments', async (req, res, next) => {
   const canPost = !!v.comments_enabled && apEnabled() && (!isNetworkPeer(inst) || networkPolicy().comments);
   const rows = db.prepare('SELECT * FROM network_comments WHERE instance_id = ? AND remote_id = ? ORDER BY created_at').all(v.instance_id, v.remote_id);
   const mine = new Map(rows.filter((c) => c.ap_id).map((c) => [c.ap_id, c]));
-  // An OurTube peer serves the whole thread; elsewhere, show the comments that were delivered here.
-  const thread = clipTubePeer(inst) ? await remoteThread(v) : null;
+  // OurTube peers and PeerTube serve the whole thread; elsewhere, show the comments that were delivered here.
+  const thread = await remoteThread(v);
   if (thread) {
     const inThread = new Set(thread.map((n) => n.id));
     const comments = thread.map((n) => threadComment(n, v, req.user, mine, inThread, apBase()));
+    // An OurTube peer answers every comment, so one missing from its thread was refused, deleted or is waiting.
+    // PeerTube doesn't answer: comments sent from here show until its thread has them.
+    const answers = clipTubePeer(inst);
     for (const c of rows) {
       if (inThread.has(c.ap_id)) {
         if (c.status !== 'visible') db.prepare("UPDATE network_comments SET status = 'visible', status_reason = NULL WHERE id = ?").run(c.id); // its Accept went missing
         continue;
       }
-      if (c.status !== 'visible' && req.user?.id === c.user_id) comments.push(commentShape(c, req.user));
+      if (c.status === 'visible' ? !answers : req.user?.id === c.user_id) comments.push(commentShape(c, req.user));
     }
     return res.json({ comments, can_post: canPost, origin, host_name: v.peer_name || origin });
   }

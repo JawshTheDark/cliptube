@@ -47,7 +47,8 @@ or the channel.
 **Subscriptions → Follow from the fediverse** takes a handle (`@channel@peertube.example`) or a link. Once the
 channel accepts, its recent videos are imported, new ones arrive as they're posted, and they show up under
 Network, in search and in your subscriptions, with notifications. You can like and comment on them here; your
-comments go to their server.
+comments go to their server. The whole comment thread shows, including comments made before anyone here
+followed: for PeerTube videos it is read from the video's server (up to 200 threads, refreshed every minute).
 
 Admins can also follow a **whole PeerTube server**, the way PeerTube servers mirror each other.
 

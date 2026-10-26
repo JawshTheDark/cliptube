@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
@@ -6,7 +6,8 @@ import { Avatar } from './Avatar.jsx';
 import { Icon } from './Icons.jsx';
 import { useToast } from './Toast.jsx';
 import { ReportButton } from './ReportDialog.jsx';
-import { timeAgo } from '../util.js';
+import { RichText } from './RichText.jsx';
+import { formatDuration, timeAgo } from '../util.js';
 
 function autoGrow(el) {
   if (!el) return;
@@ -30,7 +31,7 @@ function AuthorLink({ author, className, children }) {
   );
 }
 
-function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel, submitLabel = 'Comment' }) {
+function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel, submitLabel = 'Comment', getTime = null }) {
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(autoFocus);
   const [busy, setBusy] = useState(false);
@@ -40,6 +41,29 @@ function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel,
   useEffect(() => {
     if (autoFocus) ref.current?.focus();
   }, [autoFocus]);
+
+  // Puts the video's current time where the cursor is (it becomes a link to that moment); after the text
+  // changes, the cursor goes just after it.
+  const caret = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (caret.current === null || !el) return;
+    el.focus();
+    el.setSelectionRange(caret.current, caret.current);
+    autoGrow(el);
+    caret.current = null;
+  }, [text]);
+  const insertTime = () => {
+    const t = getTime?.();
+    if (t == null) return;
+    const el = ref.current;
+    const stamp = formatDuration(Math.floor(t));
+    const before = text.slice(0, el ? el.selectionStart : text.length);
+    const after = text.slice(el ? el.selectionEnd : text.length);
+    const pad = before && !/\s$/.test(before) ? ' ' : '';
+    caret.current = before.length + pad.length + stamp.length + 1;
+    setText(`${before}${pad}${stamp} ${after}`);
+  };
 
   const cancel = () => {
     setText('');
@@ -87,6 +111,11 @@ function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel,
         {error && <div className="form-error">{error}</div>}
         {(focused || text) && (
           <div className="comment-actions">
+            {getTime && (
+              <button type="button" className="btn btn-ghost comment-time" onMouseDown={(e) => e.preventDefault()} onClick={insertTime} title="Add the video's current time, as a link to that moment">
+                <Icon name="watch_later" size={18} /> Add time
+              </button>
+            )}
             <button type="button" className="btn btn-ghost" onClick={cancel}>
               Cancel
             </button>
@@ -100,7 +129,7 @@ function CommentForm({ user, onSubmit, placeholder, autoFocus = false, onCancel,
   );
 }
 
-function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpdate, reportTarget, isReply = false, hostName = null }) {
+function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpdate, onSeek, getTime, reportTarget, isReply = false, hostName = null }) {
   const [replying, setReplying] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   // held: waiting for review here; pending: sent to another instance, not shown there yet; rejected: it refused.
@@ -142,7 +171,9 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpda
             </span>
           )}
         </div>
-        <div className="ctext">{c.body}</div>
+        <div className="ctext">
+          <RichText text={c.body} onSeek={onSeek} />
+        </div>
         <div className="cfoot">
           {c.status === 'held' && c.can_moderate && (
             <button className="btn approve" onClick={() => onUpdate(c, { status: 'visible' }, 'Comment approved')}>
@@ -184,6 +215,7 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpda
             autoFocus
             placeholder={`Reply to @${c.author.username}`}
             submitLabel="Reply"
+            getTime={getTime}
             onCancel={() => setReplying(false)}
             onSubmit={async (body) => {
               await onReply(body);
@@ -199,7 +231,7 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpda
             {showReplies && (
               <div className="replies">
                 {replies.map((r) => (
-                  <CommentItem key={r.id} c={r} user={user} canPost={canPost} onReply={onReply} onDelete={onDelete} onUpdate={onUpdate} reportTarget={reportTarget} hostName={hostName} isReply />
+                  <CommentItem key={r.id} c={r} user={user} canPost={canPost} onReply={onReply} onDelete={onDelete} onUpdate={onUpdate} onSeek={onSeek} getTime={getTime} reportTarget={reportTarget} hostName={hostName} isReply />
                 ))}
               </div>
             )}
@@ -212,9 +244,10 @@ function CommentItem({ c, replies = [], user, canPost, onReply, onDelete, onUpda
 
 /**
  * Comment thread. `base` is the API path that owns the comments: `/videos/<id>` for local videos,
- * `/network/videos/<instance>/<id>` for videos on other instances (comments are stored there).
+ * `/network/videos/<instance>/<id>` for videos on other instances (comments are stored there). With `onSeek`,
+ * timestamps in comments jump the video there; with `getTime`, the comment box can add the current one.
  */
-export function Comments({ base, initialCount = 0, reportTarget, isOwner = false }) {
+export function Comments({ base, initialCount = 0, reportTarget, isOwner = false, onSeek = null, getTime = null }) {
   const { user } = useAuth();
   const toast = useToast();
   const [comments, setComments] = useState(null);
@@ -319,7 +352,7 @@ export function Comments({ base, initialCount = 0, reportTarget, isOwner = false
       ) : !meta.can_post ? (
         <p className="comment-login">Comments from other instances are turned off for this video.</p>
       ) : user ? (
-        <CommentForm user={user} placeholder="Add a comment..." onSubmit={(body) => add(body, null)} />
+        <CommentForm user={user} placeholder="Add a comment..." getTime={getTime} onSubmit={(body) => add(body, null)} />
       ) : (
         <p className="comment-login">
           <Link to="/login">Sign in</Link> to join the conversation.
@@ -337,6 +370,8 @@ export function Comments({ base, initialCount = 0, reportTarget, isOwner = false
             canPost={meta.can_post && meta.mode !== 'off'}
             onDelete={remove}
             onUpdate={update}
+            onSeek={onSeek}
+            getTime={getTime}
             reportTarget={reportTarget}
             hostName={meta.host_name}
             onReply={(body) => add(body, c.id)}

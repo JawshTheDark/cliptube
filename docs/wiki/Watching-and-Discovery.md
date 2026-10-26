@@ -30,6 +30,16 @@ Signed in, videos resume where you left off (unless you paused your history). Un
 or dislike, subscribe, **Share** (with a *start at* time, or a looping range), **Compare** with another clip,
 and download the original when the uploader allows it.
 
+Times in descriptions and comments (`1:23`, `1:02:03`) are links that jump the video there. While writing a
+comment, **Add time** puts in the moment the video is at.
+
+## Shorts
+
+**Shorts** in the sidebar, or any Short you click, opens the Shorts viewer: one Short at a time, full height,
+in a frame of its own shape. Scroll, swipe, or use `↑` / `↓` for the next or previous one; `k` or space pauses
+and `m` mutes. The side buttons like, open the comments beside it (from the bottom on a phone), copy a link, or
+open the full watch page. The address follows along, so the link in the bar is the Short on screen.
+
 Shared links show a preview with an inline player in Discord, Slack and anything else that reads Open Graph
 tags, so set the Public URL in Admin for them to point at the right address. That includes clips from other
 servers in the network: their card says who posted them and where, and the thumbnail and video come from the
@@ -75,7 +85,7 @@ each of your videos, and as profile fields on Mastodon.
 
 At the top, **Everything**, **Videos** and **Shorts** pick what kind of video to show. Shorts are videos taller
 than they are wide. *Everything* shows the landscape videos with the newest Shorts on a shelf of their own after
-the first rows; *Shorts* fills the page with them (so does **Shorts** in the sidebar). Live streams on now sit
+the first rows; *Shorts* fills the page with them, and clicking one opens the [Shorts viewer](#shorts). Live streams on now sit
 above it all.
 
 Next to it, the chips:

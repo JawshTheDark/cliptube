@@ -156,28 +156,99 @@ async function refreshVideo(row) {
   }
 }
 
-// ---- whole comment threads from OurTube peers ---------------------------------------------------------
+// ---- whole comment threads ----------------------------------------------------------------------------
 
 const threads = new Map(); // video ap id -> { at, items }
+const PEERTUBE_VIDEO = /^(https?:\/\/[^/]+)\/videos\/watch\/([A-Za-z0-9-]{8,64})$/;
+
 /**
- * The full comment thread of a video on an OurTube peer (protocol 4), from its comments collection with
- * the notes embedded. Cached for a few seconds. Returns null when it can't be read.
+ * The full comment thread of a remote video, as notes. An OurTube peer (protocol 4) serves its comments
+ * collection with the notes embedded. PeerTube only delivers comments made after someone here followed, so
+ * its thread comes from its comments API. Cached for a few seconds (a minute for PeerTube, which takes more
+ * requests). Returns null when it can't be read.
  */
 export async function remoteThread(row) {
+  if (!row.ap_id) return null;
   const inst = db.prepare('SELECT * FROM instances WHERE id = ?').get(row.instance_id);
-  if (!inst?.ap_actor || (inst.protocol || 0) < 4 || !row.ap_id) return null;
+  const ourTube = !!inst?.ap_actor && (inst.protocol || 0) >= 4;
+  const peerTube = ourTube ? null : PEERTUBE_VIDEO.exec(row.ap_id);
+  if (!ourTube && !peerTube) return null;
   const hit = threads.get(row.ap_id);
-  if (hit && now() - hit.at < 5000) return hit.items;
+  if (hit && now() - hit.at < (ourTube ? 5000 : 60_000)) return hit.items;
   try {
-    const c = await apFetch(`${row.ap_id}/comments?embed=1`, { signer: signer(), timeout: 5000 });
-    const items = (c.orderedItems || c.items || []).filter((n) => n && typeof n === 'object' && typeof n.id === 'string');
-    threads.set(row.ap_id, { at: now(), items });
-    return items;
+    const items = ourTube
+      ? ((c) => c.orderedItems || c.items || [])(await apFetch(`${row.ap_id}/comments?embed=1`, { signer: signer(), timeout: 5000 }))
+      : await peerTubeThread(row, peerTube[1], peerTube[2]);
+    const notes = items.filter((n) => n && typeof n === 'object' && typeof n.id === 'string');
+    threads.set(row.ap_id, { at: now(), items: notes });
+    return notes;
   } catch {
+    if (peerTube) threads.set(row.ap_id, { at: now(), items: hit?.items || null }); // not PeerTube after all, or down: ask again later
     return hit?.items || null;
   }
 }
 export const forgetThread = (apId) => threads.delete(apId);
+
+/**
+ * A PeerTube video's comments from its API: up to 200 threads, and the replies of the 30 newest that have
+ * any. Replies hang off their thread's first comment, the one level of replies OurTube shows.
+ */
+async function peerTubeThread(row, origin, uuid) {
+  const api = `${origin}/api/v1/videos/${uuid}/comment-threads`;
+  const get = (url) => apFetch(url, { accept: 'application/json', timeout: 5000 });
+  const roots = [];
+  for (let start = 0; start < 200; start += 100) {
+    const page = await get(`${api}?start=${start}&count=100&sort=-createdAt`);
+    if (!Array.isArray(page.data)) throw new Error('not a PeerTube comment list');
+    roots.push(...page.data);
+    if (!page.data.length || roots.length >= (Number(page.total) || 0)) break;
+  }
+  const replies = new Map(); // thread id -> its replies, flattened
+  const busy = roots.filter((c) => c.totalReplies > 0).slice(0, 30);
+  for (let i = 0; i < busy.length; i += 6) {
+    await Promise.all(
+      busy.slice(i, i + 6).map(async (c) => {
+        const flat = [];
+        const walk = (nodes) => {
+          for (const n of Array.isArray(nodes) ? nodes : []) {
+            if (n?.comment) flat.push(n.comment);
+            walk(n?.children);
+          }
+        };
+        walk((await get(`${api}/${c.id}`).catch(() => null))?.children);
+        replies.set(c.id, flat);
+      }),
+    );
+  }
+  const owner = row.ap_actor ? db.prepare('SELECT attributed_to FROM ap_actors WHERE id = ?').get(row.ap_actor)?.attributed_to : null;
+  const notes = [];
+  for (const root of roots) {
+    const kids = (replies.get(root.id) || []).filter((k) => !k.isDeleted);
+    if (root.isDeleted && !kids.length) continue;
+    notes.push(peerTubeNote(root, row.ap_id, origin, owner));
+    for (const k of kids) notes.push(peerTubeNote(k, root.url, origin, owner));
+  }
+  return notes;
+}
+
+/** A comment from PeerTube's API as a note, replying to the video or to its thread's first comment. */
+function peerTubeNote(c, inReplyTo, origin, owner) {
+  const a = c.account || {};
+  const avatars = [...(Array.isArray(a.avatars) ? a.avatars : []), ...(a.avatar ? [a.avatar] : [])].sort((x, y) => (x.width || 0) - (y.width || 0));
+  const avatar = avatars.find((x) => x.width >= 100) || avatars.at(-1);
+  const icon = avatar ? avatar.fileUrl || (avatar.path ? origin + avatar.path : null) : null;
+  return {
+    id: c.url,
+    type: 'Note',
+    content: c.isDeleted ? 'This comment was deleted.' : c.text || '',
+    published: c.createdAt,
+    inReplyTo,
+    isUploader: !!owner && a.url === owner,
+    attributedTo: c.isDeleted
+      ? { id: null, name: 'Deleted' }
+      : { id: a.url, preferredUsername: a.name, name: a.displayName || a.name, host: a.host, icon: icon ? { url: icon } : null, url: a.url },
+  };
+}
 
 export { isNetworkPeer };
 

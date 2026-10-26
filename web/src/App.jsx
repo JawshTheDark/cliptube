@@ -32,6 +32,7 @@ import { ForgotPassword, ResetPassword, VerifyEmail } from './pages/EmailPages.j
 import Editor from './pages/Editor.jsx';
 import Network from './pages/Network.jsx';
 import RemoteWatch from './pages/RemoteWatch.jsx';
+import Shorts from './pages/Shorts.jsx';
 import Playlist, { MyPlaylists, WatchLater } from './pages/Playlist.jsx';
 import Party from './pages/Party.jsx';
 import Live from './pages/Live.jsx';
@@ -113,6 +114,9 @@ export default function App() {
               <Route path="/trending" element={<Home trending />} />
               <Route path="/watch/:id" element={<Watch />} />
               <Route path="/n/:peerId/:remoteId" element={<RemoteWatch />} />
+              <Route path="/shorts" element={<Shorts />} />
+              <Route path="/shorts/:id" element={<Shorts />} />
+              <Route path="/shorts/n/:peerId/:remoteId" element={<Shorts />} />
               <Route path="/network" element={<Network />} />
               <Route
                 path="/studio/editor/:id"

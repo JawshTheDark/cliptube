@@ -38,11 +38,21 @@ function fakeTube() {
       return json(200, { '@context': AS, id: `${F.channel}/outbox`, type: 'OrderedCollection', totalItems: 1, orderedItems: [{ type: 'Create', actor: F.account, object: F.video('old-one', 'An older fake video') }] });
     }
     if (req.method === 'GET' && url.pathname.startsWith('/videos/watch/')) return json(200, F.video(url.pathname.split('/').pop(), 'Fetched fake video'));
+    // PeerTube's comments API: the threads of a video, and one thread with its replies.
+    const api = /^\/api\/v1\/videos\/([^/]+)\/comment-threads(?:\/(\d+))?$/.exec(url.pathname);
+    if (req.method === 'GET' && api) {
+      const roots = F.threads[api[1]];
+      if (!roots) return json(404, { error: 'Video not found' });
+      const count = (nodes) => nodes.reduce((n, x) => n + 1 + count(x.children), 0);
+      if (!api[2]) return json(200, { total: roots.length, data: roots.map((x) => ({ ...x.comment, totalReplies: count(x.children) })) });
+      return json(200, roots.find((x) => x.comment.id === Number(api[2])) || {});
+    }
     if (req.method === 'POST' && url.pathname.endsWith('/inbox')) {
       try {
         const actorKey = await F.verify(req, raw);
         const body = JSON.parse(raw.toString());
         received.push({ path: url.pathname, signedBy: actorKey, body });
+        if (body.type === 'Create' && body.object?.type === 'Note') F.fileReply(body.object);
         res.writeHead(202).end();
       } catch (e) {
         res.writeHead(401).end(e.message);
@@ -55,6 +65,20 @@ function fakeTube() {
     server,
     received,
     origin: '',
+    threads: {}, // video uuid -> [{ comment, children }], the way PeerTube's API nests them
+    /** A comment in PeerTube's API shape. */
+    comment: (uuid, id, account, text, at, extra = {}) => ({
+      comment: { id, url: `${F.origin}/videos/watch/${uuid}/comments/${id}`, text, createdAt: new Date(at).toISOString(), isDeleted: false, account, ...extra },
+      children: [],
+    }),
+    /** Files a reply that came in under the comment it answers, as PeerTube does. */
+    fileReply(note) {
+      const find = (nodes) => nodes.flatMap((x) => (x.comment.url === note.inReplyTo ? [x] : find(x.children)));
+      const parent = Object.values(F.threads).flatMap(find)[0];
+      const name = note.attributedTo.split('/').pop();
+      const account = { url: note.attributedTo, name, host: new URL(note.attributedTo).host, displayName: name, avatars: [] };
+      parent?.children.push({ comment: { id: Date.now(), url: note.id, text: note.content, createdAt: note.published, isDeleted: false, account }, children: [] });
+    },
     get channel() {
       return `${F.origin}/video-channels/fakechan`;
     },
@@ -279,6 +303,46 @@ test('reports about fediverse videos go to their server as a Flag', async () => 
   assert.equal(flag.actor, `${base}/ap/actor`, 'sent by the instance, not the person who reported');
   assert.deepEqual(flag.object, [`${fake.origin}/videos/watch/brand-new-1`]);
   assert.match(flag.content, /looks like spam/);
+});
+
+test("a PeerTube video's whole comment thread shows, from before anyone here followed too", async () => {
+  const host = new URL(fake.origin).host;
+  const owner = { url: fake.account, name: 'fakeuser', host, displayName: 'Fake fakeuser', avatars: [{ width: 48, fileUrl: `${fake.origin}/av/48.jpg` }, { width: 120, fileUrl: `${fake.origin}/av/120.jpg` }] };
+  const pat = { url: 'https://elsewhere.example/users/pat', name: 'pat', host: 'elsewhere.example', displayName: 'Pat', avatars: [] };
+  const t = Date.now();
+  const c = (...a) => fake.comment('talked-about', ...a);
+  const question = c(102, pat, '<p>How did you <b>skip</b> that?</p>', t - 3000);
+  const answer = c(103, owner, 'A wall clip.', t - 2000);
+  answer.children.push(c(104, pat, '<p><span class="h-card"><a href="https://elsewhere.example/a" class="u-url mention">@<span>fakeuser</span></a></span> nice</p>', t - 1000));
+  question.children.push(answer);
+  fake.threads['talked-about'] = [c(101, owner, 'First!', t - 4000), question, c(105, null, '', t - 5000, { isDeleted: true })];
+
+  await fake.send(`${base}/ap/inbox`, { type: 'Create', actor: fake.account, object: fake.video('talked-about', 'A talked-about fake video') });
+  const nv = await waitFor(async () => (await carol.get('/api/videos?scope=network')).data.videos.find((v) => v.title === 'A talked-about fake video'), { what: 'the video' });
+  const path = `/api/network/videos/${nv.remote.peer_id}/${nv.remote.remote_id}/comments`;
+  let cs = (await carol.get(path)).data.comments;
+  const by = (body) => cs.find((x) => x.body === body);
+  assert.equal(cs.length, 4, JSON.stringify(cs));
+  assert.equal(by('First!').parent_id, null);
+  assert.equal(by('First!').is_uploader, true);
+  assert.equal(by('First!').author.avatar_url, `${fake.origin}/av/120.jpg`);
+  const q = by('How did you skip that?');
+  assert.equal(q.author.username, 'pat@elsewhere.example');
+  assert.equal(q.author.display_name, 'Pat');
+  assert.equal(by('A wall clip.').parent_id, q.id);
+  assert.equal(by('@fakeuser nice').parent_id, q.id, 'a reply to a reply stays in its thread');
+
+  // A reply from here goes to the comment it answers, and shows once PeerTube has it: once, as carol's.
+  const r = await carol.post(path, { body: 'Same question', parent_id: q.id });
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  const sent = await waitFor(() => fake.find((b) => b.type === 'Create' && b.object?.content?.includes('Same question')), { what: 'the reply' });
+  assert.equal(sent.object.inReplyTo, `${fake.origin}/videos/watch/talked-about/comments/102`);
+  cs = (await carol.get(path)).data.comments;
+  const mine = cs.filter((x) => x.body === 'Same question');
+  assert.equal(mine.length, 1, JSON.stringify(cs));
+  assert.equal(mine[0].id, r.data.comment.id);
+  assert.equal(mine[0].parent_id, q.id);
+  assert.equal(mine[0].can_delete, true);
 });
 
 test('blocking a server shuts it out', async () => {

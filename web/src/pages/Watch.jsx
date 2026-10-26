@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { useAuth, useTitle } from '../auth.jsx';
 import { Player } from '../components/Player.jsx';
 import { Comments } from '../components/Comments.jsx';
+import { RichText } from '../components/RichText.jsx';
 import { VideoCard, Empty } from '../components/VideoCard.jsx';
 import { Avatar } from '../components/Avatar.jsx';
 import { ServerTag } from '../components/ServerTag.jsx';
@@ -14,7 +15,7 @@ import { ClipDialog, TimeField } from '../components/ClipDialog.jsx';
 import { ContributeMenu, DownloadMenu, SupportLinks } from '../components/WatchExtras.jsx';
 import { PlaylistPanel, SaveDialog } from '../components/Playlists.jsx';
 import { useStartParty } from './Party.jsx';
-import { cameFrom, compact, displayed, formatDate, formatDuration, formatPrecise, parseTimestamp, copyText, isAnonymous, timeAgo, urlSeconds, usePref } from '../util.js';
+import { cameFrom, compact, displayed, formatDate, formatDuration, formatPrecise, copyText, isAnonymous, timeAgo, urlSeconds, usePref } from '../util.js';
 
 /**
  * Reports how much of the video was played (seconds, and which 2% parts) for the creator's analytics.
@@ -154,43 +155,6 @@ function ModerationBanner({ video, isOwner }) {
       </div>
     </div>
   );
-}
-
-/** Renders description text with clickable URLs and seekable timestamps. */
-export function Description({ text, onSeek }) {
-  const parts = [];
-  const re = /(https?:\/\/[^\s<]+)|(\b(?:\d{1,2}:)?\d{1,2}:\d{2}\b)/g;
-  let last = 0;
-  let m;
-  while ((m = re.exec(text))) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    if (m[1]) {
-      const href = m[1];
-      parts.push(
-        <a key={m.index} href={href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-          {href}
-        </a>,
-      );
-    } else {
-      const ts = m[2];
-      parts.push(
-        <button
-          key={m.index}
-          type="button"
-          className="ts"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSeek(parseTimestamp(ts));
-          }}
-        >
-          {ts}
-        </button>,
-      );
-    }
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return <>{parts}</>;
 }
 
 function ShareDialog({ video, videoRef, loop, onClose }) {
@@ -606,7 +570,7 @@ export default function Watch() {
             ))}
           </div>
           <div className="desc-text">
-            {video.description ? <Description text={video.description} onSeek={seek} /> : <span className="muted">No description</span>}
+            {video.description ? <RichText text={video.description} onSeek={seek} /> : <span className="muted">No description</span>}
           </div>
           {expanded && (
             <p className="desc-legal muted">
@@ -631,6 +595,8 @@ export default function Watch() {
           base={`/videos/${video.id}`}
           initialCount={video.comment_count}
           isOwner={isOwner}
+          onSeek={seek}
+          getTime={() => videoRef.current?.currentTime}
           reportTarget={(c) => ({ type: 'comment', id: c.id, label: `"${c.body.slice(0, 120)}" by @${c.author.username}` })}
         />
       </div>
