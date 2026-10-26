@@ -127,6 +127,20 @@ test("Sync now on the hub reads each member's name at its own address", async ()
   assert.equal(await onHub(), 'Member B');
 });
 
+test("the hub's directory gives members its current name, not the one it was set up with", async () => {
+  // Members read the directory on every sync, and its own name in it used to be the one from setup, so a
+  // renamed hub showed its old name again until the hourly check of its address.
+  const memberDb = new DatabaseSync(path.join(member.dataDir, 'cliptube.db'));
+  const token = memberDb.prepare("SELECT value FROM settings WHERE key = 'network_hub_token'").get().value;
+  memberDb.close();
+  const hubIn = async () =>
+    (await (await fetch(`${hub.url}/api/hub/directory`, { headers: { Authorization: `Bearer ${token}` } })).json()).instances.find((i) => i.is_hub);
+  await A.patch('/api/admin/settings', { site_name: 'Hub A, renamed' });
+  assert.equal((await hubIn()).name, 'Hub A, renamed');
+  await A.patch('/api/admin/settings', { site_name: 'Hub A' });
+  assert.equal((await hubIn()).name, 'Hub A');
+});
+
 test("a clip from another server shared from here gets a link preview", { skip: !fs.existsSync(path.join(import.meta.dirname, '..', 'web', 'dist', 'index.html')) && 'the web app is not built' }, async () => {
   const item = (await net(A)).find((v) => v.title === 'Bob on the member');
   const html = await (await fetch(`${hub.url}/n/${item.remote.peer_id}/${encodeURIComponent(item.remote.remote_id)}`)).text();

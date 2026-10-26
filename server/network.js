@@ -1092,11 +1092,13 @@ networkProtocolRouter.get('/api/hub/directory', requireHub, (req, res) => {
   const rows = db
     .prepare("SELECT * FROM instances WHERE (hub_status = 'approved' AND blocked = 0) OR is_self = 1 ORDER BY name COLLATE NOCASE")
     .all();
+  const s = S();
   res.json({
     instances: rows.map((i) => ({
       url: i.url,
-      name: i.name || hostOf(i.url),
-      description: i.description,
+      // The hub's own row keeps the name it had when it was set up; members get its current one.
+      name: (i.is_self ? s.site_name : i.name) || hostOf(i.url),
+      description: i.is_self ? s.instance_description : i.description,
       public_key: i.is_self ? ensureKeys().pub : i.public_key,
       allow_interactions: !!i.allow_interactions,
       listed: !!i.listed,
