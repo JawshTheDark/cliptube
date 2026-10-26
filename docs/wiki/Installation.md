@@ -35,8 +35,8 @@ Docker network that handles HTTPS.
 **1. Get the code and make the data folder**
 
 ```bash
-git clone https://github.com/JawshTheDark/cliptube.git
-cd cliptube
+git clone https://github.com/JawshTheDark/ourtube.git
+cd ourtube
 mkdir -p data
 ```
 
@@ -185,8 +185,8 @@ servers, the fediverse and web push, which need a public `https://` address.
 You need Node.js 22.13 or newer (24 recommended) and git. Linux, macOS and Windows all work.
 
 ```bash
-git clone https://github.com/JawshTheDark/cliptube.git
-cd cliptube
+git clone https://github.com/JawshTheDark/ourtube.git
+cd ourtube
 npm install        # also downloads FFmpeg for your platform
 npm run build      # builds the web app into web/dist
 npm start          # serves it on http://localhost:3000

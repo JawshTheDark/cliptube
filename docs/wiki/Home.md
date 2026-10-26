@@ -47,7 +47,7 @@ its hub, and Mastodon and PeerTube can follow along.
 ## Contributing
 
 - [Development](Development.md): the code layout, tests, migrations, the job queue and releases
-- The federation design: [docs/federation.md](https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md)
+- The federation design: [docs/federation.md](https://github.com/JawshTheDark/ourtube/blob/main/docs/federation.md)
 
 ---
 

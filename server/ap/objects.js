@@ -40,7 +40,8 @@ const PT_CONTEXT = [
     schema: 'http://schema.org#',
     PropertyValue: 'schema:PropertyValue',
     value: 'schema:value',
-    // ClipTube's one extension: the game a clip is from (see docs/federation.md).
+    // The one extension: the game a video is from (see docs/federation.md). The namespace keeps the repository's
+    // old name on purpose: it identifies the terms between servers, so it must not change between versions.
     cliptube: 'https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md#',
     game: 'cliptube:game',
     counts: 'cliptube:counts',

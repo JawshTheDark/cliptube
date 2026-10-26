@@ -18,7 +18,7 @@ the website, so nothing needs setting up on the server beyond running version 1.
 
 ## Install
 
-1. On the phone, open the [releases page](https://github.com/JawshTheDark/cliptube/releases) and pick the newest
+1. On the phone, open the [releases page](https://github.com/JawshTheDark/ourtube/releases) and pick the newest
    **OurTube for Android** release (tags named `android-v…`).
 2. Download the `.apk` file and open it. Android asks once to allow installs from your browser or file manager.
 3. Open **OurTube** and pick your main server: type its address, or choose one of the servers in the OurTube
@@ -195,4 +195,4 @@ Tags show only when your server is in a network. Videos and streams from other s
 
 The app's code is in `mobile/` (React Native with Expo SDK 58 and Expo Router). Building the APK, the signing
 key, the release workflow and developing against a local server are in
-[mobile/README.md](https://github.com/JawshTheDark/cliptube/blob/main/mobile/README.md).
+[mobile/README.md](https://github.com/JawshTheDark/ourtube/blob/main/mobile/README.md).

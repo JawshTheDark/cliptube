@@ -121,7 +121,7 @@ Protocol version 4, in short:
 
 - `GET /.well-known/cliptube` describes a server: its admission switches and its instance actor.
 - **Peering, clips and interactions are ActivityPub**, with a few ClipTube extensions. The full design is in
-  [docs/federation.md](https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md).
+  [docs/federation.md](https://github.com/JawshTheDark/ourtube/blob/main/docs/federation.md).
 - **The instance layer is plain JSON over HTTPS:** `GET /api/network/known-peers` exchanges peer lists (signed
   with each server's Ed25519 key and checked at its own address), `GET /api/network/blocklist` publishes blocks,
   and members register with the hub (`POST /api/hub/join`, with a nonce callback to `/api/network/verify`) and

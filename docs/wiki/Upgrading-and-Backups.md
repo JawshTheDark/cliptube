@@ -124,4 +124,4 @@ curl -s https://clips.example.com/nodeinfo/2.0     # "version" under "software"
 ```
 
 Releases are tagged `vX.Y.Z` in the repository, and the milestones are listed in
-[PLAN.md](https://github.com/JawshTheDark/cliptube/blob/main/PLAN.md).
+[PLAN.md](https://github.com/JawshTheDark/ourtube/blob/main/PLAN.md).

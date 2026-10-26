@@ -160,8 +160,8 @@ You need **Docker** with Compose. To share beyond your own network you also need
 proxy with HTTPS in front (Nginx Proxy Manager, Caddy, nginx or a tunnel).
 
 ```bash
-git clone https://github.com/JawshTheDark/cliptube.git
-cd cliptube
+git clone https://github.com/JawshTheDark/ourtube.git
+cd ourtube
 mkdir -p data
 docker network create proxy-net    # the network your reverse proxy shares with ClipTube (once)
 docker compose up -d --build
@@ -301,7 +301,7 @@ setup and the fediverse interop sandbox are described in [Development](docs/wiki
 ClipTube runs on three linked servers, with [clips.irc.so](https://clips.irc.so) as the hub. Every
 milestone in [PLAN.md](PLAN.md) is done (current release: **v1.12.0**); smaller ideas are tracked in
 [TODO.md](TODO.md). The Android app is in [mobile/](mobile/README.md), with APKs on the
-[releases page](https://github.com/JawshTheDark/cliptube/releases).
+[releases page](https://github.com/JawshTheDark/ourtube/releases).
 
 ## Credits
 

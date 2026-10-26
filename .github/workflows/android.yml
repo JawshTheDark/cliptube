@@ -80,7 +80,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: steps.key.outputs.build == 'true'
         with:
-          name: cliptube-apk
+          name: ourtube-apk
           path: mobile/dist/*.apk
           if-no-files-found: error
 
@@ -93,6 +93,6 @@ jobs:
             gh release upload "$GITHUB_REF_NAME" dist/*.apk --clobber
           else
             gh release create "$GITHUB_REF_NAME" dist/*.apk \
-              --title "ClipTube for Android ${GITHUB_REF_NAME#android-v}" \
+              --title "OurTube for Android ${GITHUB_REF_NAME#android-v}" \
               --notes-file RELEASE_NOTES.md
           fi

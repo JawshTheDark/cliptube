@@ -14,8 +14,8 @@
 You need Node.js 22.13 or newer (24 recommended).
 
 ```bash
-git clone https://github.com/JawshTheDark/cliptube.git
-cd cliptube
+git clone https://github.com/JawshTheDark/ourtube.git
+cd ourtube
 npm install
 npm run dev
 ```
@@ -95,7 +95,7 @@ deliveries:
 ## Federation work
 
 - The design, the ClipTube extensions and the reasoning behind them are in
-  [docs/federation.md](https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md).
+  [docs/federation.md](https://github.com/JawshTheDark/ourtube/blob/main/docs/federation.md).
 - To check changes against real fediverse software, run
   `scripts/fediverse-sandbox.sh <ssh-host> [--keep]`: it builds ClipTube from your working tree and runs the
   interop checks against PeerTube and GoToSocial in a private Docker sandbox on that host (see
@@ -126,8 +126,8 @@ minutes or until Ctrl+C; it is plain HLS, a few seconds behind, where the real M
 
 1. Set the new version: `npm version 1.5.0 --no-git-tag-version` (updates `package.json` and
    `package-lock.json`).
-2. Update [PLAN.md](https://github.com/JawshTheDark/cliptube/blob/main/PLAN.md) and
-   [TODO.md](https://github.com/JawshTheDark/cliptube/blob/main/TODO.md), and the README if features changed.
+2. Update [PLAN.md](https://github.com/JawshTheDark/ourtube/blob/main/PLAN.md) and
+   [TODO.md](https://github.com/JawshTheDark/ourtube/blob/main/TODO.md), and the README if features changed.
 3. Run `npm test`.
 4. Commit, tag (`git tag -a v1.5.0 -m "v1.5.0: ..."`) and push the branch and the tag.
 5. Deploy with `scripts/deploy.sh`, one server at a time, and run `network sync` on each (see

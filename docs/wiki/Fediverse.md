@@ -131,4 +131,4 @@ scripts/fediverse-sandbox.sh user@docker-host
 - **Delivery:** through the job queue, retried for up to three days.
 - **Extensions:** a few ClipTube fields (the game, counts, a report reason) under the `cliptube:` context; other
   software ignores them. Details in
-  [docs/federation.md](https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md).
+  [docs/federation.md](https://github.com/JawshTheDark/ourtube/blob/main/docs/federation.md).

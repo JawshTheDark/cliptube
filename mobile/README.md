@@ -8,7 +8,7 @@ from `python scripts/icons.py assets`).
 
 ## Install
 
-Download the APK from the [GitHub releases](https://github.com/JawshTheDark/cliptube/releases) (tags named
+Download the APK from the [GitHub releases](https://github.com/JawshTheDark/ourtube/releases) (tags named
 `android-v…`) on the phone and open it. Newer releases install over older ones and keep your sign-ins.
 
 Signing in needs **version 1.5 or newer** on the server, which added bearer-token sessions for the app.

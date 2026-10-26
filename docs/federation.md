@@ -60,6 +60,10 @@ ClipTube adds a few things that other software ignores. The context term is:
 { "cliptube": "https://github.com/JawshTheDark/cliptube/blob/main/docs/federation.md#", "game": "cliptube:game", "counts": "cliptube:counts" }
 ```
 
+The namespace keeps the repository's old name (it moved to `JawshTheDark/ourtube`, and GitHub redirects the old
+address). It names the terms rather than linking to them, so it stays the same on every version, like the
+`X-ClipTube-Signature` header and the `cliptube` software name.
+
 - `game` on a Video: `{ "slug": "rocket-league", "name": "Rocket League", "url": "https://clips.example/g/rocket-league" }`.
   The slug also goes into `tag` as a Hashtag, for software that doesn't know the term.
 - `counts` on a Video: `{ "likes": 3, "dislikes": 0, "comments": 2, "shares": 1 }`.
