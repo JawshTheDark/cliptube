@@ -1,6 +1,6 @@
 {
   "name": "ourtube",
-  "version": "1.15.0",
+  "version": "1.15.1",
   "private": true,
   "type": "module",
   "description": "Self-hosted YouTube-style video site for sharing gaming clips",

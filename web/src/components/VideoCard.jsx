@@ -12,6 +12,7 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true, extr
   const [communityPref] = usePref('community');
   const shown = displayed(v, communityPref);
   const [preview, setPreview] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false); // its server is down or refuses it
   const timer = useRef(null);
   const u = v.uploader;
 
@@ -44,8 +45,8 @@ export function VideoCard({ video: v, variant = 'grid', showChannel = true, extr
   return (
     <article className={`card ${variant}`}>
       <Link to={watchUrl} className="thumb" onMouseEnter={enter} onMouseLeave={leave} aria-label={shown.title}>
-        {shown.thumbnail_url ? (
-          <img src={shown.thumbnail_url} alt="" loading="lazy" />
+        {shown.thumbnail_url && !thumbFailed ? (
+          <img src={shown.thumbnail_url} alt="" loading="lazy" onError={() => setThumbFailed(true)} />
         ) : (
           <div className="thumb-placeholder">
             <Icon name="video" size={40} />
