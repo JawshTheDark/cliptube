@@ -313,6 +313,27 @@ export default function AdminNetwork() {
             </form>
           )}
         </section>
+
+        {/* ---- fediverse sharing ---- */}
+        <section className="card-panel">
+          <h2>Fediverse sharing</h2>
+          <p className="muted">
+            Servers in the network can pass on the PeerTube channels and servers they follow, so every server that takes them shows those videos too.
+            Each side opts in. Likes and comments still go straight to the video&apos;s own server.
+          </p>
+          <Toggle
+            label="Share what this server follows"
+            hint="Other OurTube servers that take shares get the fediverse videos followed here (not the ones this server got from its peers)."
+            checked={m.sharing.out}
+            onChange={(v) => run('share', () => api('/admin/network/member', { method: 'PATCH', body: { share_out: v } }))}
+          />
+          <Toggle
+            label="Show what other servers share"
+            hint={`The fediverse videos peers pass on show here as well, tagged with their own server.${m.sharing.shared_here ? ` ${m.sharing.shared_here} here now.` : ''} Turning this off removes them.`}
+            checked={m.sharing.in}
+            onChange={(v) => run('share', () => api('/admin/network/member', { method: 'PATCH', body: { share_in: v } }))}
+          />
+        </section>
       </div>
 
       {/* ---- hub members ---- */}

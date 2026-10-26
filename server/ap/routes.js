@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { db, getSettings } from '../db.js';
 import { VERSION } from '../config.js';
-import { HttpError } from '../util.js';
+import { HttpError, sha256 } from '../util.js';
 import { AP_CONTENT_TYPE, CONTEXT, PUBLIC, apBase, apEnabled, hostOf, idOf, textToHtml, urls } from './common.js';
 import { verifyRequest } from './http.js';
 import { isBlockedActor, keyFor, setInstanceSigner } from './actors.js';
@@ -14,6 +14,7 @@ import { VIDEO_FEDERATED, collection, commentApId, groupJson, instanceJson, load
 import { receive } from './inbox.js';
 import { signerFor } from './deliver.js';
 import { isLinkedCommenter } from '../links.js';
+import { MAX_SHARED, sharedCount, sharedVideos, sharesOut } from './sharing.js';
 
 // Fetches are signed by the instance actor (some servers only answer signed requests).
 setInstanceSigner(() => (apBase() ? signerFor('i') : null));
@@ -177,6 +178,36 @@ for (const [prefix, kind] of [['users', 'u'], ['channels', 'c']]) {
 
 apRouter.get('/actor', (req, res) => send(res, instanceJson(apBase(req))));
 apRouter.get('/actor/outbox', (req, res) => outbox(req, res, null));
+
+// Fediverse sharing (ap/sharing.js): the videos this server follows elsewhere, for OurTube peers that take them.
+// Not found while this server doesn't share, so peers drop what they had from it.
+const SHARED_PAGE = 100;
+apRouter.get('/actor/shared', (req, res) => {
+  if (!sharesOut()) throw new HttpError(404, 'This server does not share what it follows');
+  const base = apBase(req);
+  const id = `${base}/ap/actor/shared`;
+  const total = sharedCount();
+  if (!req.query.page) return send(res, collection(id, total, { first: `${id}?page=1` }));
+  const page = Math.max(1, Math.min(Math.ceil(MAX_SHARED / SHARED_PAGE), Number(req.query.page) || 1));
+  const items = sharedVideos({ limit: SHARED_PAGE, offset: (page - 1) * SHARED_PAGE }).map((r) => ({
+    id: `${id}/${sha256(r.ap_id).slice(0, 24)}`,
+    type: 'Announce',
+    actor: urls(base).instance(),
+    to: [PUBLIC],
+    published: new Date(r.created_at).toISOString(),
+    updated: new Date(r.updated_at || r.created_at).toISOString(),
+    object: r.ap_id,
+  }));
+  send(res, {
+    '@context': CONTEXT,
+    id: `${id}?page=${page}`,
+    type: 'OrderedCollectionPage',
+    partOf: id,
+    totalItems: total,
+    orderedItems: items,
+    ...(page * SHARED_PAGE < total ? { next: `${id}?page=${page + 1}` } : {}),
+  });
+});
 apRouter.get('/actor/followers', (req, res) => send(res, collection(`${apBase(req)}/ap/actor/followers`, followersCount('i'))));
 apRouter.get('/actor/following', (req, res) => send(res, collection(`${apBase(req)}/ap/actor/following`, followingCount('i'))));
 

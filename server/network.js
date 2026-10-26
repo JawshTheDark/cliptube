@@ -171,6 +171,9 @@ export function peerFollowAnswered(actorId, accepted) {
   }
 }
 const DIRECT_SQL = "p.protocol >= 3 AND p.remote_status = 'approved' AND p.last_ok_at IS NOT NULL";
+// OurTube servers speak the network protocol (2 and up); fediverse servers (0) come and go with follows and shares
+// over ActivityPub, so the hub's index neither lists nor removes their videos.
+const OURTUBE_SERVER = 'COALESCE(p.protocol, 0) >= 2';
 
 export function networkRole() {
   const s = S();
@@ -1129,7 +1132,7 @@ function hubIndexParts() {
   parts.push(`SELECT 'remote', p.url, r.remote_id, r.title, r.description, r.duration, r.width, r.height, r.views, r.likes, r.created_at,
       r.updated_at, NULL, 0, r.uploader_username, r.uploader_display_name, NULL, r.tags, r.thumbnail_url, r.video_url, r.watch_url,
       r.uploader_avatar_url, r.uploader_url, r.game_slug, r.game_name, p.url || '|' || r.remote_id
-    FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE ${NETWORK_VISIBLE}`);
+    FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE ${NETWORK_VISIBLE} AND ${OURTUBE_SERVER}`);
   return { sql: parts.join(' UNION ALL '), params, base: self?.url || '' };
 }
 
@@ -1678,7 +1681,7 @@ export async function syncFromHub({ full = false } = {}) {
     // Peers we pull ourselves are kept up to date directly; the index covers everyone else.
     // Protocol 4 members come over ActivityPub, so the index only fills in for older ones.
     const byUrl = new Map(
-      db.prepare(`SELECT p.id, p.url, p.is_self, (${DIRECT_SQL}) OR (p.ap_actor IS NOT NULL AND p.protocol >= 4) AS direct FROM instances p`).all().map((i) => [i.url, i]),
+      db.prepare(`SELECT p.id, p.url, p.is_self, ${OURTUBE_SERVER} AS ourtube, (${DIRECT_SQL}) OR (p.ap_actor IS NOT NULL AND p.protocol >= 4) AS direct FROM instances p`).all().map((i) => [i.url, i]),
     );
     for (let page = 0; page < 500; page++) {
       const r = await fetchJson(`${s.network_hub_url}/api/hub/index?updated_since=${since}&after=${encodeURIComponent(after)}&limit=500`, {
@@ -1689,7 +1692,7 @@ export async function syncFromHub({ full = false } = {}) {
       transaction(() => {
         for (const raw of items) {
           const inst = byUrl.get(String(raw?.instance || '').toLowerCase());
-          if (!inst || inst.is_self || inst.url === self || inst.direct) continue;
+          if (!inst || inst.is_self || inst.url === self || inst.direct || !inst.ourtube) continue;
           const c = cleanItem(raw, inst.url);
           if (!c) continue;
           upsertVideo(inst.id, c, t, inst.url);
@@ -1704,7 +1707,7 @@ export async function syncFromHub({ full = false } = {}) {
     if (Array.isArray(ids.keys)) {
       const keep = new Set(ids.keys.map(String));
       const del = db.prepare('DELETE FROM network_videos WHERE instance_id = ? AND remote_id = ?');
-      for (const row of db.prepare(`SELECT r.instance_id, r.remote_id, p.url FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE NOT (${DIRECT_SQL})`).all()) {
+      for (const row of db.prepare(`SELECT r.instance_id, r.remote_id, p.url FROM network_videos r JOIN instances p ON p.id = r.instance_id WHERE NOT (${DIRECT_SQL}) AND ${OURTUBE_SERVER}`).all()) {
         if (!keep.has(`${row.url}|${row.remote_id}`)) del.run(row.instance_id, row.remote_id);
       }
     }
@@ -1753,6 +1756,8 @@ export async function networkTick({ full = false } = {}) {
   if (apOn()) await ap.upgradePeers({ force: full }).catch((e) => console.warn(`[network] moving peers to ActivityPub: ${e.message}`));
   // Channels' pictures and names, for servers that don't send their profile changes; Sync now reads them all.
   if (apOn()) await ap.refreshChannels({ maxAge: full ? 0 : 12 * 3600_000 }).catch((e) => console.warn(`[network] reading channel profiles: ${e.message}`));
+  // Fediverse videos peers shared: gone with peers that left, or all of them when this server stopped taking them.
+  if (apOn()) ap.cleanShares();
   await introduceKnown().catch(() => {});
   await pullAllMembers({ full });
 }
@@ -2311,6 +2316,12 @@ function adminState(req) {
       announcement: s.network_announcement || '',
       policy: networkPolicy(),
       accept: { comments: s.network_accept_comments === 'true', likes: s.network_accept_likes === 'true', subscriptions: s.network_accept_subscriptions === 'true' },
+      sharing: {
+        out: s.fediverse_share_out === 'true',
+        in: s.fediverse_share_in === 'true',
+        // Fediverse videos here only because peers share them.
+        shared_here: db.prepare('SELECT COUNT(*) AS n FROM network_videos WHERE via_share = 1').get().n,
+      },
       last_sync_at: Number(s.network_last_sync) || null,
       last_error: s.network_last_error || null,
       video_count: db.prepare('SELECT COUNT(*) AS n FROM network_videos').get().n,
@@ -2345,6 +2356,13 @@ networkAdminRouter.patch('/member', (req, res) => {
   const b = req.body || {};
   for (const k of ['comments', 'likes', 'subscriptions']) {
     if (b[`accept_${k}`] !== undefined) setSetting(`network_accept_${k}`, yes(b[`accept_${k}`]) ? 'true' : 'false');
+  }
+  // Fediverse sharing (ap/sharing.js); what peers shared leaves at once when this server stops taking it.
+  if (b.share_out !== undefined) setSetting('fediverse_share_out', yes(b.share_out) ? 'true' : 'false');
+  if (b.share_in !== undefined) {
+    setSetting('fediverse_share_in', yes(b.share_in) ? 'true' : 'false');
+    if (yes(b.share_in)) setTimeout(() => networkTick().catch(() => {}), 500).unref?.();
+    else if (ap) ap.cleanShares();
   }
   if (b.hub_url !== undefined && S().network_enabled !== 'true') setSetting('network_hub_url', normalizeInstanceUrl(b.hub_url));
   res.json(adminState(req));

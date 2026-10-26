@@ -19,6 +19,7 @@ import { apFetch } from './http.js';
 import { getActor, signer } from './actors.js';
 import { sendAcceptOrReject, sendFollow, sendUnfollow } from './deliver.js';
 import { ingestVideo } from './inbox.js';
+import { MAX_SHARED, cleanShares, dropShares, recordShare, sharesIn } from './sharing.js';
 
 const MAX_ITEMS = 5000;
 const REFRESH_MS = 60_000;
@@ -108,7 +109,7 @@ async function reconcile(inst, { full = false } = {}) {
     const row = db.prepare('SELECT updated_at, fetched_at FROM network_videos WHERE instance_id = ? AND ap_id = ?').get(inst.id, id);
     if (row && !full && (!updated || updated <= row.updated_at)) continue;
     try {
-      if (await ingestVideo(await apFetch(id, opts))) received++;
+      if (await ingestVideo(await apFetch(id, opts), { source: 'follow' })) received++;
     } catch (e) {
       if (e.status === 404 || e.status === 410) seen.delete(id); // gone since the outbox was written
     }
@@ -119,7 +120,57 @@ async function reconcile(inst, { full = false } = {}) {
       if (!r.ap_id || !seen.has(r.ap_id)) db.prepare('DELETE FROM network_videos WHERE instance_id = ? AND remote_id = ?').run(inst.id, r.remote_id);
     }
   }
+  received += await reconcileShares(inst, opts);
   return { received };
+}
+
+const NEW_SHARES_PER_ROUND = 100;
+/**
+ * The fediverse videos a peer passes on (ap/sharing.js), when this server takes them: new ones are read from
+ * their own servers, a hundred a round; the ones it no longer lists stop counting as shared by it.
+ */
+async function reconcileShares(inst, opts) {
+  if (!sharesIn()) return 0;
+  let page;
+  try {
+    const top = await apFetch(`${inst.ap_actor}/shared`, opts);
+    page = top.orderedItems || top.items ? top : top.first ? (typeof top.first === 'object' ? top.first : await apFetch(idOf(top.first), opts)) : null;
+  } catch (e) {
+    if (e.status === 404 || e.status === 410) dropShares(inst.id); // not sharing (or an older OurTube)
+    return 0;
+  }
+  const listed = new Map(); // video id -> updated
+  let complete = false;
+  for (let n = 0; page && n < 100 && listed.size < MAX_SHARED; n++) {
+    for (const it of page.orderedItems || page.items || []) {
+      const id = typeof it === 'string' ? it : idOf(it?.object);
+      if (typeof id === 'string' && /^https?:\/\//.test(id) && hostOf(id) !== hostOf(inst.ap_actor)) listed.set(id, Date.parse(it?.updated || '') || 0);
+    }
+    const next = idOf(page.next);
+    if (!next) {
+      complete = true;
+      break;
+    }
+    page = await apFetch(next, opts);
+  }
+  let received = 0;
+  let fetched = 0;
+  for (const [id, updated] of listed) {
+    const row = db.prepare('SELECT instance_id, remote_id, updated_at FROM network_videos WHERE ap_id = ?').get(id);
+    if (row && (!updated || updated <= row.updated_at)) {
+      recordShare(row.instance_id, row.remote_id, inst.id);
+      continue;
+    }
+    if (fetched++ >= NEW_SHARES_PER_ROUND) continue; // the rest next round
+    try {
+      const obj = await apFetch(id, { ...opts, timeout: 10000 });
+      if (obj?.id === id && (await ingestVideo(obj, { source: 'share', via: inst.id }))) received++;
+    } catch (e) {
+      if (e.status === 404 || e.status === 410) listed.delete(id);
+    }
+  }
+  if (complete) dropShares(inst.id, new Set(listed.keys()));
+  return received;
 }
 
 /** Peers we know over protocol v3 move to ActivityPub once their own address says they speak it. */
@@ -285,4 +336,4 @@ async function refreshChannels({ maxAge = 12 * 3600_000 } = {}) {
   for (const { id } of stale) await getActor(id, { refresh: true }).catch(() => {});
 }
 
-useApTransport({ follow, answerFollow, unpeer, reconcile, upgradePeers, refreshVideo, refreshChannels });
+useApTransport({ follow, answerFollow, unpeer, reconcile, upgradePeers, refreshVideo, refreshChannels, cleanShares });

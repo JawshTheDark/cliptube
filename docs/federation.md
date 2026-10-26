@@ -24,6 +24,14 @@ catalog.
 - **Whole threads.** A video page on another instance reads the full comment thread from the hosting
   instance (its comments collection, with the notes and their authors inline), not only the comments that
   happened to be delivered.
+- **Fediverse sharing (opt-in on both sides).** An instance that shares what it follows lists those fediverse
+  videos at `/ap/actor/shared` (an OrderedCollection of Announce items with `updated`, newest first, up to
+  2,000; 404 while it doesn't share) and Announces new ones to the instances that follow its instance actor.
+  An instance that takes shares reads each peer's list every round and fetches every video from its own
+  server, never from the peer. It notes which peers share each video and drops one no peer shares any more;
+  a 404 means that peer shares nothing. It doesn't pass on what it took (one hop). Instances that don't take
+  shares ignore Announces of other servers' videos from their peers. The hub's v3 index carries OurTube
+  instances' videos only, so fediverse videos come and go with follows and shares alone.
 - **The network's switches.** The hub can turn comments, likes or subscriptions off between instances.
   Members refuse to send them, and members refuse to receive them from other members.
 - **The hub** stays optional: it is a directory of members, the network's switches, a block list members
@@ -68,6 +76,7 @@ address). It names the terms rather than linking to them, so it stays the same o
   The slug also goes into `tag` as a Hashtag, for software that doesn't know the term.
 - `counts` on a Video: `{ "likes": 3, "dislikes": 0, "comments": 2, "shares": 1 }`.
 - `updated` on the instance outbox's Announce items, so reconciliation fetches only what changed.
+- `/ap/actor/shared` on an instance actor: the fediverse videos it passes on (fediverse sharing, above).
 - `?embed=1` on a video's comments collection: the notes inline, with their authors' names and pictures.
 - `reason` on a Flag: the report reason (`copyright`, `spam`...), next to the usual `content`.
 - Accept or Reject whose `object` is a Note: the answer to a comment, as described above.

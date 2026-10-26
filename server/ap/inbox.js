@@ -18,6 +18,7 @@ import { PUBLIC, apBase, first, hostOf, htmlToText, idOf, originOf, parseDuratio
 import { getActor, instanceFor, isBlockedActor, shadowUser, signer, storeActor } from './actors.js';
 import { sendAcceptOrReject, sendVerdict } from './deliver.js';
 import { followMove } from './move.js';
+import { recordShare, sharesIn, shareWithPeers } from './sharing.js';
 import { remoteActorChanged } from '../links.js';
 
 /**
@@ -238,8 +239,12 @@ function bestMp4(links) {
   return ranked.find((l) => (Number(l.height) || 0) <= 1080) || ranked[ranked.length - 1];
 }
 
-/** Puts a remote Video into the network index. Returns the network video key, or null if it doesn't qualify. */
-export async function ingestVideo(obj) {
+/**
+ * Puts a remote Video into the network index. Returns the network video key, or null if it doesn't qualify.
+ * `source` is how it came: 'follow' (this server follows it, or it is an OurTube peer's own video), 'share' (an
+ * OurTube peer passes it on; `via` is that peer's id), or nothing for a refresh, which keeps what it was.
+ */
+export async function ingestVideo(obj, { source = null, via = null } = {}) {
   if (!obj || obj.type !== 'Video' || typeof obj.id !== 'string') return null;
   const owners = (Array.isArray(obj.attributedTo) ? obj.attributedTo : [obj.attributedTo]).filter(Boolean);
   const channelId = idOf(owners.find((x) => typeof x === 'object' && x.type === 'Group') || owners[0]);
@@ -295,12 +300,19 @@ export async function ingestVideo(obj) {
     game_slug: game ? game.slug : null,
     game_name: game ? str(game.name, 80).trim() || game.slug : null,
   };
-  upsertNetworkVideo(inst.id, item, now(), inst.url);
+  const before = db.prepare('SELECT via_share FROM network_videos WHERE instance_id = ? AND remote_id = ?').get(inst.id, remoteId);  upsertNetworkVideo(inst.id, item, now(), inst.url);
   db.prepare(
     `UPDATE network_videos SET ap_id = ?, origin_type = 'activitypub', hls_url = ?, ap_actor = ?, comments_enabled = ?
      WHERE instance_id = ? AND remote_id = ?`,
   ).run(obj.id, hls?.href || null, channel.id, obj.commentsEnabled === false || obj.commentsPolicy === 2 ? 0 : 1, inst.id, remoteId);
   indexNetworkVideo(inst.id, remoteId);
+  if (source === 'follow') {
+    db.prepare('UPDATE network_videos SET via_share = 0 WHERE instance_id = ? AND remote_id = ?').run(inst.id, remoteId);
+    if (!before) shareWithPeers(obj.id, published);
+  } else if (source === 'share' && via) {
+    if (!before) db.prepare('UPDATE network_videos SET via_share = 1 WHERE instance_id = ? AND remote_id = ?').run(inst.id, remoteId);
+    recordShare(inst.id, remoteId, via);
+  }
   return { instanceId: inst.id, remoteId };
 }
 
@@ -320,7 +332,7 @@ defineJob('ap.backfill', {
         const obj = act && (act.type === 'Create' || act.type === 'Announce') ? act.object : act;
         try {
           const video = await resolveObject(obj, a.id);
-          if (video?.type === 'Video' && (await ingestVideo(video))) seen++;
+          if (video?.type === 'Video' && (await ingestVideo(video, { source: 'follow' }))) seen++;
         } catch {}
       }
       page = page.next ? await apFetch(idOf(page.next), { signer: signer() }).catch(() => null) : null;
@@ -342,7 +354,7 @@ async function onCreate(a, actorId, base) {
   if (obj.type === 'Video') {
     // PeerTube posts as the account; people usually follow the channel. Either counts.
     const owners = (Array.isArray(obj.attributedTo) ? obj.attributedTo : [obj.attributedTo]).map(idOf).filter(Boolean);
-    if (followed(actorId) || owners.some(followed) || followedServer(actorId)) await ingestVideo(obj);
+    if (followed(actorId) || owners.some(followed) || followedServer(actorId)) await ingestVideo(obj, { source: 'follow' });
     return;
   }
   if (obj.type === 'Note' || obj.type === 'Comment') return onNote(obj, actorId, base);
@@ -411,10 +423,19 @@ async function onAnnounce(a, actorId, base) {
     db.prepare('UPDATE videos SET ap_shares = ap_shares + 1 WHERE id = ?').run(v.id);
     return;
   }
+  // An OurTube peer passing on a video it follows elsewhere: only when this server takes what peers share, and
+  // always read from the video's own server.
+  const peer = target && hostOf(target) !== hostOf(actorId) ? db.prepare('SELECT * FROM instances WHERE ap_actor = ? AND blocked = 0').get(actorId) : null;
+  if (peer) {
+    if (!sharesIn() || !isNetworkPeer(peer)) return;
+    const obj = await apFetch(target, { signer: signer() }).catch(() => null);
+    if (obj?.type === 'Video' && obj.id === target) await ingestVideo(obj, { source: 'share', via: peer.id });
+    return;
+  }
   // Channels and instances we follow announce their videos (PeerTube does this for every upload).
   if (!(followed(actorId) || followedServer(actorId))) return;
   const obj = await resolveObject(a.object, actorId).catch(() => null);
-  if (obj?.type === 'Video') await ingestVideo(obj);
+  if (obj?.type === 'Video') await ingestVideo(obj, { source: 'follow' });
 }
 
 async function onUpdate(a, actorId, base) {

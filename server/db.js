@@ -96,6 +96,10 @@ export const DEFAULT_SETTINGS = {
   network_accept_comments: 'true',
   network_accept_likes: 'true',
   network_accept_subscriptions: 'true',
+  // Fediverse sharing between OurTube servers, each side opting in: pass on the fediverse videos this server
+  // follows to its peers, and show the ones peers pass on.
+  fediverse_share_out: 'false',
+  fediverse_share_in: 'false',
   // Peering directly with other instances (every instance, hub or not). On a hub the hub switches apply.
   network_accept_new: 'true', // lockdown switch: false = no new peers
   network_require_approval: 'false', // new peers wait for an admin

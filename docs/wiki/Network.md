@@ -7,6 +7,7 @@ of them.
 - [How it works](#how-it-works)
 - [Joining](#joining)
 - [What every server controls](#what-every-server-controls)
+- [Sharing what you follow](#sharing-what-you-follow)
 - [Block lists](#block-lists)
 - [Leaving](#leaving)
 - [Running a hub](#running-a-hub)
@@ -75,6 +76,27 @@ Every server stays in charge of itself. Under **Admin → Network** each one can
 - keep a single public clip off the network by unticking **Share with the network** on it.
 
 Failing peers are retried with a growing delay (from one minute, doubling, up to six hours).
+
+## Sharing what you follow
+
+The network shares every server's own uploads. What a server follows in the fediverse (PeerTube channels and
+whole PeerTube servers) stays on that server, unless both sides opt in to **fediverse sharing** under
+**Admin → Network → Fediverse sharing**:
+
+- **Share what this server follows** passes those videos on to the other OurTube servers.
+- **Show what other servers share** shows the videos peers pass on, tagged with the server that hosts them.
+
+With both on across the network, every server's follows add to everyone's catalog, a mesh where no server has to
+follow everything itself. Details:
+
+- A server that takes shares reads each video from its own server, never from the peer that passed it on, and
+  likes, comments and subscriptions go straight to that server. Videos marked sensitive (NSFW) stay out.
+- New uploads arrive within moments; the full list is read at each network round (a hundred new videos a round,
+  up to 2,000 per peer).
+- Sharing goes one hop: a server doesn't pass on what it got from its peers.
+- A video leaves when no peer shares it any more, when a peer stops sharing or leaves, or at once when a server
+  turns off **Show what other servers share**. Videos a server follows itself stay either way.
+- Site-wide webhooks that include the network's videos also post the shared ones that arrive new.
 
 ## Block lists
 

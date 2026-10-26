@@ -979,6 +979,24 @@ CREATE INDEX idx_api_keys_user ON api_keys(user_id);
         WHERE is_self = 1 OR key_checked_at IS NOT NULL OR hub_token_hash IS NOT NULL OR source IN ('hub', 'peer', 'inbound')`);
     },
   },
+  {
+    version: 22,
+    name: 'fediverse videos shared between OurTube servers',
+    up(db) {
+      addColumn(db, 'network_videos', 'via_share', 'INTEGER NOT NULL DEFAULT 0'); // 1: here only because a peer shares it
+      db.exec(`
+CREATE TABLE network_video_shares (
+  instance_id INTEGER NOT NULL,          -- the video (its server and id, as in network_videos)
+  remote_id TEXT NOT NULL,
+  via_instance_id INTEGER NOT NULL REFERENCES instances(id) ON DELETE CASCADE, -- the OurTube peer that shares it
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (instance_id, remote_id, via_instance_id),
+  FOREIGN KEY (instance_id, remote_id) REFERENCES network_videos(instance_id, remote_id) ON DELETE CASCADE
+);
+CREATE INDEX idx_network_video_shares_via ON network_video_shares(via_instance_id);
+`);
+    },
+  },
 ];
 
 export function currentVersion(db) {

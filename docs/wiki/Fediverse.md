@@ -52,6 +52,9 @@ followed: for PeerTube videos it is read from the video's server (up to 200 thre
 
 Admins can also follow a **whole PeerTube server**, the way PeerTube servers mirror each other.
 
+Servers in an OurTube network can pass what they follow on to each other, if both sides opt in: see
+[Sharing what you follow](Network.md#sharing-what-you-follow).
+
 ## Mastodon
 
 - Channel pages have **Follow from your server**, which opens the follow page on the viewer's own server.
