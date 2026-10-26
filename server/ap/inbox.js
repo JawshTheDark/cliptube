@@ -245,6 +245,11 @@ export async function ingestVideo(obj) {
   const channelId = idOf(owners.find((x) => typeof x === 'object' && x.type === 'Group') || owners[0]);
   if (!channelId || hostOf(channelId) !== hostOf(obj.id) || isBlockedActor(obj.id)) return null;
   if (!(Array.isArray(obj.to) ? obj.to : [obj.to]).concat(obj.cc || []).includes(PUBLIC)) return null; // public videos only
+  // Marked sensitive (NSFW) on its server: not shown here, and taken out if it was here already.
+  if (obj.sensitive === true) {
+    db.prepare("DELETE FROM network_videos WHERE ap_id = ?").run(obj.id);
+    return null;
+  }
   const links = Array.isArray(obj.url) ? obj.url : obj.url ? [obj.url] : [];
   const mp4 = bestMp4(links);
   const hls = links.find((l) => l && l.mediaType === 'application/x-mpegURL' && typeof l.href === 'string' && /\.m3u8(\?|$)/.test(l.href));

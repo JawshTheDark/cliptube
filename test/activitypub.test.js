@@ -261,6 +261,16 @@ test('people here follow fediverse channels: backfill, new uploads, comments and
   await waitFor(() => fake.find((b) => b.type === 'Like' && b.object === `${fake.origin}/videos/watch/brand-new-1`), { what: 'outgoing like' });
 });
 
+test('videos marked sensitive (NSFW) on their server stay out, and leave if marked later', async () => {
+  const listed = async (title) => (await carol.get('/api/videos?scope=network')).data.videos.some((v) => v.title === title);
+  await fake.send(`${base}/ap/inbox`, { type: 'Create', actor: fake.account, object: { ...fake.video('nsfw-1', 'A sensitive fake video'), sensitive: true } });
+  await fake.send(`${base}/ap/inbox`, { type: 'Create', actor: fake.account, object: fake.video('sfw-1', 'A safe fake video') });
+  await waitFor(() => listed('A safe fake video'), { what: 'the safe video' });
+  assert.equal(await listed('A sensitive fake video'), false);
+  await fake.send(`${base}/ap/inbox`, { type: 'Update', actor: fake.account, object: { ...fake.video('sfw-1', 'A safe fake video'), sensitive: true } });
+  await waitFor(async () => !(await listed('A safe fake video')), { what: 'the video marked sensitive to leave' });
+});
+
 test('reports about fediverse videos go to their server as a Flag', async () => {
   const nv = (await carol.get('/api/videos?scope=network')).data.videos.find((v) => v.title === 'Fresh fake speedrun');
   const r = await carol.post('/api/reports', { target_type: 'remote_video', target_id: `${nv.remote.peer_id}:${nv.remote.remote_id}`, reason: 'spam', details: 'looks like spam' });
