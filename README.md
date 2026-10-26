@@ -20,7 +20,7 @@ Upload your videos, share them with friends, and link your server with theirs.
 [Wiki](docs/wiki/Home.md) •
 [Development](#development)
 
-<img src="docs/images/game.jpg" alt="An OurTube game page: SteamGridDB banner, title logo and cover above the game's videos" width="100%">
+<img src="docs/images/web-game.jpg" alt="An OurTube game page: SteamGridDB banner, title logo and cover above the game's videos" width="100%">
 
 </div>
 
@@ -41,8 +41,8 @@ around what a video streaming site needs:
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/home.jpg" alt="The home feed: videos from four servers, each tagged with the server it lives on"></td>
-    <td width="50%"><img src="docs/images/watch.jpg" alt="The watch page with the player, likes, share, compare and download"></td>
+    <td width="50%"><img src="docs/images/web-home.jpg" alt="The home feed: videos from four servers, each tagged with the server it lives on"></td>
+    <td width="50%"><img src="docs/images/web-watch.jpg" alt="The watch page with the player, likes, share, compare and download"></td>
   </tr>
   <tr>
     <td align="center"><sub>Home: videos from this server and the rest of the network</sub></td>
