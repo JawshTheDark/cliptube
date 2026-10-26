@@ -14,6 +14,7 @@ import { duration } from '@/lib/format';
 import { refFromLink } from '@/lib/refs';
 import { useLinkedApi } from '@/lib/scope';
 import { useSession } from '@/lib/session';
+import { useOnePlayerAtATime } from '@/lib/playback';
 import { openEvents } from '@/lib/sse';
 import { colors } from '@/lib/theme';
 import type { Party, PartyState, PlaylistItem, PlaylistSummary } from '@/lib/types';
@@ -323,6 +324,8 @@ function PartyPlayer({
   const player = useVideoPlayer(source, (p) => {
     p.timeUpdateEventInterval = 0.5;
   });
+  // The party's clock decides when this plays, so it only pauses other videos.
+  useOnePlayerAtATime(player, { pausable: false });
   const [ready, setReady] = useState(false);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);

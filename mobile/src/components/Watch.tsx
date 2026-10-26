@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Api } from '@/lib/api';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
+import { useOnePlayerAtATime } from '@/lib/playback';
 import { ago, compact, hostOf, plural } from '@/lib/format';
 import { colors, fonts } from '@/lib/theme';
 import type { RemoteWatch, Video } from '@/lib/types';
@@ -391,6 +392,8 @@ function Player({ video, api, resumeAt, onTime, onEnd }: { video: Video; api: Ap
     p.timeUpdateEventInterval = 5;
     p.play();
   });
+  // Opening another video from here pauses this one; Back picks it up again.
+  useOnePlayerAtATime(player);
   const resumed = useRef(false);
   useEventListener(player, 'statusChange', ({ status }) => {
     if (status === 'readyToPlay' && !resumed.current) {

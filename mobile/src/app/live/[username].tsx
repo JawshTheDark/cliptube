@@ -13,6 +13,7 @@ import { Api } from '@/lib/api';
 import { ago, compact, hostOf } from '@/lib/format';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
+import { useOnePlayerAtATime } from '@/lib/playback';
 import { openEvents } from '@/lib/sse';
 import { colors, fonts } from '@/lib/theme';
 import type { LivePage, LiveStream, PartyMessage } from '@/lib/types';
@@ -290,6 +291,7 @@ function LivePlayer({ stream, api, compact }: { stream: LiveStream; api: Api; co
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const player = useVideoPlayer(source, (p) => p.play());
+  useOnePlayerAtATime(player);
   const h = Math.min(width * (9 / 16), height * (compact ? 0.2 : 0.4));
   return (
     <View style={{ width, height: h, backgroundColor: '#000' }}>
