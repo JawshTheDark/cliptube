@@ -6,6 +6,15 @@ to the same API as the website and has the same look: the OurTube palette, Plus 
 Grotesque (bundled through expo-font), and the two-circle mark (`src/components/Logo.tsx`; the launcher icons come
 from `python scripts/icons.py assets`).
 
+<table>
+  <tr>
+    <td width="25%"><img src="../docs/images/app-home.png" alt="Home on the OurTube hub: Everything, Videos and Shorts, the chips, and videos from two servers, each tagged with its server"></td>
+    <td width="25%"><img src="../docs/images/app-shorts.png" alt="The Shorts tab: Shorts two to a row as 9:16 cards"></td>
+    <td width="25%"><img src="../docs/images/app-watch.png" alt="A watch page: the player, the title with its server tag, likes, Save and Watch together, and more videos"></td>
+    <td width="25%"><img src="../docs/images/app-channel.png" alt="A channel page with its server tag, Also on with linked accounts on three other servers, and Subscribe to all"></td>
+  </tr>
+</table>
+
 ## Install
 
 Download the APK from the [GitHub releases](https://github.com/JawshTheDark/ourtube/releases) (tags named

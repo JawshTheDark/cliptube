@@ -56,12 +56,12 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
-/** Checks that an address is a OurTube server and returns its site info. */
+/** Checks that an address is an OurTube server and returns its site info. */
 export async function probeServer(url: string): Promise<Site> {
   const site = await new Api(url).get<Site>('/site').catch((e) => {
-    throw new Error(e instanceof ApiError && e.status ? `${url} answered, but it doesn't look like a OurTube server` : e.message);
+    throw new Error(e instanceof ApiError && e.status ? `${url} answered, but it doesn't look like an OurTube server` : e.message);
   });
-  if (!site || typeof site.site_name !== 'string') throw new Error(`${url} doesn't look like a OurTube server`);
+  if (!site || typeof site.site_name !== 'string') throw new Error(`${url} doesn't look like an OurTube server`);
   return site;
 }
 

@@ -39,7 +39,7 @@ const isOurTube = (origin: string) => {
 };
 
 /**
- * Opens a channel from its web address. A OurTube channel (/c/<name>) opens in the app, read from its own server:
+ * Opens a channel from its web address. An OurTube channel (/c/<name>) opens in the app, read from its own server:
  * at once for a server the app knows, after a quick check for any other. Everything else (Mastodon, PeerTube,
  * a server that doesn't answer) opens in the browser.
  */

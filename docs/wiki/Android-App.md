@@ -4,6 +4,15 @@ OurTube for Android browses, plays and uploads videos, Shorts and live streams o
 ClipTube before 1.13), with a native player and a sign-in kept for each server you use. It talks to the same API as
 the website, so nothing needs setting up on the server beyond running version 1.5 or newer.
 
+<table>
+  <tr>
+    <td width="25%"><img src="../images/app-home.png" alt="Home on the OurTube hub: Everything, Videos and Shorts, the chips, and videos from two servers, each tagged with its server"></td>
+    <td width="25%"><img src="../images/app-shorts.png" alt="The Shorts tab: Shorts two to a row as 9:16 cards"></td>
+    <td width="25%"><img src="../images/app-watch.png" alt="A watch page: the player, the title with its server tag, likes, Save and Watch together, and more videos"></td>
+    <td width="25%"><img src="../images/app-channel.png" alt="A channel page with its server tag, Also on with linked accounts on three other servers, and Subscribe to all"></td>
+  </tr>
+</table>
+
 - [Install](#install)
 - [Servers and signing in](#servers-and-signing-in)
 - [What you can do](#what-you-can-do)
@@ -71,6 +80,8 @@ are wide. *Everything* shows the landscape videos with the newest Shorts on a sh
 eight; *See all* on the shelf, or *Shorts* at the top, shows them two to a row as 9:16 cards. *Videos* or *Shorts*
 stays picked while you switch chips. *For you* and *Subscriptions* mix every kind, so picking *Videos* or *Shorts*
 there goes back to *All*.
+
+<img src="../images/app-shelf.png" alt="Further down Everything: the last landscape video, then the Shorts shelf with See all" width="300">
 
 Channel pages show the channel's [linked accounts](Fediverse.md#linked-accounts) under **Also on**, with
 **Subscribe to all** and an **All accounts** filter for its videos from the other servers. An Also on account on
