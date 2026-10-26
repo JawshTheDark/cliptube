@@ -26,6 +26,8 @@ import { clipsRouter } from './clips.js';
 import { watchingRouter, watchingMediaRouter } from './watching.js';
 import { emailPublicRouter, mailAdminRouter, notificationsRouter, startNotifyCleanup } from './notify.js';
 import { mailConfigured } from './mail.js';
+import { captureLogs, diagnosticsRouter } from './diagnostics.js';
+import { startUpdateChecks } from './updates.js';
 import { feedsRouter } from './feeds.js';
 import { searchRouter, startSearchSync } from './search.js';
 import { recommendRouter } from './recommend.js';
@@ -44,6 +46,7 @@ import { channelPlaylistsRouter, playlistsRouter } from './playlists.js';
 import { partiesRouter, startPartyCleanup } from './parties.js';
 import { liveHookRouter, liveMediaRouter, liveRouter, startLiveWatch } from './live.js';
 
+captureLogs(); // for Admin -> Debugging
 const app = express();
 app.disable('x-powered-by');
 if (process.env.TRUST_PROXY) app.set('trust proxy', true);
@@ -125,6 +128,7 @@ app.use('/api/admin/network', networkAdminRouter);
 app.use('/api/admin/legal', legalAdminRouter);
 app.use('/api/admin/mail', mailAdminRouter);
 app.use('/api/admin/fediverse', fediverseAdminRouter);
+app.use('/api/admin/diagnostics', diagnosticsRouter); // Admin -> Debugging
 app.use('/api/admin', adminRouter);
 app.use('/media', watchingMediaRouter); // HLS, federation MP4, captions, originals
 app.use('/media', mediaRouter);
@@ -267,6 +271,7 @@ for (const f of fs.readdirSync(DIRS.tmp)) {
 startJobs();
 checkFfmpeg();
 startUploadSweep();
+startUpdateChecks();
 startNotifyCleanup();
 startApCleanup();
 startLinkChecks();

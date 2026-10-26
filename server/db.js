@@ -59,6 +59,12 @@ export const DEFAULT_SETTINGS = {
   spam_rate_new_per_10min: '5',
 
   max_height: '1080',
+  // Checking GitHub for a newer OurTube (see updates.js); what it found is kept here.
+  update_check: 'true',
+  update_latest: '',
+  update_checked_at: '',
+  update_error: '',
+  update_notified: '',
   encoder: 'libx264',
   delete_originals: 'false',
   public_url: '',

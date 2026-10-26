@@ -19,6 +19,7 @@ import Admin from './pages/Admin.jsx';
 import AdminNetwork from './pages/AdminNetwork.jsx';
 import AdminModeration from './pages/AdminModeration.jsx';
 import AdminLegal from './pages/AdminLegal.jsx';
+import AdminDebug from './pages/AdminDebug.jsx';
 import { Legal, Transparency } from './pages/Legal.jsx';
 import HelpFediverse from './pages/HelpFediverse.jsx';
 import StudioComments from './pages/StudioComments.jsx';
@@ -134,6 +135,14 @@ export default function App() {
                 element={
                   <RequireAuth moderator>
                     <AdminModeration />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/debug"
+                element={
+                  <RequireAuth admin>
+                    <AdminDebug />
                   </RequireAuth>
                 }
               />

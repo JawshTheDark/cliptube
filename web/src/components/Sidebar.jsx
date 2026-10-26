@@ -98,6 +98,12 @@ export function Sidebar({ mini = false, drawer = false, onClose }) {
           <div className="nav-foot">
             {site.site_name} · self-hosted
             <br />
+            Runs on{' '}
+            <a href="https://github.com/JawshTheDark/ourtube" target="_blank" rel="noopener noreferrer" className="nav-foot-strong">
+              OurTube
+            </a>
+            , free and open source
+            <br />
             <Link to="/legal">Rules and contact</Link>
             {site.transparency && (
               <>

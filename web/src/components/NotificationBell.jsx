@@ -89,7 +89,7 @@ export function NotificationBell() {
 }
 
 export function NotificationRow({ n, onOpen }) {
-  const icon = { upload: 'video', reply: 'comment', mention: 'comment', comment: 'comment', moderation: 'gavel' }[n.kind] || 'bell';
+  const icon = { upload: 'video', reply: 'comment', mention: 'comment', comment: 'comment', moderation: 'gavel', update: 'download' }[n.kind] || 'bell';
   return (
     <button className={`notif-row ${n.read ? '' : 'unread'}`} onClick={onOpen}>
       <span className="notif-icon">

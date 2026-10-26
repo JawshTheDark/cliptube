@@ -42,6 +42,11 @@ export function AdminTabs() {
           Network
         </NavLink>
       )}
+      {admin && (
+        <NavLink to="/admin/debug" className={tabClass}>
+          Debugging
+        </NavLink>
+      )}
     </div>
   );
 }
@@ -256,6 +261,7 @@ export default function Admin() {
   const [encoders, setEncoders] = useState([]);
   const [users, setUsers] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [update, setUpdate] = useState(null);
   useTitle('Admin');
 
   const loadStats = () => api('/admin/stats').then(setStats).catch(() => {});
@@ -270,6 +276,7 @@ export default function Admin() {
       .catch((e) => toast(e.message));
     loadStats();
     loadUsers();
+    api('/admin/diagnostics/update').then(setUpdate).catch(() => {});
     const t = setInterval(loadStats, 5000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -335,6 +342,22 @@ export default function Admin() {
       <h1>
         <Icon name="shield" /> Admin
       </h1>
+
+      {update?.available && (
+        <div className="notice update-notice">
+          <Icon name="download" />
+          <span>
+            <b>OurTube {update.latest} is out.</b> This server runs {update.current}.{' '}
+            <a href={update.changes} target="_blank" rel="noopener noreferrer">
+              What changed
+            </a>
+            {' · '}
+            <a href={`${update.repo}/blob/main/docs/wiki/Upgrading-and-Backups.md`} target="_blank" rel="noopener noreferrer">
+              How to update
+            </a>
+          </span>
+        </div>
+      )}
 
       {stats && (
         <div className="stats">
@@ -571,13 +594,6 @@ export default function Admin() {
         <EmailSettings />
       </div>
 
-      {stats && (
-        <p className="muted small">
-          ffmpeg: {stats.tools.ffmpeg}
-          <br />
-          ffprobe: {stats.tools.ffprobe}
-        </p>
-      )}
     </div>
   );
 }

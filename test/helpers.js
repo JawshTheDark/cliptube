@@ -46,7 +46,7 @@ export async function startInstance(name = 'test', { env = {}, args = [], allowP
   const dataDir = tempDir(name);
   const child = spawn(process.execPath, ['server/index.js', '--port', String(port), ...(allowPrivate ? ['--allow-private-federation'] : []), ...args], {
     cwd: ROOT,
-    env: { ...process.env, DATA_DIR: dataDir, SETUP_CODE: 'testcode', HOST: '127.0.0.1', ...env },
+    env: { ...process.env, DATA_DIR: dataDir, SETUP_CODE: 'testcode', HOST: '127.0.0.1', UPDATE_CHECK_URL: 'off', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });

@@ -4581,3 +4581,27 @@ h2,
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* Admin -> Debugging and the update notice. */
+.error-text {
+  color: var(--err);
+}
+.log-block {
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.update-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  border: 1px solid var(--accent-soft);
+}
+.update-notice .icon {
+  color: var(--accent-text);
+}
+.nav-foot a.nav-foot-strong {
+  color: var(--accent-text);
+  font-weight: 700;
+}

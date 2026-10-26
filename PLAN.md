@@ -43,6 +43,7 @@ order, so M3 shipped as v0.6.0 ahead of M2 (now v0.7.0), and later milestones mo
 | API keys for uploading from ShareX and other tools, with a ShareX config download | Done | v1.15.0, 2026-10-26 |
 | Pictures from servers with hotlink protection load (no referrer to other sites); broken pictures fall back to the initial | Done | v1.15.1, 2026-10-26 |
 | Videos marked sensitive (NSFW) on fediverse servers stay out of the network index | Done | v1.15.2, 2026-10-26 |
+| Admin -> Debugging tab, notices when a newer OurTube is on GitHub, and a GitHub link on every server | Done | v1.16.0, 2026-10-26 |
 | Servers linked (clips.irc.so hub; laptop and clips.6697.pro members) | Done | Linked 2026-10-25, checked after every deploy |
 
 ### Needs you

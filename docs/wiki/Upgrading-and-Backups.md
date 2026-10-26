@@ -118,6 +118,11 @@ everyone else; to take a channel to another server, use a channel move instead (
 
 ## Checking the version
 
+OurTube checks GitHub every 12 hours for a newer version. When there is one, each admin gets a notification
+once, and **Admin** shows a banner with what changed and how to update. **Admin → Debugging** shows the result
+of the last check, has *Check now*, and turns the check off; `UPDATE_CHECK_URL=off` in the environment turns it
+off for the whole install.
+
 ```bash
 docker exec cliptube node -p "require('./package.json').version"
 curl -s https://clips.example.com/nodeinfo/2.0     # "version" under "software"

@@ -48,6 +48,16 @@ const LIVE = {
   endGraceMs: Number(process.env.LIVE_END_GRACE_MS) || 45_000,
 };
 export const liveEnabled = () => !!(LIVE.server && LIVE.secret);
+
+/** Whether MediaMTX answers on its control API (null when live streaming is off). */
+export async function liveReachable() {
+  if (!liveEnabled()) return null;
+  try {
+    return (await fetch(apiUrl('/v3/paths/list'), { headers: { Authorization: internalAuth() }, signal: AbortSignal.timeout(2000) })).ok;
+  } catch {
+    return false;
+  }
+}
 const apiUrl = (p) => `${LIVE.api || `http://${LIVE.server}:9997`}${p}`;
 const hlsUrl = (p) => `${LIVE.hls || `http://${LIVE.server}:8888`}${p}`;
 const internalAuth = () => `Basic ${Buffer.from(`cliptube:${LIVE.secret}`).toString('base64')}`;

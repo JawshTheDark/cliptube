@@ -1,6 +1,12 @@
 # Troubleshooting
 
-Start with the log. Lines are tagged by area (`[media]`, `[network]`, `[games]`, `[db]` and so on):
+Admins can start with **Admin → Debugging**: the version and whether a newer one is out, FFmpeg and the GPU
+encoders in its build, disk use per folder and free space, the database, the job queue with recent failures,
+the network and ActivityPub, whether the live streaming server answers, and the server's recent warnings and
+errors. *Copy the whole report* puts all of it on the clipboard for whoever is helping; no passwords or keys
+are in it.
+
+Then the log. Lines are tagged by area (`[media]`, `[network]`, `[games]`, `[db]` and so on):
 
 ```bash
 docker logs cliptube --tail 200 -f
