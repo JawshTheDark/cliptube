@@ -10,6 +10,7 @@ import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
 import { useSession } from '@/lib/session';
 import { useLayout } from '@/lib/layout';
 import { seekCurrent, useOnePlayerAtATime } from '@/lib/playback';
+import { useDisplayed, usePrefs } from '@/lib/prefs';
 import { ago, compact, hostOf, plural } from '@/lib/format';
 import { colors, fonts } from '@/lib/theme';
 import type { RemoteWatch, Video } from '@/lib/types';
@@ -38,6 +39,9 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
   const scope = useLinkedApi(serverParam);
   const { api, foreign } = scope;
   const session = useSession();
+  // Anonymous mode (Settings → Watching): views count as a signed-out viewer and nothing goes into the history.
+  const anonymous = usePrefs().prefs.anonymous === 'on';
+  const displayed = useDisplayed();
   const signedIn = !!session.user && !foreign;
   const base = foreign || session.server;
   const isRemote = !!peer && !!remote;
@@ -88,7 +92,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
           commentsPath: `/videos/${encodeURIComponent(id!)}`,
           shareUrl: `${base}/watch/${encodeURIComponent(id!)}`,
         });
-        if (video.status === 'ready') api.post(`/videos/${encodeURIComponent(id!)}/view`, {}).catch(() => {});
+        if (video.status === 'ready') api.post(`/videos/${encodeURIComponent(id!)}/view`, { anonymous, from: 'app' }).catch(() => {});
       }
     } catch (e: any) {
       setError(e.status === 404 ? 'This video isn’t available. It may be private, or it was removed.' : e.message);
@@ -107,12 +111,12 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
   const reportProgress = useCallback(
     (t: number, force = false) => {
       position.current = t;
-      if (!signedIn || isRemote || !id) return;
+      if (!signedIn || anonymous || isRemote || !id) return;
       if (!force && Math.abs(t - lastSent.current) < 10) return;
       lastSent.current = t;
       api.post(`/videos/${encodeURIComponent(id)}/progress`, { position: Math.floor(t) }).catch(() => {});
     },
-    [api, id, signedIn, isRemote],
+    [api, id, signedIn, isRemote, anonymous],
   );
   useEffect(() => () => reportProgress(position.current, true), [reportProgress]);
 
@@ -230,7 +234,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
 
   const v = data.video;
   const u = v.uploader;
-  const title = v.community?.title || v.title;
+  const title = displayed(v).title;
   const channelHref = !isRemote && u.username ? withServer(`/c/${encodeURIComponent(u.username)}`, foreign) : null;
   // A network video's uploader: their channel on the server the video comes from (in the app when it's OurTube).
   const remoteChannel = isRemote ? u.url || v.remote?.peer_url || null : null;

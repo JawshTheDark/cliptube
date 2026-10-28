@@ -134,6 +134,36 @@
               "scheme": "https",
               "host": "clips.6697.pro",
               "pathPrefix": "/live/"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/reset-password"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/verify-email"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/reset-password"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/verify-email"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/reset-password"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/verify-email"
             }
           ]
         }

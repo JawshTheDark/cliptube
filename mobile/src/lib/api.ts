@@ -170,13 +170,37 @@ export class Api {
     };
   }
 
+  /**
+   * Sends any file in pieces, like a video (a channel archive to import: kind 'archive'), and answers with the id of
+   * the finished upload for the request that uses it.
+   */
+  uploadPieces(file: UploadFile, kind: string, onProgress?: UploadProgress) {
+    const state = { cancelled: false, abortPiece: null as null | (() => void), uploadId: null as string | null };
+    const promise = (async (): Promise<string> => {
+      const size = file.size || 0;
+      const up = await this.findOrStartUpload(file, size, kind);
+      state.uploadId = up.id;
+      await this.sendPieces(up, file, size, onProgress, state);
+      if (state.cancelled) throw new ApiError(0, 'Upload cancelled');
+      return up.id;
+    })();
+    return {
+      promise,
+      abort: () => {
+        state.cancelled = true;
+        state.abortPiece?.();
+        if (state.uploadId) this.del(`/uploads/${encodeURIComponent(state.uploadId)}`).catch(() => {});
+      },
+    };
+  }
+
   /** An unfinished upload of this same file (to resume), or a new one. */
-  private async findOrStartUpload(file: UploadFile, size: number): Promise<ServerUpload> {
+  private async findOrStartUpload(file: UploadFile, size: number, kind = 'video'): Promise<ServerUpload> {
     const fingerprint = `app:${file.lastModified || 0}:${size}`;
     const { uploads } = await this.get<{ uploads: ServerUpload[] }>('/uploads');
-    const same = uploads.find((u) => u.kind === 'video' && u.name === file.name && u.size === size && u.fingerprint === fingerprint);
+    const same = uploads.find((u) => u.kind === kind && u.name === file.name && u.size === size && u.fingerprint === fingerprint);
     if (same) return same;
-    const r = await this.post<{ upload: ServerUpload }>('/uploads', { kind: 'video', name: file.name, size, fingerprint });
+    const r = await this.post<{ upload: ServerUpload }>('/uploads', { kind, name: file.name, size, fingerprint });
     return r.upload;
   }
 

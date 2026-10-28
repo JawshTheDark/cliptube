@@ -8,6 +8,7 @@ import { useSession } from '@/lib/session';
 import { videoHref } from '@/lib/api';
 import { ago, duration, plural } from '@/lib/format';
 import { useDensity } from '@/lib/density';
+import { useDisplayed } from '@/lib/prefs';
 import { colors, thumbRadius } from '@/lib/theme';
 import type { Video } from '@/lib/types';
 import { ServerTag } from './ServerTag';
@@ -15,14 +16,15 @@ import { shortsHref } from './Shorts';
 import { Text } from './Text';
 import { Avatar, Icon } from './ui';
 
-/** The community's top-voted title and thumbnail win over the uploader's, as on the website. */
-const titleOf = (v: Video) => v.community?.title || v.title;
-const thumbOf = (v: Video) => v.community?.thumbnail_url || v.thumbnail_url;
+/** The uploader's title and thumbnail, or the community's top-voted ones for viewers who chose them (Settings → Watching). */
+function useShown(v: Video) {
+  return useDisplayed()(v);
+}
 const when = (v: Video) => ago(v.published_at || v.created_at);
 
 function Thumb({ v, style, small }: { v: Video; style: StyleProp<ViewStyle>; small?: boolean }) {
   const { api } = useScope();
-  const uri = api.abs(thumbOf(v));
+  const uri = api.abs(useShown(v).thumbnail_url);
   const pending = v.status && v.status !== 'ready';
   return (
     <View style={[s.thumb, style]}>
@@ -64,6 +66,7 @@ function useOpenChannel(v: Video) {
 
 /** Feed card: a rounded thumbnail, the creator's avatar on its bottom-left corner, title and details below. `width` puts it in a column. */
 export const VideoCard = memo(function VideoCard({ v, showChannel = true, width }: { v: Video; showChannel?: boolean; width?: number }) {
+  const title = useShown(v).title;
   const { api, foreign } = useScope();
   const openChannel = useOpenChannel(v);
   // Compact and Dense (App settings) shrink the text and avatar along with the card.
@@ -71,7 +74,7 @@ export const VideoCard = memo(function VideoCard({ v, showChannel = true, width 
   const small = scale < 1 ? { title: { fontSize: 15 * scale, lineHeight: 20 * scale }, meta: { fontSize: 12.5 * scale } } : null;
   const meta = [showChannel ? v.uploader.display_name : null, plural(v.views, 'view'), when(v)].filter(Boolean).join(' · ');
   return (
-    <Pressable onPress={() => router.push(withServer(videoHref(v), foreign) as any)} style={({ pressed }) => [s.card, width ? { width, paddingHorizontal: 8 } : null, scale < 1 && { marginBottom: 20 * scale }, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={titleOf(v)}>
+    <Pressable onPress={() => router.push(withServer(videoHref(v), foreign) as any)} style={({ pressed }) => [s.card, width ? { width, paddingHorizontal: 8 } : null, scale < 1 && { marginBottom: 20 * scale }, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={title}>
       <Thumb v={v} style={s.cardThumb} />
       <View style={s.cardBody}>
         {showChannel && (
@@ -81,7 +84,7 @@ export const VideoCard = memo(function VideoCard({ v, showChannel = true, width 
         )}
         <View style={{ flex: 1, paddingTop: 8 * scale }}>
           <Text style={[s.title, small?.title]} numberOfLines={2}>
-            {titleOf(v)}
+            {title}
           </Text>
           <Text style={[s.meta, small?.meta]} numberOfLines={1}>
             {meta}
@@ -108,13 +111,14 @@ export const VideoCard = memo(function VideoCard({ v, showChannel = true, width 
  * Shorts viewer, which goes on with the Shorts after it (`scope` 'local': only this server's).
  */
 export const ShortCard = memo(function ShortCard({ v, style, scope }: { v: Video; style?: StyleProp<ViewStyle>; scope?: 'all' | 'local' }) {
+  const title = useShown(v).title;
   const { foreign } = useScope();
   const { scale } = useDensity();
   return (
-    <Pressable onPress={() => router.push(shortsHref(v, { scope, foreign }) as any)} style={({ pressed }) => [style, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={titleOf(v)}>
+    <Pressable onPress={() => router.push(shortsHref(v, { scope, foreign }) as any)} style={({ pressed }) => [style, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={title}>
       <Thumb v={v} style={s.shortThumb} small />
       <Text style={[s.shortTitle, scale < 1 && { fontSize: 14 * scale, lineHeight: 19 * scale }]} numberOfLines={2}>
-        {titleOf(v)}
+        {title}
       </Text>
       <Text style={[s.shortMeta, scale < 1 && { fontSize: 12 * scale }]} numberOfLines={1}>
         {plural(v.views, 'view')}
@@ -125,6 +129,7 @@ export const ShortCard = memo(function ShortCard({ v, style, scope }: { v: Video
 
 /** Compact row: small thumbnail on the left. Used for related videos, history and your own videos. */
 export const VideoRow = memo(function VideoRow({ v, onPress, right, extra }: { v: Video; onPress?: () => void; right?: React.ReactNode; extra?: string }) {
+  const title = useShown(v).title;
   const { foreign } = useScope();
   const { scale } = useDensity();
   return (
@@ -132,12 +137,12 @@ export const VideoRow = memo(function VideoRow({ v, onPress, right, extra }: { v
       onPress={onPress || (() => router.push(withServer(videoHref(v), foreign) as any))}
       style={({ pressed }) => [s.row, pressed && { backgroundColor: colors.surface }]}
       accessibilityRole="button"
-      accessibilityLabel={titleOf(v)}
+      accessibilityLabel={title}
     >
       <Thumb v={v} style={[s.rowThumb, scale < 1 && { width: 160 * scale }]} small />
       <View style={{ flex: 1, gap: 3 }}>
         <Text style={[s.title, { fontSize: 14 * scale, lineHeight: 19 * scale }]} numberOfLines={2}>
-          {titleOf(v)}
+          {title}
         </Text>
         <Text style={s.meta} numberOfLines={1}>
           {v.uploader.display_name}

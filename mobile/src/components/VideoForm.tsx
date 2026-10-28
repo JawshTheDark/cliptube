@@ -31,21 +31,18 @@ export function Field({ label, children }: { label: string; children: React.Reac
   );
 }
 
-/** Title, description, tags, game, visibility: shared by the upload and edit screens. */
-export function VideoForm({ value, onChange }: { value: VideoFields; onChange: (v: VideoFields) => void }) {
+/** A game name with suggestions from the server's game list (videos and live streams use it). */
+export function GameField({ value, onChange }: { value: string; onChange: (name: string) => void }) {
   const { api, user } = useSession();
   const [games, setGames] = useState<Game[]>([]);
-  const [gameFocus, setGameFocus] = useState(false);
-  const set = <K extends keyof VideoFields>(k: K, v: VideoFields[K]) => onChange({ ...value, [k]: v });
-
+  const [focus, setFocus] = useState(false);
   useEffect(() => {
     api
       .get<{ games: Game[] }>('/games')
       .then((r) => setGames(r.games))
       .catch(() => {});
   }, [api]);
-
-  const q = value.game.trim().toLowerCase();
+  const q = value.trim().toLowerCase();
   const matches = useMemo(
     () =>
       games
@@ -54,6 +51,34 @@ export function VideoForm({ value, onChange }: { value: VideoFields; onChange: (
     [games, q],
   );
   const exact = games.some((g) => g.name.toLowerCase() === q);
+  return (
+    <>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setTimeout(() => setFocus(false), 150)}
+        style={f.input}
+        placeholder="Search the game list"
+        placeholderTextColor={colors.text2}
+      />
+      {focus && !exact && matches.length > 0 && (
+        <View style={f.suggest}>
+          {matches.map((g) => (
+            <Pressable key={g.id} onPress={() => onChange(g.name)} style={({ pressed }) => [f.suggestItem, pressed && { backgroundColor: colors.surface3 }]}>
+              <Text style={{ color: colors.text }}>{g.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+      {!!q && !exact && !matches.length && !user?.is_moderator && <Text style={f.hint}>Not in this server’s game list. A moderator can add it.</Text>}
+    </>
+  );
+}
+
+/** Title, description, tags, game, visibility: shared by the upload and edit screens. */
+export function VideoForm({ value, onChange }: { value: VideoFields; onChange: (v: VideoFields) => void }) {
+  const set = <K extends keyof VideoFields>(k: K, v: VideoFields[K]) => onChange({ ...value, [k]: v });
 
   return (
     <View style={{ gap: 16 }}>
@@ -72,25 +97,7 @@ export function VideoForm({ value, onChange }: { value: VideoFields; onChange: (
         />
       </Field>
       <Field label="Game">
-        <TextInput
-          value={value.game}
-          onChangeText={(t) => set('game', t)}
-          onFocus={() => setGameFocus(true)}
-          onBlur={() => setTimeout(() => setGameFocus(false), 150)}
-          style={f.input}
-          placeholder="Search the game list"
-          placeholderTextColor={colors.text2}
-        />
-        {gameFocus && !exact && matches.length > 0 && (
-          <View style={f.suggest}>
-            {matches.map((g) => (
-              <Pressable key={g.id} onPress={() => set('game', g.name)} style={({ pressed }) => [f.suggestItem, pressed && { backgroundColor: colors.surface3 }]}>
-                <Text style={{ color: colors.text }}>{g.name}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-        {!!q && !exact && !matches.length && !user?.is_moderator && <Text style={f.hint}>Not in this server’s game list. A moderator can add it.</Text>}
+        <GameField value={value.game} onChange={(g) => set('game', g)} />
       </Field>
       <Field label="Tags">
         <TextInput value={value.tags} onChangeText={(t) => set('tags', t)} style={f.input} placeholder="ace, clutch, funny" placeholderTextColor={colors.text2} autoCapitalize="none" />

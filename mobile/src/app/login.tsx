@@ -113,8 +113,8 @@ export default function Login() {
         {!!notice && <Text style={{ color: colors.ok }}>{notice}</Text>}
         <Button title={mode === 'in' ? 'Sign in' : 'Create account'} kind="primary" onPress={submit} busy={busy} disabled={!username || !password} />
         {mode === 'in' && (
-          <Pressable onPress={() => Linking.openURL(`${server}/forgot-password`)}>
-            <Text style={[s.hint, { textAlign: 'center' }]}>Forgot your password? Reset it on the website.</Text>
+          <Pressable onPress={() => router.push('/forgot-password')}>
+            <Text style={[s.hint, { textAlign: 'center', color: colors.link }]}>Forgot your password?</Text>
           </Pressable>
         )}
     </KeyboardAwareScrollView>

@@ -40,6 +40,7 @@ Watching and browsing work on any version.
 | Watch parties | Synced playback with chat, reactions, a shared queue and host controls, over the server's event stream (1.8+) |
 | Live streams | Who's live on Home, live pages with the HLS stream, live chat (signed in or as a guest), reactions and chat moderation (1.9+) |
 | Inbox | Notifications with an unread badge on the tab, checked every minute while the app is open |
+| Settings | You → Settings: the website's tabs (Channel with picture, links, live streaming and comment rules; Notifications; Watching with density, skipping, community titles, captions, Shorts off Home, history pause and anonymous mode; Account with password, data export, moving the channel and deleting the account; Apps with API keys and webhooks), plus forgot-password and the email links |
 | Admin | Admins (You → Admin) and moderators (You → Moderation) get the website's admin tabs: Overview (stats, site settings, people, invites, email), Moderation, Games (with SteamGridDB), Legal, Network (hub, peers, block lists, fediverse, the PeerTube directory) and Debugging |
 | Tablets | Turns with the device; wide screens put the player beside the details (watch) or the chat (live, parties), and feeds show up to four cards across. Density (Comfortable, Compact, Dense) in App settings fits more videos with smaller cards |
 | Servers | Pick your main server on first launch (the app opens on it; change it under You → App settings), keep more servers with a sign-in for each, and switch between them |

@@ -13,6 +13,7 @@ import { useSession } from '@/lib/session';
 import { usePaged } from '@/lib/usePaged';
 import { useDensity } from '@/lib/density';
 import { useLayout } from '@/lib/layout';
+import { usePrefs } from '@/lib/prefs';
 import { colors } from '@/lib/theme';
 import type { LiveNow, LiveStream, Video } from '@/lib/types';
 
@@ -34,6 +35,8 @@ export default function Home() {
   const [live, setLive] = useState<LiveStream[]>([]);
   const [shorts, setShorts] = useState<Video[]>([]);
   const { scale } = useDensity();
+  // Keep Shorts off Home (Settings → Watching): no shelf, and lists ask for landscape videos only.
+  const hideShorts = usePrefs().prefs.hide_vertical === 'on';
   // A phone on its side is short: the top bar scrolls away with the feed instead of staying put.
   const short = useLayout().height < 500;
 
@@ -83,8 +86,8 @@ export default function Home() {
 
   const kind: Format = current.mixed ? 'all' : format;
   // Everything, newest first, keeps Shorts on a shelf of their own instead of in the list.
-  const shelf = kind === 'all' && !!current.shelf;
-  const shape = kind === 'shorts' ? '&shape=vertical' : kind === 'videos' || shelf ? '&shape=landscape' : '';
+  const shelf = kind === 'all' && !!current.shelf && !hideShorts;
+  const shape = kind === 'shorts' ? '&shape=vertical' : kind === 'videos' || shelf || (hideShorts && !current.key.startsWith('tag:')) ? '&shape=landscape' : '';
   const paged = usePaged<Video>(api, current.mixed ? current.path : `${current.path}${shape}`);
 
   const shelfScope: 'all' | 'local' = current.key === 'local' ? 'local' : scope;

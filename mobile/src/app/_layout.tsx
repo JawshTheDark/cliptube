@@ -9,6 +9,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { PromptHost } from '@/components/Prompt';
 import { Welcome } from '@/components/Welcome';
 import { DensityProvider } from '@/lib/density';
+import { PrefsProvider } from '@/lib/prefs';
 import { SessionProvider, useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
 
@@ -60,6 +61,8 @@ function Root() {
       <Stack.Screen name="save" options={{ title: 'Save to', presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="party/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ title: 'App settings' }} />
+      <Stack.Screen name="account" options={{ title: 'Settings' }} />
+      <Stack.Screen name="forgot-password" options={{ title: 'Forgot your password?' }} />
       <Stack.Screen name="admin/index" options={{ title: 'Admin' }} />
       <Stack.Screen name="admin/network" options={{ title: 'Network' }} />
       <Stack.Screen name="admin/moderation" options={{ title: 'Moderation' }} />
@@ -89,9 +92,11 @@ export default function RootLayout() {
         <ThemeProvider value={theme}>
           <SessionProvider>
             <DensityProvider>
-              <StatusBar style="light" />
-              <Root />
-              <PromptHost />
+              <PrefsProvider>
+                <StatusBar style="light" />
+                <Root />
+                <PromptHost />
+              </PrefsProvider>
             </DensityProvider>
           </SessionProvider>
         </ThemeProvider>

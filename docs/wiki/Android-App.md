@@ -18,6 +18,7 @@ the website, so nothing needs setting up on the server beyond running version 1.
 - [What you can do](#what-you-can-do)
 - [Which server a video is on](#which-server-a-video-is-on)
 - [Tablets, turning and density](#tablets-turning-and-density)
+- [Settings](#settings)
 - [Admin and moderation](#admin-and-moderation)
 - [Shorts](#shorts)
 - [Comments and times](#comments-and-times)
@@ -96,9 +97,8 @@ a linked account carry the uploader's mark. Linked accounts need 1.6 or newer on
 Videos from other servers in the network stream straight from the server that hosts them, like on the website.
 Likes, comments and subscriptions on them go through your server.
 
-Still website-only: the timeline editor, thumbnails, captions, clipping and exports, analytics, account settings and
-push notifications. **You → Account settings on the website** opens them. The admin and moderation pages are in the
-app since 1.7.0 (see below).
+Still website-only: the timeline editor, thumbnails, captions, clipping and exports, analytics and push
+notifications. Settings and the admin and moderation pages are in the app since 1.7.0 (see below).
 
 ## Which server a video is on
 
@@ -130,6 +130,26 @@ website's *Layout density*:
 | **Dense** | The smallest cards and text: two across a phone held upright, up to six across a tablet |
 
 It applies to Home, channel and game pages, Shorts and lists like History, and the app remembers it.
+
+## Settings
+
+**You → Settings** has the website's settings in the same tabs (see [Watching and Discovery](Watching-and-Discovery.md)
+and [Uploading and Editing](Uploading-and-Editing.md)):
+
+| Tab | What's there |
+| --- | --- |
+| **Channel** | Picture (from the phone), display name and description, support links, live streaming (the OBS server and stream key, the stream's title, game and who can watch), comments on your videos and blocked words, linked accounts |
+| **Notifications** | What reaches you by push and by email, and your email address |
+| **Watching** | Layout density, skipping marked parts, community titles and thumbnails, captions, keeping Shorts off Home; privacy: pausing the history, and anonymous mode on this phone |
+| **Account** | Changing the password, storage, exporting your data (saved through Android's share sheet), moving the channel to another site (export, import, move), deleting the account |
+| **Apps** | API keys (with a ShareX config to share) and webhooks |
+
+The watching choices are kept on the phone, like the website keeps them per browser, with the same defaults: community
+titles are off until you turn them on. Push notifications reach the browsers where you turned them on; the app checks
+the Inbox while it's open.
+
+**Forgot your password?** on the sign-in screen asks the server for a reset link, and the links in reset and
+confirmation emails from clips.irc.so, clips.quitlyingto.us and clips.6697.pro open in the app.
 
 ## Admin and moderation
 

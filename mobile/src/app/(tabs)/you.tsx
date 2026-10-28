@@ -74,7 +74,7 @@ export default function You() {
         <View style={s.group}>
           <Row icon="tune" label="App settings" hint={main ? `Main server: ${hostLabel(main)}` : undefined} onPress={() => router.push('/settings')} />
           <Row icon="dns" label="Servers" hint={`Using ${hostLabel(server)}`} onPress={() => router.push('/servers')} />
-          <Row icon="settings" label="Account settings on the website" onPress={() => Linking.openURL(`${server}/settings`)} />
+          {user && <Row icon="settings" label="Settings" hint="Channel, notifications, watching, account, apps" onPress={() => router.push('/account' as any)} />}
           {user && <Row icon="logout" label="Sign out" onPress={confirmSignOut} />}
         </View>
 

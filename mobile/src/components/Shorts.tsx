@@ -14,6 +14,7 @@ import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
 import type { Video } from '@/lib/types';
 import { usePaged } from '@/lib/usePaged';
+import { useDisplayed } from '@/lib/prefs';
 import { ServerTag } from './ServerTag';
 import { Text } from './Text';
 import { Avatar, Empty, Icon, IconButton, Loading, toast } from './ui';
@@ -150,10 +151,11 @@ const ShortSlide = memo(function ShortSlide({ v, api, W, H, active, near, muted,
     fh = H;
     fw = H * aspect;
   }
-  const thumb = api.abs(v.community?.thumbnail_url || v.thumbnail_url);
+  const shown = useDisplayed()(v);
+  const thumb = api.abs(shown.thumbnail_url);
   // A short screen (a phone on its side): smaller buttons, lower down, beside the frame rather than over the title.
   const tight = H < 640;
-  const title = v.community?.title || v.title;
+  const title = shown.title;
   const u = v.uploader;
   return (
     <View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
