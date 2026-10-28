@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { AdminTabs } from '@/components/AdminTabs';
+import { HeldComments, Quote } from '@/components/HeldComments';
 import { Badge, Field, FieldRow, Input, Notice, NumberInput, Section, Toggle, isOn, s as fs } from '@/components/Form';
 import { confirm, prompt } from '@/components/Prompt';
 import { Text } from '@/components/Text';
@@ -45,14 +46,6 @@ const TABS = [
 type Tab = (typeof TABS)[number][0];
 
 const watch = (id: string) => router.push(`/watch/${encodeURIComponent(id)}` as any);
-const Quote = ({ text }: { text: string }) => (
-  <View style={{ borderLeftWidth: 3, borderLeftColor: colors.surface3, paddingLeft: 10 }}>
-    <Text style={{ color: colors.text, lineHeight: 20 }} selectable>
-      {text}
-    </Text>
-  </View>
-);
-
 /** Moderation, the website's /admin/moderation: reports, held comments, appeals, the audit log and spam controls. */
 export default function AdminModeration() {
   const { api, user } = useSession();
@@ -224,58 +217,6 @@ function Reports() {
         ))}
       </View>
       {reports === null ? <Loading /> : reports.length === 0 ? <Text style={fs.hint}>Nothing here.</Text> : reports.map((r) => <ReportCard key={r.id} r={r} onChanged={load} />)}
-    </>
-  );
-}
-
-/** Comments waiting for review. The studio's held comments use the same list with its own endpoint. */
-export function HeldComments({ endpoint = '/mod/comments/held' }: { endpoint?: string }) {
-  const { api } = useSession();
-  const [comments, setComments] = useState<any[] | null>(null);
-  const load = useCallback(
-    () =>
-      api
-        .get<{ comments: any[] }>(endpoint)
-        .then((r) => setComments(r.comments))
-        .catch(() => setComments([])),
-    [api, endpoint],
-  );
-  useEffect(() => {
-    load();
-  }, [load]);
-  const act = async (c: any, approve: boolean) => {
-    try {
-      if (approve) await api.patch(`/videos/${c.video_id}/comments/${c.id}`, { status: 'visible' });
-      else await api.del(`/videos/${c.video_id}/comments/${c.id}`);
-      setComments((list) => (list || []).filter((x) => x.id !== c.id));
-      toast(approve ? 'Approved' : 'Deleted');
-    } catch (e: any) {
-      toast(e.message);
-    }
-  };
-  if (comments === null) return <Loading />;
-  if (!comments.length) return <Text style={fs.hint}>No comments are waiting for review.</Text>;
-  return (
-    <>
-      {comments.map((c) => (
-        <Section key={c.id}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-            <Badge text={c.held_reason || 'Held'} tone="warn" />
-            <Text style={fs.hint}>
-              {`@${c.author.username}${c.author.remote ? ' (another instance)' : ''} on `}
-              <Text style={{ color: colors.link }} onPress={() => watch(c.video_id)}>
-                {c.video_title}
-              </Text>
-              {` · ${ago(c.created_at)}`}
-            </Text>
-          </View>
-          <Quote text={c.body} />
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button title="Approve" small kind="accent" onPress={() => act(c, true)} />
-            <Button title="Delete" small onPress={() => act(c, false)} />
-          </View>
-        </Section>
-      ))}
     </>
   );
 }

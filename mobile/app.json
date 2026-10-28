@@ -164,6 +164,21 @@
               "scheme": "https",
               "host": "clips.6697.pro",
               "pathPrefix": "/verify-email"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.irc.so",
+              "pathPrefix": "/compare"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.quitlyingto.us",
+              "pathPrefix": "/compare"
+            },
+            {
+              "scheme": "https",
+              "host": "clips.6697.pro",
+              "pathPrefix": "/compare"
             }
           ]
         }

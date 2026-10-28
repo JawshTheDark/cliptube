@@ -114,34 +114,62 @@ export function Select<T extends string>({ value, options, onChange, disabled, p
   );
 }
 
-/** The website's "more" menu (a ⋮ button): a list of actions in a sheet. */
-export function MoreMenu({ items, label = "More" }: { items: { label: string; onPress: () => void; destructive?: boolean }[]; label?: string }) {
-  const [open, setOpen] = useState(false);
+/** A sheet that rises from the bottom of the screen, over a dimmed backdrop: menus and short choices. */
+export function Sheet({ visible, onClose, title, children }: { visible: boolean; onClose: () => void; title?: string; children: ReactNode }) {
   const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+      <Pressable style={s.backdrop} onPress={onClose}>
+        <Pressable style={[s.sheet, { paddingBottom: 12 + insets.bottom }]} onPress={() => {}}>
+          {!!title && <Text style={s.sheetTitle}>{title}</Text>}
+          <ScrollView style={{ maxHeight: 520 }}>{children}</ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+export type MenuItem = { label: string; onPress: () => void; destructive?: boolean; icon?: IconName; hint?: string; checked?: boolean };
+
+/** A list of actions in a Sheet; picking one closes it first. */
+export function ActionSheet({ visible, onClose, title, items }: { visible: boolean; onClose: () => void; title?: string; items: MenuItem[] }) {
+  return (
+    <Sheet visible={visible} onClose={onClose} title={title}>
+      {items.map((it) => (
+        <Pressable
+          key={it.label}
+          onPress={() => {
+            onClose();
+            it.onPress();
+          }}
+          style={({ pressed }) => [s.option, pressed && { backgroundColor: colors.surface2 }]}
+          accessibilityRole={it.checked === undefined ? 'button' : 'radio'}
+          accessibilityState={it.checked === undefined ? undefined : { checked: it.checked }}
+        >
+          {it.checked !== undefined ? (
+            <Icon name={it.checked ? 'radio-button-checked' : 'radio-button-unchecked'} size={22} color={it.checked ? colors.accent : colors.text2} />
+          ) : (
+            !!it.icon && <Icon name={it.icon} size={22} color={it.destructive ? colors.err : colors.text} />
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={[s.optionText, it.destructive && { color: colors.err }]}>{it.label}</Text>
+            {!!it.hint && <Text style={s.hint}>{it.hint}</Text>}
+          </View>
+        </Pressable>
+      ))}
+    </Sheet>
+  );
+}
+
+/** The website's "more" menu (a ⋮ button): a list of actions in a sheet. */
+export function MoreMenu({ items, label = 'More', title }: { items: MenuItem[]; label?: string; title?: string }) {
+  const [open, setOpen] = useState(false);
   return (
     <>
       <Pressable onPress={() => setOpen(true)} hitSlop={8} style={{ padding: 6 }} accessibilityRole="button" accessibilityLabel={label}>
         <Icon name="more-vert" size={22} color={colors.text2} />
       </Pressable>
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)} statusBarTranslucent navigationBarTranslucent>
-        <Pressable style={s.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={[s.sheet, { paddingBottom: 12 + insets.bottom }]} onPress={() => {}}>
-            {items.map((it) => (
-              <Pressable
-                key={it.label}
-                onPress={() => {
-                  setOpen(false);
-                  it.onPress();
-                }}
-                style={({ pressed }) => [s.option, pressed && { backgroundColor: colors.surface2 }]}
-                accessibilityRole="button"
-              >
-                <Text style={[s.optionText, it.destructive && { color: colors.err }]}>{it.label}</Text>
-              </Pressable>
-            ))}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ActionSheet visible={open} onClose={() => setOpen(false)} title={title} items={items} />
     </>
   );
 }
@@ -230,6 +258,7 @@ export const s = StyleSheet.create({
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 10, width: '100%', maxWidth: 720, alignSelf: 'center' },
   option: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 12 },
   optionText: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  sheetTitle: { color: colors.text2, fontSize: 13, fontWeight: '700', paddingHorizontal: 18, paddingTop: 4, paddingBottom: 8 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   stat: { flexGrow: 1, flexBasis: 140, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.hairline, padding: 12, gap: 2 },
   statN: { color: colors.text, fontSize: 22, fontFamily: fonts.display, fontWeight: '800' },

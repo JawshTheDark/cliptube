@@ -1,4 +1,4 @@
-OurTube for Android 1.7.0: the website's admin pages and settings, in the app.
+OurTube for Android 1.7.0: the website's admin pages, settings, Studio and watch-page tools, in the app.
 
 **Install:** download the `.apk` below on your phone or tablet and open it. It installs over earlier versions and keeps your servers and sign-ins.
 
@@ -20,3 +20,14 @@ Admins and moderators now have the website's admin area under **You → Admin** 
 - **Apps:** API keys and webhooks.
 
 **Forgot your password?** works in the app, and password-reset and email-confirmation links open in it.
+
+**You → Your videos** is now the website's Studio: each video's state, retrying and deleting, every detail field (who may comment, downloading the original, sharing with the network), a custom thumbnail, skippable parts, captions, community suggestions, analytics with per-day charts and retention, and comments to review.
+
+On the watch page:
+
+- **Chapters** from the description (or a PeerTube video's own) as cards you can tap.
+- **Skippable parts** are skipped, offered with a Skip button, or left, as you choose in Settings.
+- **Captions** with a CC button on the player.
+- **Clip** a moment into a new video, or export it as a GIF or a short MP4.
+- **Download** the MP4 or, when allowed, the original upload.
+- **Support** links, **Compare side by side**, **Add captions**, **Mark a skippable part**, **Suggest a title or thumbnail**, and **Report** (videos, comments and channels), plus moderators' hide, restore and remove.

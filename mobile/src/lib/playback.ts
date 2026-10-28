@@ -86,3 +86,31 @@ export function seekCurrent(seconds: number): boolean {
     return false;
   }
 }
+
+let rangeTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Plays the current video from `start` and pauses it at `end` (the clip dialog's Preview). */
+export function playRange(start: number, end: number): boolean {
+  if (!current) return false;
+  const p = current.player;
+  if (rangeTimer) clearInterval(rangeTimer);
+  try {
+    p.currentTime = start;
+    p.play();
+  } catch {
+    return false;
+  }
+  rangeTimer = setInterval(() => {
+    try {
+      if (p.currentTime >= end || !p.playing) {
+        if (p.currentTime >= end) p.pause();
+        clearInterval(rangeTimer!);
+        rangeTimer = null;
+      }
+    } catch {
+      clearInterval(rangeTimer!);
+      rangeTimer = null;
+    }
+  }, 100);
+  return true;
+}

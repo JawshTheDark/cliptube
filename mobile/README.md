@@ -28,13 +28,13 @@ Watching and browsing work on any version.
 | Area | Details |
 | --- | --- |
 | Home | Everything, Videos and Shorts, then All, This site, For you, Subscriptions, Trending, Top rated and popular tags, like the website; a Shorts shelf after the first eight videos and a 9:16 grid for Shorts |
-| Watch | Native player (Media3) with fullscreen, picture-in-picture and resume; likes, subscribe, share, related videos |
+| Watch | Native player (Media3) with fullscreen, picture-in-picture and resume; likes, subscribe, share, related videos; chapters, skipping marked parts per Settings, captions drawn over the player, clips and GIF/MP4 exports, downloads, support links, Compare, adding captions, marking skippable parts, title and thumbnail suggestions, reporting and moderator tools |
 | Network | Videos from other servers stream from their own server; likes, comments and subscriptions go through yours. In a network every card, watch page, channel and live card shows the server it lives on, with the website's color for it |
 | Comments | Threads with replies, held and pending states, approve and delete for uploaders and moderators; times like 1:23 jump the video, Add time inserts the current one, and PeerTube videos show their whole thread (1.17+) |
 | Shorts | A full-screen vertical viewer: one Short per page in a frame of its own shape, swipe for the next, tap to pause, mute, a progress line, like, dislike, comments in a sheet, share and the full page (1.17+) |
 | Explore | Search with sorting, and the game catalog with SteamGridDB artwork; game and channel pages |
 | Upload | Pick a video, set title, description, game, tags, visibility and clipping, watch progress and processing. On 1.10+ it goes up in 8 MB pieces that survive dropped connections and resume after the app is closed |
-| You | Your videos (edit, publish drafts, delete), history, liked videos, subscriptions, sign out |
+| You | Your videos as the Studio (states, retry, delete; full details with thumbnail, captions, skippable parts and suggestions; analytics; comments to review), history, liked videos, subscriptions, sign out |
 | Linked accounts | Link your accounts on other servers or Mastodon (1.6+); channels show Also on, Subscribe to all and an All accounts filter |
 | Playlists | Save to Watch later or a playlist, play a list with shuffle, loop and autoplay, edit and reorder your own (1.7+) |
 | Watch parties | Synced playback with chat, reactions, a shared queue and host controls, over the server's event stream (1.8+) |

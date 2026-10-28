@@ -22,7 +22,7 @@ function useShown(v: Video) {
 }
 const when = (v: Video) => ago(v.published_at || v.created_at);
 
-function Thumb({ v, style, small }: { v: Video; style: StyleProp<ViewStyle>; small?: boolean }) {
+export function Thumb({ v, style, small }: { v: Video; style: StyleProp<ViewStyle>; small?: boolean }) {
   const { api } = useScope();
   const uri = api.abs(useShown(v).thumbnail_url);
   const pending = v.status && v.status !== 'ready';

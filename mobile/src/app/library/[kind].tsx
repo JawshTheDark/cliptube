@@ -3,7 +3,7 @@ import { Alert, FlatList, Linking, Pressable, StyleSheet, View } from 'react-nat
 import { Text, TextInput } from '@/components/Text';
 import { PlaylistRow } from '@/components/PlaylistRow';
 import { f } from '@/components/VideoForm';
-import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { VideoList } from '@/components/VideoList';
 import { VideoRow } from '@/components/VideoCard';
 import { Avatar, Button, Empty, ErrorBox, Icon, IconButton, Loading, toast } from '@/components/ui';
@@ -40,7 +40,8 @@ export default function Library() {
       {kind === 'subscriptions' ? (
         <Subscriptions />
       ) : kind === 'mine' ? (
-        <Mine />
+        // Your videos moved to the Studio (1.7).
+        <Redirect href={'/studio' as any} />
       ) : kind === 'playlists' ? (
         <MyPlaylists />
       ) : kind === 'parties' ? (
@@ -80,45 +81,6 @@ function Videos({ kind }: { kind: 'history' | 'liked' }) {
   );
 }
 
-const STATUS: Record<string, string> = { queued: 'Waiting to process', processing: 'Processing', failed: 'Processing failed' };
-
-/** Your uploads, including drafts and private ones, with their state and an edit button. */
-function Mine() {
-  const { api } = useSession();
-  const paged = usePaged<Video>(api, '/me/videos', (r) => r.videos, false);
-  // Come back from editing to fresh data.
-  useFocusEffect(
-    useCallback(() => {
-      paged.refresh();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []),
-  );
-
-  if (paged.loading && !paged.items.length) return <Loading />;
-  return (
-    <FlatList
-      data={paged.items}
-      keyExtractor={(v) => v.id}
-      ListHeaderComponent={paged.error ? <ErrorBox message={paged.error} onRetry={paged.reload} /> : undefined}
-      ListEmptyComponent={
-        <Empty icon="video-library" title="No videos yet">
-          <View style={{ marginTop: 8 }}>
-            <Button title="Upload a video" kind="accent" icon="file-upload" onPress={() => router.push('/upload')} />
-          </View>
-        </Empty>
-      }
-      onRefresh={paged.refresh}
-      refreshing={paged.refreshing}
-      renderItem={({ item: v }) => {
-        const state = STATUS[v.status] || (v.draft ? 'Draft, not published' : v.moderation_status ? `${v.moderation_status} by a moderator` : null);
-        const extra = [v.visibility, state || plural(v.views, 'view'), ago(v.created_at)].filter(Boolean).join(' · ');
-        return <VideoRow v={v} extra={extra} right={<IconButton name="edit" label={`Edit ${v.title}`} onPress={() => router.push(`/edit/${encodeURIComponent(v.id)}`)} />} />;
-      }}
-    />
-  );
-}
-
-/** Your playlists (Watch later first) and a quick way to make a new one. */
 function MyPlaylists() {
   const { api } = useSession();
   const paged = usePaged<PlaylistSummary>(api, '/playlists/mine', (r) => r.playlists, false);

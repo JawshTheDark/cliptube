@@ -11,15 +11,20 @@ import { useSession } from '@/lib/session';
 import { useLayout } from '@/lib/layout';
 import { seekCurrent, useOnePlayerAtATime } from '@/lib/playback';
 import { useDisplayed, usePrefs } from '@/lib/prefs';
-import { ago, compact, hostOf, plural } from '@/lib/format';
+import { ago, bytes, compact, duration, hostOf, plural } from '@/lib/format';
+import { downloadAndShare } from '@/lib/download';
+import { openReport } from '@/lib/report';
+import { chapterAt, cueText, parseChapters, parseVtt, type Chapter, type Cue } from '@/lib/time';
 import { colors, fonts } from '@/lib/theme';
-import type { RemoteWatch, Video } from '@/lib/types';
+import type { Caption, RemoteWatch, Segment, Video } from '@/lib/types';
 import { knownServers, openChannelLink } from '@/lib/profiles';
 import { refFromRoute } from '@/lib/refs';
 import { PlaylistBar, type PlaylistNav } from './PlaylistBar';
 import { RichText } from './RichText';
 import { ServerTag } from './ServerTag';
 import { VideoRow } from './VideoCard';
+import { ActionSheet, type MenuItem } from './Form';
+import { prompt } from './Prompt';
 import { Avatar, Button, Empty, Icon, IconButton, Loading, toast } from './ui';
 
 type Loaded = {
@@ -51,6 +56,9 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [remoteChapters, setRemoteChapters] = useState<Chapter[] | null>(null);
+  const [menu, setMenu] = useState<null | 'more' | 'download' | 'support'>(null);
+  const [chapterIdx, setChapterIdx] = useState(-1);
 
   const load = useCallback(async () => {
     setError(null);
@@ -73,6 +81,10 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
         if (v.remote.peer_url) {
           fetch(`${v.remote.peer_url}/api/videos/${encodeURIComponent(v.remote.remote_id)}/view`, { method: 'POST', credentials: 'omit' }).catch(() => {});
         }
+        api
+          .get<{ chapters: Chapter[] }>(`/network/videos/${peer}/${encodeURIComponent(remote!)}/chapters`)
+          .then((c) => setRemoteChapters(c.chapters || []))
+          .catch(() => {});
         api
           .get<{ subscriber_count: number | null; subscribed: boolean }>(`/network/channels/${peer}/${encodeURIComponent(v.uploader.username)}`)
           .then((c) => setData((d) => (d ? { ...d, subscriberCount: c.subscriber_count, subscribed: c.subscribed } : d)))
@@ -102,8 +114,14 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
   useEffect(() => {
     setData(null);
     setExpanded(false);
+    setRemoteChapters(null);
     load();
   }, [load]);
+
+  // Chapters: set on the video's server, or read from times in the description, as on the website.
+  const description = data?.video.description;
+  const length = data?.video.duration || Infinity;
+  const chapters = useMemo(() => (remoteChapters?.length ? remoteChapters : parseChapters(description, length)), [remoteChapters, description, length]);
 
   // Watch position, so "continue watching" works across the app and the website.
   const lastSent = useRef(0);
@@ -119,6 +137,13 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
     [api, id, signedIn, isRemote, anonymous],
   );
   useEffect(() => () => reportProgress(position.current, true), [reportProgress]);
+  const onTime = useCallback(
+    (t: number) => {
+      reportProgress(t);
+      if (chapters.length) setChapterIdx(chapterAt(chapters, t));
+    },
+    [reportProgress, chapters],
+  );
 
   const needSignIn = () => {
     if (foreign) {
@@ -192,6 +217,29 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
     }
   };
 
+  const moderate = async (action: 'hide' | 'remove' | 'restore') => {
+    if (!data) return;
+    const reason = action === 'restore' ? '' : await prompt({ title: `Reason to ${action} this video`, message: 'Shown to the uploader.', confirmLabel: action === 'hide' ? 'Hide' : 'Remove' });
+    if (reason === null) return;
+    try {
+      await api.post(`/mod/videos/${encodeURIComponent(data.video.id)}`, { action, reason });
+      const r = await api.get<{ video: Video }>(`/videos/${encodeURIComponent(data.video.id)}`);
+      setData((d) => (d ? { ...d, video: r.video } : d));
+      toast(action === 'restore' ? 'Video restored' : `Video ${action === 'hide' ? 'hidden' : 'removed'}`);
+    } catch (e: any) {
+      toast(e.message);
+    }
+  };
+
+  const download = async (url: string, name: string, mime?: string) => {
+    toast('Downloading…');
+    try {
+      await downloadAndShare(api, url, name, mime);
+    } catch (e: any) {
+      toast(e.message);
+    }
+  };
+
   const switchHere = async () => {
     if (!foreign) return;
     try {
@@ -243,6 +291,30 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
     else if (remoteChannel) openChannelLink(remoteChannel, knownServers(session.servers, session.site));
   };
 
+  // Clip, captions, skippable parts and suggestions, for signed-in viewers of a video on this server.
+  const tools = signedIn && !isRemote && v.status === 'ready' && !!v.video_url;
+  const openTool = (tool: 'clip' | 'segment' | 'captions' | 'suggest') => router.push({ pathname: '/watch-tools' as any, params: { tool, id: v.id } });
+  const mp4 = v.video_url ? `${v.video_url}${v.video_url.includes('?') ? '&' : '?'}download` : '';
+  const reportTarget = isRemote ? { type: 'remote_video' as const, id: `${peer}:${remote}`, label: v.title } : { type: 'video' as const, id: v.id, label: v.title };
+  const moreItems: MenuItem[] = [
+    ...(v.video_url ? [{ label: 'Compare side by side', hint: 'With another clip, lined up on one timeline', icon: 'compare' as const, onPress: () => router.push({ pathname: '/compare' as any, params: { a: isRemote ? `n:${peer}:${remote}` : v.id } }) }] : []),
+    ...(tools
+      ? [
+          { label: 'Add captions', icon: 'closed-caption' as const, onPress: () => openTool('captions') },
+          { label: 'Mark a skippable part', icon: 'skip-next' as const, onPress: () => openTool('segment') },
+          { label: 'Suggest a title or thumbnail', icon: 'edit' as const, onPress: () => openTool('suggest') },
+        ]
+      : []),
+    ...(v.can_moderate && !isRemote
+      ? v.moderation_status
+        ? [{ label: 'Restore video', icon: 'check' as const, onPress: () => moderate('restore') }]
+        : [{ label: 'Hide from everyone else', icon: 'lock-outline' as const, onPress: () => moderate('hide') }]
+      : []),
+    ...(v.can_moderate && !isRemote && v.moderation_status !== 'removed' ? [{ label: 'Remove (rule or copyright violation)', icon: 'gavel' as const, destructive: true, onPress: () => moderate('remove') }] : []),
+    ...(session.user && !v.can_edit ? [{ label: 'Report', icon: 'outlined-flag' as const, onPress: () => (needSignIn() ? undefined : openReport(reportTarget, foreign)) }] : []),
+    { label: 'Open in browser', icon: 'open-in-browser', onPress: () => Linking.openURL(data.shareUrl) },
+  ];
+
   const info = (
     <View>
       {!!foreign && (
@@ -277,6 +349,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
             </Text>
           </View>
         </Pressable>
+        {!!u.support_links?.length && <Button title="Support" icon="favorite-border" small onPress={() => setMenu('support')} />}
         {!v.can_edit && data.can.subscriptions && (
           <Button title={data.subscribed ? 'Subscribed' : 'Subscribe'} kind={data.subscribed ? 'secondary' : 'primary'} small onPress={subscribe} disabled={busy} />
         )}
@@ -303,9 +376,24 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
         {(isRemote || (v.status === 'ready' && !!v.video_url)) && <Button title="Save" icon="playlist-add" small onPress={save} />}
         {(isRemote || (v.status === 'ready' && !!v.video_url && v.visibility !== 'private')) && <Button title="Watch together" icon="groups" small onPress={watchTogether} />}
         <Button title="Share" icon="share" small onPress={() => Share.share({ message: data.shareUrl }).catch(() => {})} />
-        <Button title="Open in browser" icon="open-in-browser" small onPress={() => Linking.openURL(data.shareUrl)} />
-        {v.can_edit && !foreign && <Button title="Edit" icon="edit" small onPress={() => router.push(`/edit/${encodeURIComponent(v.id)}`)} />}
+        {v.can_edit && !foreign && <Button title="Details" icon="edit" small onPress={() => router.push(`/studio/edit/${encodeURIComponent(v.id)}` as any)} />}
+        {tools && <Button title="Clip" icon="content-cut" small onPress={() => openTool('clip')} />}
+        {!isRemote && !!v.video_url && <Button title="Download" icon="file-download" small onPress={() => (v.original_download ? setMenu('download') : download(mp4, `${v.title.slice(0, 60)}.mp4`, 'video/mp4'))} />}
+        <Button title="More" icon="more-horiz" small onPress={() => setMenu('more')} />
       </ScrollView>
+
+      {chapters.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chapters}>
+          {chapters.map((c, i) => (
+            <Pressable key={c.start} onPress={() => seekCurrent(c.start)} style={[s.chapter, i === chapterIdx && s.chapterOn]} accessibilityRole="button" accessibilityLabel={`Chapter: ${c.title || 'untitled'}, at ${duration(c.start)}`}>
+              <Text style={s.chapterTime}>{duration(c.start)}</Text>
+              <Text style={s.chapterTitle} numberOfLines={2}>
+                {c.title || 'Start'}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
 
       {expanded && (
         <View style={s.descCard}>
@@ -314,6 +402,15 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
               <Icon name="sports-esports" size={16} color={colors.text2} />
               <Text style={{ color: colors.text, fontSize: 13 }}>{v.game.name}</Text>
             </Pressable>
+          )}
+          {!!v.source && (
+            <Text style={s.meta}>
+              Clipped from{' '}
+              <Text style={{ color: colors.link }} onPress={() => router.push(withServer(`/watch/${encodeURIComponent(v.source!.id)}`, foreign) as any)}>
+                {v.source.title}
+              </Text>
+              {` by @${v.source.uploader.username}`}
+            </Text>
           )}
           {/* Times in the description (1:23) jump the video there, as on the website. */}
           <RichText text={v.description?.trim() || 'No description.'} onSeek={(t) => seekCurrent(t)} style={s.desc} />
@@ -343,6 +440,25 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
         <Text style={s.meta}>{data.can.comments ? 'Tap to read and add comments' : 'Tap to read comments'}</Text>
       </Pressable>
 
+      <ActionSheet visible={menu === 'more'} onClose={() => setMenu(null)} title={title} items={moreItems} />
+      <ActionSheet
+        visible={menu === 'download'}
+        onClose={() => setMenu(null)}
+        title="Download"
+        items={[
+          { label: 'MP4 for any player', icon: 'movie', onPress: () => download(mp4, `${v.title.slice(0, 60)}.mp4`, 'video/mp4') },
+          ...(v.original_download
+            ? [{ label: `${v.original_download.upload ? 'Original upload' : 'Full quality'} (${bytes(v.original_download.size)})`, icon: 'file-download' as const, onPress: () => download(v.original_download!.url, v.original_download!.name || `${v.title.slice(0, 60)}`) }]
+            : []),
+        ]}
+      />
+      <ActionSheet
+        visible={menu === 'support'}
+        onClose={() => setMenu(null)}
+        title={`Support ${u.display_name}`}
+        items={(u.support_links || []).map((l) => ({ label: l.label, hint: hostOf(l.url), icon: 'open-in-new' as const, onPress: () => Linking.openURL(l.url).catch(() => {}) }))}
+      />
+
     </View>
   );
   const relatedTitle = data.related.length > 0 ? <Text style={s.sectionTitle}>More videos</Text> : null;
@@ -365,7 +481,8 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
             width={wide ? layout.leftPane : undefined}
             maxHeight={wide ? layout.height * 0.8 : undefined}
             resumeAt={signedIn && !list ? v.resume_at || 0 : 0}
-            onTime={reportProgress}
+            onTime={onTime}
+            fineTime={chapters.length > 0}
             onEnd={() => {
               const n = playlistNav.current;
               if (n?.autoplay && n.next) n.goNext();
@@ -402,6 +519,7 @@ function Player({
   onEnd,
   width: paneWidth,
   maxHeight,
+  fineTime,
 }: {
   video: Video;
   api: Api;
@@ -410,6 +528,8 @@ function Player({
   onEnd?: () => void;
   width?: number;
   maxHeight?: number;
+  /** Report the time a few times a second (for chapters), not every five seconds. */
+  fineTime?: boolean;
 }) {
   const window = useWindowDimensions();
   const width = paneWidth ?? window.width;
@@ -443,7 +563,57 @@ function Player({
       if (resumeAt > 3 && (!d || resumeAt < d - 5)) player.currentTime = resumeAt;
     }
   });
-  useEventListener(player, 'timeUpdate', ({ currentTime }) => onTime(currentTime));
+  // Skippable parts (Settings → Watching: skip them, offer a Skip button, or leave them) and captions. The native
+  // player can't show captions from a separate file, so they're drawn over it here.
+  const { prefs } = usePrefs();
+  const skipMode = prefs.skip;
+  const segments = video.segments || [];
+  const [track, setTrack] = useState<Caption | null>(() => (prefs.captions === 'on' && video.captions?.length ? video.captions[0] : null));
+  const [cues, setCues] = useState<Cue[]>([]);
+  const [line, setLine] = useState('');
+  const [segment, setSegment] = useState<Segment | null>(null);
+  const [skipped, setSkipped] = useState<Segment | null>(null);
+  const [ccMenu, setCcMenu] = useState(false);
+  const done = useRef(new Set<string>());
+  useEffect(() => {
+    setLine('');
+    if (!track) return setCues([]);
+    let dead = false;
+    const abs = api.abs(track.url)!;
+    fetch(abs, { headers: api.authFor(abs) })
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+      .then((t) => !dead && setCues(parseVtt(t)))
+      .catch(() => !dead && toast('Couldn’t load the captions'));
+    return () => {
+      dead = true;
+    };
+  }, [api, track]);
+  const fine = !!fineTime || cues.length > 0 || (segments.length > 0 && skipMode !== 'off');
+  useEffect(() => {
+    player.timeUpdateEventInterval = fine ? 0.25 : 5;
+  }, [player, fine]);
+  useEventListener(player, 'timeUpdate', ({ currentTime: t }) => {
+    onTime(t);
+    if (cues.length) setLine(cueText(cues, t));
+    if (!segments.length || skipMode === 'off') return;
+    const sg = segments.find((x) => t >= x.start && t < x.end - 0.3) || null;
+    if (sg && skipMode === 'auto' && !done.current.has(sg.id)) {
+      done.current.add(sg.id);
+      player.currentTime = sg.end;
+      setSkipped(sg);
+      setTimeout(() => setSkipped((x) => (x === sg ? null : x)), 4000);
+    } else setSegment((c) => (c?.id === sg?.id ? c : sg));
+  });
+  const skip = () => {
+    if (!segment) return;
+    done.current.add(segment.id);
+    player.currentTime = segment.end;
+    setSegment(null);
+  };
+  const undo = () => {
+    if (skipped) player.currentTime = skipped.start;
+    setSkipped(null);
+  };
   useEventListener(player, 'playToEnd', () => onEnd?.());
   useEventListener(player, 'playingChange', ({ isPlaying }) => {
     if (!isPlaying) onTime(player.currentTime);
@@ -479,6 +649,36 @@ function Player({
         allowsPictureInPicture
         fullscreenOptions={{ enable: true, orientation: aspect >= 1 ? 'landscape' : 'portrait' }}
       />
+      {!!line && (
+        <View pointerEvents="none" style={s.captionBox}>
+          <Text style={s.caption}>{line}</Text>
+        </View>
+      )}
+      {skipMode === 'ask' && !!segment && (
+        <Pressable style={s.skip} onPress={skip} accessibilityRole="button">
+          <Text style={s.skipText}>{`Skip ${segment.label.toLowerCase()}`}</Text>
+          <Icon name="skip-next" size={18} color="#fff" />
+        </Pressable>
+      )}
+      {!!skipped && (
+        <Pressable style={s.skip} onPress={undo} accessibilityRole="button">
+          <Text style={s.skipText}>{`Skipped ${skipped.label.toLowerCase()} · Undo`}</Text>
+        </Pressable>
+      )}
+      {!!video.captions?.length && (
+        <View style={s.cc}>
+          <IconButton name={track ? 'closed-caption' : 'closed-caption-off'} label="Captions" color="#fff" onPress={() => setCcMenu(true)} />
+        </View>
+      )}
+      <ActionSheet
+        visible={ccMenu}
+        onClose={() => setCcMenu(false)}
+        title="Captions"
+        items={[
+          { label: 'Off', checked: !track, onPress: () => setTrack(null) },
+          ...(video.captions || []).map((c) => ({ label: c.label, hint: c.lang, checked: track?.id === c.id, onPress: () => setTrack(c) })),
+        ]}
+      />
     </View>
   );
 }
@@ -504,4 +704,14 @@ const s = StyleSheet.create({
   commentsCard: { marginHorizontal: 12, marginVertical: 6, padding: 12, borderRadius: 12, backgroundColor: colors.surface, gap: 2 },
   sectionTitle: { color: colors.text, fontSize: 18, fontFamily: fonts.display, fontWeight: '800', paddingHorizontal: 12, paddingTop: 12, paddingBottom: 6 },
   noVideo: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20, backgroundColor: '#000' },
+  chapters: { gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
+  chapter: { width: 150, padding: 10, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.hairline, gap: 2 },
+  chapterOn: { borderColor: colors.accent },
+  chapterTime: { color: colors.link, fontSize: 12.5, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  chapterTitle: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  captionBox: { position: 'absolute', left: 12, right: 12, bottom: 52, alignItems: 'center' },
+  caption: { color: '#fff', fontSize: 15, lineHeight: 21, textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.72)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
+  skip: { position: 'absolute', right: 12, bottom: 60, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.78)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  skipText: { color: '#fff', fontSize: 13.5, fontWeight: '700' },
+  cc: { position: 'absolute', right: 4, top: 4 },
 });

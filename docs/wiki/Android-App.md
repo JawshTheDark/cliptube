@@ -19,6 +19,8 @@ the website, so nothing needs setting up on the server beyond running version 1.
 - [Which server a video is on](#which-server-a-video-is-on)
 - [Tablets, turning and density](#tablets-turning-and-density)
 - [Settings](#settings)
+- [Studio](#studio)
+- [On the watch page](#on-the-watch-page)
 - [Admin and moderation](#admin-and-moderation)
 - [Shorts](#shorts)
 - [Comments and times](#comments-and-times)
@@ -69,12 +71,12 @@ older than 1.5 can be browsed and watched, but signing in says the server needs 
 | Screen | What's there |
 | --- | --- |
 | Home | **Everything**, **Videos** and **Shorts** at the top, then All, This site, For you, Subscriptions, Trending, Top rated and popular tags, as on the website |
-| Watch | The native player with fullscreen, picture-in-picture and resume; likes, subscribe, share, related videos |
+| Watch | The native player with fullscreen, picture-in-picture and resume; likes, subscribe, share, related videos; chapters, skipping marked parts, captions, clips and GIF or MP4 exports, downloads, support links, comparing clips and reporting ([below](#on-the-watch-page)) |
 | Comments | Read and write comments and replies, with times that jump the video and **Add time**; uploaders and moderators approve held comments and delete any |
 | Explore | Search with sorting, and the game catalog with its artwork; game pages and channel pages |
 | Upload | Pick a video and fill in the title, description, game, tags, visibility and clipping |
 | Inbox | Your notifications, with an unread count on the tab, checked every minute while the app is open |
-| You | Your videos (edit details, publish drafts, delete), history, liked videos, subscriptions, servers, sign out |
+| You | Your videos (the [Studio](#studio)), history, liked videos, subscriptions, servers, sign out |
 | Linked accounts | Under You: link your accounts on other servers or Mastodon, link back, check again, unlink |
 | Playlists | Save videos to Watch later or your playlists, play a list through, edit and reorder your own |
 | Watch parties | Watch along with friends in sync, with chat, reactions and a shared queue |
@@ -97,8 +99,8 @@ a linked account carry the uploader's mark. Linked accounts need 1.6 or newer on
 Videos from other servers in the network stream straight from the server that hosts them, like on the website.
 Likes, comments and subscriptions on them go through your server.
 
-Still website-only: the timeline editor, thumbnails, captions, clipping and exports, analytics and push
-notifications. Settings and the admin and moderation pages are in the app since 1.7.0 (see below).
+Still website-only: the timeline editor and push notifications. Settings, the Studio, the watch page's tools and
+the admin and moderation pages are in the app since 1.7.0 (see below).
 
 ## Which server a video is on
 
@@ -150,6 +152,46 @@ the Inbox while it's open.
 
 **Forgot your password?** on the sign-in screen asks the server for a reset link, and the links in reset and
 confirmation emails from clips.irc.so, clips.quitlyingto.us and clips.6697.pro open in the app.
+
+## Studio
+
+**You → Your videos** is the website's Studio (see [Uploading and Editing](Uploading-and-Editing.md)): every
+upload with its visibility or draft state and where it is (queued, processing, rendering an edit, failed, hidden
+by moderators), its views, likes and comments. The list checks again every few seconds while something is
+processing. Each video's ⋮ menu has **Edit details**, **Analytics**, **Retry processing** (when it failed) and
+**Delete**.
+
+**Edit details** has everything the website's details page has: title, description, tags, game, visibility, who
+may comment, clipping, downloading the original, sharing with the network, a custom thumbnail from the phone, the
+link and file details, and, once the video is ready, **Skippable parts** (with **Now** and **Play** on the preview
+above), **Captions** (WebVTT or SRT files, and publishing ones viewers suggested) and **Community suggestions**.
+Saving a draft publishes it.
+
+**Analytics** shows views, watch time and the average view for the last 7, 28 or 90 days or the year, per day as
+bars (tap one for its value) or as a table, where views came from and the top videos; a video's own analytics add
+audience retention. **Comments to review** lists comments held on your videos, to approve or delete.
+
+## On the watch page
+
+- **Chapters.** Times at the start or end of lines in the description ("0:00 Intro") become chapter cards under
+  the buttons, or the chapters a PeerTube video has; the playing one is outlined, and tapping one jumps there.
+- **Skippable parts** follow Settings → Watching: skipped by themselves (with **Undo**), a **Skip** button, or
+  left alone.
+- **Captions.** The **CC** button on the player picks a caption track or turns them off; Settings → Watching can
+  turn the first track on by itself. The app draws captions over the video, so they show in the player but not in
+  full screen.
+- **Clip** makes a new video from a range, or exports a GIF (up to 15 s) or a short MP4 (up to 60 s) to save
+  through the share sheet. **Now**, **Last 10s/30s/60s** and **Preview** work on the video, which stays in view
+  above the sheet (beside it on a wide screen).
+- **Download** saves the MP4, or the original upload when the uploader allows it.
+- **Support** (beside Subscribe) opens the uploader's support links.
+- **More** has **Compare side by side**, **Add captions**, **Mark a skippable part**, **Suggest a title or
+  thumbnail** (and vote on others' suggestions), **Report**, moderators' **Hide**, **Restore** and **Remove**,
+  and **Open in browser**.
+- **Compare** puts two clips on one timeline, each with its own start (nudge by a second, a tenth or a frame),
+  at up to quarter speed, with the sound from either; **Share** sends a link lined up as it is.
+
+Comments and channels have **Report** too (a comment's is beside Reply; a channel's is the flag by Subscribe).
 
 ## Admin and moderation
 
@@ -268,7 +310,7 @@ by the server's admin, and the upload screen shows it.
 ## Links that open in the app
 
 Links to videos (`/watch/…`, `/n/…`), Shorts (`/shorts/…`), channels (`/c/…`), playlists (`/playlist/…`), watch parties
-(`/party/…`) and live streams (`/live/…`) on clips.irc.so, clips.quitlyingto.us and clips.6697.pro offer to open
+(`/party/…`), live streams (`/live/…`) and comparisons (`/compare?…`) on clips.irc.so, clips.quitlyingto.us and clips.6697.pro offer to open
 in the app. A link from a server other than the one you're using opens from that server, signed out, with a
 **Switch** button to move over and sign in there.
 

@@ -8,6 +8,7 @@ import type { Api } from '@/lib/api';
 import { ago, duration, hostOf } from '@/lib/format';
 import { currentTime } from '@/lib/playback';
 import { knownServers, openProfile } from '@/lib/profiles';
+import { commentTarget, openReport } from '@/lib/report';
 import { useSession } from '@/lib/session';
 import { colors } from '@/lib/theme';
 import type { Comment } from '@/lib/types';
@@ -189,6 +190,11 @@ export function CommentsView({
             {c.can_delete && (
               <Pressable onPress={() => remove(c)} hitSlop={8}>
                 <Text style={[s.link, { color: colors.text2 }]}>Delete</Text>
+              </Pressable>
+            )}
+            {!!user && !foreign && !c.can_delete && (
+              <Pressable onPress={() => openReport(commentTarget(path, c))} hitSlop={8} accessibilityLabel={`Report the comment by @${c.author.username}`}>
+                <Text style={[s.link, { color: colors.text2 }]}>Report</Text>
               </Pressable>
             )}
           </View>

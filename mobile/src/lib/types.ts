@@ -94,6 +94,22 @@ export type Video = {
   moderation_status?: string | null;
   moderation_reason?: string | null;
   allow_clips?: boolean;
+  // Details for the uploader and the watch page (Studio, clips, downloads, captions, skippable parts)
+  allow_original_download?: boolean;
+  federate?: boolean;
+  comment_mode?: 'inherit' | 'open' | 'hold_all' | 'off';
+  edited?: boolean;
+  render_status?: 'queued' | 'rendering' | 'failed' | null;
+  render_progress?: number;
+  render_error?: string | null;
+  original_name?: string | null;
+  size_bytes?: number;
+  can_clip?: boolean;
+  can_moderate?: boolean;
+  original_download?: { url: string; name: string | null; size: number; upload: boolean } | null;
+  captions?: Caption[];
+  segments?: Segment[];
+  source?: { id: string; title: string; start: number; end: number; uploader: { username: string } } | null;
   // For-you feed extras
   reason?: string;
   watched?: boolean;
@@ -102,6 +118,10 @@ export type Video = {
   position?: number;
   watched_at?: number;
 };
+
+export type Caption = { id: string; lang: string; label: string; status: 'published' | 'pending'; url: string; mine?: boolean; submitted_by?: string | null };
+
+export type Segment = { id: string; kind: string; label: string; start: number; end: number; status: 'published' | 'pending'; mine?: boolean };
 
 export type Paged<T> = { items: T[]; hasMore: boolean };
 

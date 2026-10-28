@@ -9,6 +9,7 @@ import { ServerTag } from '@/components/ServerTag';
 import { Avatar, Button, Chip, Empty, ErrorBox, Icon, LiveBadge, Loading, toast } from '@/components/ui';
 import { knownServers, openProfile } from '@/lib/profiles';
 import { ApiScope, useLinkedApi, withServer } from '@/lib/scope';
+import { openReport } from '@/lib/report';
 import { useSession } from '@/lib/session';
 import { usePaged } from '@/lib/usePaged';
 import { hostOf, plural } from '@/lib/format';
@@ -140,7 +141,12 @@ export default function ChannelScreen() {
       ) : (
         !channel.is_self && (
           <View style={{ paddingHorizontal: 12, paddingBottom: 8, gap: 8 }}>
-            <Button title={channel.subscribed ? 'Subscribed' : 'Subscribe'} kind={channel.subscribed ? 'secondary' : 'primary'} onPress={toggle} busy={busy} />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button title={channel.subscribed ? 'Subscribed' : 'Subscribe'} kind={channel.subscribed ? 'secondary' : 'primary'} onPress={toggle} busy={busy} style={{ flex: 1 }} />
+              {!!user && !foreign && (
+                <Button title="" icon="outlined-flag" onPress={() => openReport({ type: 'user', id: channel.id, label: `@${channel.username}` })} />
+              )}
+            </View>
             {linkedChannels.length > 0 && (!channel.subscribed || linkedChannels.some((l) => !l.following)) && (
               <Button title={`Subscribe to all ${linkedChannels.length + 1}`} icon="link" onPress={subscribeAll} disabled={busy} />
             )}

@@ -58,7 +58,7 @@ export default function You() {
 
         {user && (
           <View style={s.group}>
-            <Row icon="video-library" label="Your videos" onPress={() => router.push('/library/mine')} />
+            <Row icon="video-library" label="Your videos" hint="Studio: details, analytics, comments to review" onPress={() => router.push('/studio' as any)} />
             <Row icon="history" label="History" onPress={() => router.push('/library/history')} />
             <Row icon="watch-later" label="Watch later" onPress={() => router.push('/playlist/watch-later')} />
             <Row icon="playlist-play" label="Playlists" onPress={() => router.push('/library/playlists')} />
