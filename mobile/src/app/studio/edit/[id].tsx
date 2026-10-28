@@ -154,6 +154,7 @@ export default function EditVideo() {
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {video.status === 'ready' && <Button title="View" icon="play-arrow" small onPress={() => router.push(`/watch/${encodeURIComponent(video.id)}`)} />}
+        {video.status === 'ready' && <Button title="Open editor" icon="content-cut" small onPress={() => router.push(`/studio/editor/${encodeURIComponent(video.id)}` as any)} />}
         <Button title="Analytics" icon="insights" small onPress={() => router.push({ pathname: '/studio/analytics' as any, params: { video: video.id } })} />
       </View>
 
@@ -196,7 +197,15 @@ export default function EditVideo() {
             .
           </Text>
         )}
-        {video.edited && <Text style={fs.hint}>This video has been edited in the timeline editor.</Text>}
+        {video.edited && (
+          <Text style={fs.hint}>
+            This video has been edited.{' '}
+            <Text style={{ color: colors.link }} onPress={() => router.push(`/studio/editor/${encodeURIComponent(video.id)}` as any)}>
+              Open the editor
+            </Text>{' '}
+            to change or revert the edit.
+          </Text>
+        )}
         <Button title={saveTitle} kind="accent" disabled={busy || (!dirty && !video.draft)} onPress={save} style={{ alignSelf: 'flex-start' }} />
       </Section>
 

@@ -78,6 +78,13 @@ export default function You() {
           {user && <Row icon="logout" label="Sign out" onPress={confirmSignOut} />}
         </View>
 
+        <View style={s.group}>
+          <Text style={[s.hint, { paddingHorizontal: 16, paddingTop: 8 }]}>{`About ${site?.site_name || hostLabel(server)}`}</Text>
+          {site?.federation && (site.network_peers || []).length > 0 && <Row icon="public" label={site.network?.name || 'Network'} hint="Videos from the other servers in the network" onPress={() => router.push('/network' as any)} />}
+          <Row icon="gavel" label="Rules and contact" onPress={() => router.push('/legal' as any)} />
+          {site?.activitypub && <Row icon="hub" label="Following from the fediverse" hint="Mastodon, PeerTube, and moving a channel" onPress={() => router.push('/help-fediverse' as any)} />}
+        </View>
+
         <Text style={s.version}>OurTube for Android {Constants.expoConfig?.version || ''}</Text>
       </ScrollView>
     </View>

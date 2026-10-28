@@ -21,6 +21,7 @@ the website, so nothing needs setting up on the server beyond running version 1.
 - [Settings](#settings)
 - [Studio](#studio)
 - [On the watch page](#on-the-watch-page)
+- [Timeline editor](#timeline-editor)
 - [Admin and moderation](#admin-and-moderation)
 - [Shorts](#shorts)
 - [Comments and times](#comments-and-times)
@@ -73,10 +74,10 @@ older than 1.5 can be browsed and watched, but signing in says the server needs 
 | Home | **Everything**, **Videos** and **Shorts** at the top, then All, This site, For you, Subscriptions, Trending, Top rated and popular tags, as on the website |
 | Watch | The native player with fullscreen, picture-in-picture and resume; likes, subscribe, share, related videos; chapters, skipping marked parts, captions, clips and GIF or MP4 exports, downloads, support links, comparing clips and reporting ([below](#on-the-watch-page)) |
 | Comments | Read and write comments and replies, with times that jump the video and **Add time**; uploaders and moderators approve held comments and delete any |
-| Explore | Search with sorting, and the game catalog with its artwork; game pages and channel pages |
+| Explore | Search with the website's filters (sort, length, upload date, shape, game, and which server), the network's videos, and the game catalog with its artwork; game pages and channel pages |
 | Upload | Pick a video and fill in the title, description, game, tags, visibility and clipping |
-| Inbox | Your notifications, with an unread count on the tab, checked every minute while the app is open |
-| You | Your videos (the [Studio](#studio)), history, liked videos, subscriptions, servers, sign out |
+| Inbox | Your notifications, with an unread count on the tab, checked every minute while the app is open; the gear opens notification settings |
+| You | Your videos (the [Studio](#studio)), history, liked videos, subscriptions (with **Follow from the fediverse**), servers, the server's network, rules and contact, transparency report and fediverse help, sign out |
 | Linked accounts | Under You: link your accounts on other servers or Mastodon, link back, check again, unlink |
 | Playlists | Save videos to Watch later or your playlists, play a list through, edit and reorder your own |
 | Watch parties | Watch along with friends in sync, with chat, reactions and a shared queue |
@@ -99,8 +100,8 @@ a linked account carry the uploader's mark. Linked accounts need 1.6 or newer on
 Videos from other servers in the network stream straight from the server that hosts them, like on the website.
 Likes, comments and subscriptions on them go through your server.
 
-Still website-only: the timeline editor and push notifications. Settings, the Studio, the watch page's tools and
-the admin and moderation pages are in the app since 1.7.0 (see below).
+Still website-only: push notifications, and uploading several files at once. Settings, the Studio, the timeline
+editor, the watch page's tools and the admin and moderation pages are in the app since 1.7.0 (see below).
 
 ## Which server a video is on
 
@@ -192,6 +193,23 @@ audience retention. **Comments to review** lists comments held on your videos, t
   at up to quarter speed, with the sound from either; **Share** sends a link lined up as it is.
 
 Comments and channels have **Report** too (a comment's is beside Reply; a channel's is the flag by Subscribe).
+
+## Timeline editor
+
+**Open editor** (on a video's details, in the Studio's ⋮ menu, or **Editor** on your own watch page) is the
+website's editor (see [Uploading and Editing](Uploading-and-Editing.md)), working on the unedited recording:
+
+- **The timeline** shows the filmstrip, the parts you keep, the waveform and the playhead. Tap to move the
+  playhead and pick the part there; drag the white edges of the picked part to trim it; long-press a dark
+  cut-out part to bring it back. Zoom with the magnifiers; the fit button shows the whole video.
+- **Split** at the playhead, **Delete part**, **Set start** and **Set end** to the playhead, step a frame or a
+  second, and jump to the previous or next cut. **Preview edit** plays straight over the cut parts.
+- **Audio** (mute, or the volume up to 300%), **fades** in from and out to black, **Use frame** as the
+  thumbnail, **Make a clip** from the picked part or the 30 seconds before the playhead, the list of parts, and
+  **Reset to full video**.
+- **Undo** and **Redo** are at the top with **Save**, which renders the edit on the server (the current version
+  stays up until it's done); the ⋮ menu has **Discard changes** and **Revert to original**. Leaving with unsaved
+  changes asks first.
 
 ## Admin and moderation
 

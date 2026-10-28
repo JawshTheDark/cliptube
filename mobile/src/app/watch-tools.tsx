@@ -28,7 +28,8 @@ const TITLES: Record<Tool, string> = { clip: 'Clip a moment', segment: 'Mark a s
  * and Preview work on the video underneath.
  */
 export default function WatchTools() {
-  const p = useLocalSearchParams<{ tool: Tool; id: string; server?: string }>();
+  // From the timeline editor: from=source clips the unedited upload, whose length is `length`, starting on start..end.
+  const p = useLocalSearchParams<{ tool: Tool; id: string; server?: string; from?: string; length?: string; start?: string; end?: string }>();
   const { api } = useLinkedApi(p.server);
   const layout = useLayout();
   const insets = useSafeAreaInsets();
@@ -62,7 +63,13 @@ export default function WatchTools() {
           <Loading />
         ) : (
           <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 12, paddingBottom: 24 + insets.bottom }} keyboardShouldPersistTaps="handled">
-            {tool === 'clip' && <ClipPanel api={api} video={video} />}
+            {tool === 'clip' && (
+              <ClipPanel
+                api={api}
+                video={video}
+                source={p.from === 'source' ? { length: Number(p.length) || video.duration || 0, start: Number(p.start) || 0, end: Number(p.end) || 0 } : null}
+              />
+            )}
             {tool === 'segment' && <SegmentPanel api={api} video={video} onDone={close} />}
             {tool === 'captions' && <CaptionPanel api={api} video={video} onDone={close} />}
             {tool === 'suggest' && <SuggestPanel api={api} video={video} />}
@@ -85,12 +92,12 @@ function rangeBefore(t: number, length: number, len = 30) {
 type Job = { id: string; format: 'gif' | 'mp4'; status: string; progress?: number; error?: string; size_bytes?: number; download_url?: string };
 
 /** Clip a moment: a new video from a range, or the range as a GIF or a short MP4 to download. */
-function ClipPanel({ api, video }: { api: Api; video: Video }) {
-  const length = video.duration || 0;
+function ClipPanel({ api, video, source }: { api: Api; video: Video; source: { length: number; start: number; end: number } | null }) {
+  const length = source ? source.length : video.duration || 0;
   const now = () => currentTime() ?? 0;
-  const canClip = !!video.can_clip;
+  const canClip = !!video.can_clip || !!source;
   const [tab, setTab] = useState<'clip' | 'gif' | 'mp4'>(canClip ? 'clip' : 'gif');
-  const [range, setRange] = useState(() => rangeBefore(now(), length));
+  const [range, setRange] = useState(() => (source && source.end > source.start ? { start: source.start, end: source.end } : rangeBefore(now(), length)));
   const [title, setTitle] = useState(`${video.title} (clip)`.slice(0, 120));
   const [visibility, setVisibility] = useState<Visibility>(video.visibility === 'private' ? 'private' : 'public');
   const [mode, setMode] = useState<'exact' | 'fast'>('exact');
@@ -125,7 +132,7 @@ function ClipPanel({ api, video }: { api: Api; video: Video }) {
     setBusy(true);
     try {
       if (tab === 'clip') {
-        const r = await api.post<{ video: Video }>(`/videos/${encodeURIComponent(video.id)}/clip`, { start: range.start, end: range.end, title, visibility, mode });
+        const r = await api.post<{ video: Video }>(`/videos/${encodeURIComponent(video.id)}/clip`, { start: range.start, end: range.end, title, visibility, mode, from: source ? 'source' : undefined });
         setMade(r.video);
       } else {
         const r = await api.post<{ export: Job }>(`/videos/${encodeURIComponent(video.id)}/exports`, { format: tab, start: range.start, end: range.end, width: Number(width), muted });
@@ -151,8 +158,8 @@ function ClipPanel({ api, video }: { api: Api; video: Video }) {
     <>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {canClip && <Chip label="New video" active={tab === 'clip'} onPress={() => switchTab('clip')} />}
-        <Chip label="GIF" active={tab === 'gif'} onPress={() => switchTab('gif')} />
-        <Chip label="MP4 download" active={tab === 'mp4'} onPress={() => switchTab('mp4')} />
+        {!source && <Chip label="GIF" active={tab === 'gif'} onPress={() => switchTab('gif')} />}
+        {!source && <Chip label="MP4 download" active={tab === 'mp4'} onPress={() => switchTab('mp4')} />}
       </View>
       {!canClip && <Text style={fs.hint}>The uploader hasn't allowed clips of this video, but you can export a GIF or a short MP4.</Text>}
       <FieldRow>

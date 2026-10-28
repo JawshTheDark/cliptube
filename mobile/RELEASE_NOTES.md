@@ -1,4 +1,4 @@
-OurTube for Android 1.7.0: the website's admin pages, settings, Studio and watch-page tools, in the app.
+OurTube for Android 1.7.0: the website, in the app: admin pages, settings, the Studio and timeline editor, and the watch page's tools.
 
 **Install:** download the `.apk` below on your phone or tablet and open it. It installs over earlier versions and keeps your servers and sign-ins.
 
@@ -21,6 +21,8 @@ Admins and moderators now have the website's admin area under **You → Admin** 
 
 **Forgot your password?** works in the app, and password-reset and email-confirmation links open in it.
 
+The **timeline editor** is in the app: split, delete and trim parts on a filmstrip with the waveform, preview the edit, set the volume and fades, pick a thumbnail frame, clip moments from the unedited recording, undo and redo, then save to render it.
+
 **You → Your videos** is now the website's Studio: each video's state, retrying and deleting, every detail field (who may comment, downloading the original, sharing with the network), a custom thumbnail, skippable parts, captions, community suggestions, analytics with per-day charts and retention, and comments to review.
 
 On the watch page:
@@ -31,3 +33,5 @@ On the watch page:
 - **Clip** a moment into a new video, or export it as a GIF or a short MP4.
 - **Download** the MP4 or, when allowed, the original upload.
 - **Support** links, **Compare side by side**, **Add captions**, **Mark a skippable part**, **Suggest a title or thumbnail**, and **Report** (videos, comments and channels), plus moderators' hide, restore and remove.
+
+Also from the website: search filters (sort, length, upload date, shape, game, server), the **Network** page (from Explore), **Follow from the fediverse** under Subscriptions, and the server's **Rules and contact**, **Transparency report** and **Following from the fediverse** pages under You. The Inbox has a shortcut to notification settings.

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Field, Input, s as fs } from '@/components/Form';
@@ -77,7 +77,7 @@ export default function Report() {
       {reason === 'copyright' && (
         <Text style={fs.hint}>
           If you own the work, a formal notice is handled fastest through the contact details on the{' '}
-          <Text style={{ color: colors.link }} onPress={() => Linking.openURL(`${api.base}/legal`)}>
+          <Text style={{ color: colors.link }} onPress={() => router.push('/legal' as any)}>
             legal page
           </Text>
           .

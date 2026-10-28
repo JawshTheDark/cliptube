@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '@/components/Text';
+import { FediverseFollow } from '@/components/FediverseFollow';
 import { PlaylistRow } from '@/components/PlaylistRow';
 import { f } from '@/components/VideoForm';
 import { Redirect, router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -176,6 +177,11 @@ function Subscriptions() {
       refreshing={paged.refreshing}
       ListHeaderComponent={paged.error ? <ErrorBox message={paged.error} onRetry={paged.reload} /> : undefined}
       ListEmptyComponent={<Empty icon="subscriptions" title="No subscriptions yet">Subscribe to channels from their videos.</Empty>}
+      ListFooterComponent={
+        <View style={{ padding: 12, paddingBottom: 32 }}>
+          <FediverseFollow />
+        </View>
+      }
       renderItem={({ item: c }) => (
         <Pressable
           style={({ pressed }) => [s.row, pressed && { backgroundColor: colors.surface }]}

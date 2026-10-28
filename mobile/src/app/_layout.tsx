@@ -58,7 +58,12 @@ function Root() {
       <Stack.Screen name="studio/index" options={{ title: 'Your videos' }} />
       <Stack.Screen name="studio/comments" options={{ title: 'Comments to review' }} />
       <Stack.Screen name="studio/edit/[id]" options={{ title: 'Video details' }} />
+      <Stack.Screen name="studio/editor/[id]" options={{ title: 'Editor' }} />
       <Stack.Screen name="studio/analytics" options={{ title: 'Analytics' }} />
+      <Stack.Screen name="network" options={{ title: 'Network' }} />
+      <Stack.Screen name="legal" options={{ title: 'Rules and contact' }} />
+      <Stack.Screen name="transparency" options={{ title: 'Transparency report' }} />
+      <Stack.Screen name="help-fediverse" options={{ title: 'Following from the fediverse' }} />
       <Stack.Screen name="compare" options={{ title: 'Compare clips' }} />
       <Stack.Screen name="report" options={{ title: 'Report', presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="links" options={{ title: 'Linked accounts' }} />

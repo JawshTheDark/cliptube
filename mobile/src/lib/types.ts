@@ -25,6 +25,9 @@ export type Site = {
   // software (1.19+): 'ourtube', or the NodeInfo name of a fediverse server it follows ('peertube'...); null until read.
   network_peers?: { id: number; name: string; url: string; software?: string | null }[];
   ap_host?: string | null; // the address other servers know this one by
+  activitypub?: boolean; // following from Mastodon and PeerTube is on
+  has_legal?: boolean; // the admins published rules or contacts (/legal)
+  network?: { name?: string | null; announcement?: string | null; role?: string | null };
 };
 
 export type Uploader = {

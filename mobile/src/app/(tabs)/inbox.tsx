@@ -4,7 +4,7 @@ import { Text } from '@/components/Text';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
-import { Button, Empty, ErrorBox, Icon, Loading, type IconName } from '@/components/ui';
+import { Button, Empty, ErrorBox, Icon, Loading, type IconName, IconButton } from '@/components/ui';
 import { useSession } from '@/lib/session';
 import { ago } from '@/lib/format';
 import { colors } from '@/lib/theme';
@@ -73,7 +73,7 @@ export default function Inbox() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppHeader title="Inbox" right={<View />} />
+      <AppHeader title="Inbox" right={<IconButton name="settings" label="Notification settings" onPress={() => router.push('/account?tab=notifications' as any)} />} />
       {!!error && <ErrorBox message={error} onRetry={() => load()} />}
       {!items && !error ? (
         <Loading />

@@ -148,7 +148,12 @@ function Row({ v, onDelete, onRetry }: { v: Video; onDelete: () => void; onRetry
         items={[
           { label: 'Edit details', icon: 'edit', onPress: () => edit(v) },
           { label: 'Analytics', icon: 'insights', onPress: () => router.push({ pathname: '/studio/analytics' as any, params: { video: v.id } }) },
-          ...(v.status === 'ready' ? [{ label: 'Watch', icon: 'play-arrow' as const, onPress: () => router.push(`/watch/${encodeURIComponent(v.id)}`) }] : []),
+          ...(v.status === 'ready'
+            ? [
+                { label: 'Open the timeline editor', icon: 'content-cut' as const, onPress: () => router.push(`/studio/editor/${encodeURIComponent(v.id)}` as any) },
+                { label: 'Watch', icon: 'play-arrow' as const, onPress: () => router.push(`/watch/${encodeURIComponent(v.id)}`) },
+              ]
+            : []),
           ...(failed ? [{ label: 'Retry processing', icon: 'refresh' as const, onPress: onRetry }] : []),
           { label: 'Delete', icon: 'delete-outline', destructive: true, onPress: onDelete },
         ]}

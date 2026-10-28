@@ -377,6 +377,7 @@ export function WatchScreen({ id, peer, remote, server: serverParam, list, shuff
         {(isRemote || (v.status === 'ready' && !!v.video_url && v.visibility !== 'private')) && <Button title="Watch together" icon="groups" small onPress={watchTogether} />}
         <Button title="Share" icon="share" small onPress={() => Share.share({ message: data.shareUrl }).catch(() => {})} />
         {v.can_edit && !foreign && <Button title="Details" icon="edit" small onPress={() => router.push(`/studio/edit/${encodeURIComponent(v.id)}` as any)} />}
+        {v.can_edit && !foreign && !isRemote && v.status === 'ready' && <Button title="Editor" icon="content-cut" small onPress={() => router.push(`/studio/editor/${encodeURIComponent(v.id)}` as any)} />}
         {tools && <Button title="Clip" icon="content-cut" small onPress={() => openTool('clip')} />}
         {!isRemote && !!v.video_url && <Button title="Download" icon="file-download" small onPress={() => (v.original_download ? setMenu('download') : download(mp4, `${v.title.slice(0, 60)}.mp4`, 'video/mp4'))} />}
         <Button title="More" icon="more-horiz" small onPress={() => setMenu('more')} />
