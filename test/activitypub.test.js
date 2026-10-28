@@ -12,7 +12,7 @@ const ap = (path) => fetch(base + path, { headers: { Accept: 'application/activi
 
 before(async () => {
   fake = await fakeTube();
-  inst = await startInstance('ap');
+  inst = await startInstance('ap', { env: { PEERTUBE_DIRECTORY_URL: fake.origin } });
   base = inst.url;
   admin = await setupAdmin(inst, 'alice', 'AP Test');
   await admin.patch('/api/admin/settings', { public_url: base });
@@ -205,6 +205,29 @@ test("a PeerTube video's whole comment thread shows, from before anyone here fol
   // Chapters set on PeerTube come along for the player, in order.
   const ch = await carol.get(`/api/network/videos/${nv.remote.peer_id}/${nv.remote.remote_id}/chapters`);
   assert.deepEqual(ch.data.chapters, [{ start: 0, title: 'Start' }, { start: 30, title: 'The trick' }]);
+});
+
+test('admins find PeerTube servers in the directory, with the NSFW ones left out', async () => {
+  const host = new URL(fake.origin).host;
+  fake.directory = [
+    { host, name: 'Fake Tube', shortDescription: 'Games and more', languages: ['en'], categories: [7], defaultNSFWPolicy: 'do_not_list', isNSFW: false, totalLocalVideos: 3, avatars: [] },
+    { host: 'nsfw.example', name: 'Spicy', languages: ['en'], categories: [], defaultNSFWPolicy: 'display', isNSFW: true, totalLocalVideos: 9, avatars: [] },
+  ];
+  assert.equal((await bob.get('/api/admin/fediverse/directory')).status, 403);
+  const r = await admin.get('/api/admin/fediverse/directory?language=en&categories=7,99&search=games');
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.deepEqual(r.data.servers.map((s) => s.host), [host]);
+  assert.equal(r.data.servers[0].videos, 3);
+  assert.equal(r.data.servers[0].following, null);
+  // The directory is asked with the filters, NSFW servers excluded (blurring ones are fine: sensitive videos stay out here).
+  const q = new URLSearchParams(fake.lastDirectoryQuery);
+  assert.deepEqual(q.getAll('languagesOr[]'), ['en']);
+  assert.deepEqual(q.getAll('categoriesOr[]'), ['7']);
+  assert.deepEqual(q.getAll('nsfwPolicy[]'), ['do_not_list', 'blur']);
+  assert.equal(q.get('search'), 'games');
+  // Asked for, servers that show NSFW are listed too.
+  assert.equal((await admin.get('/api/admin/fediverse/directory?nsfw=show')).data.servers.length, 2);
+  assert.deepEqual(new URLSearchParams(fake.lastDirectoryQuery).getAll('nsfwPolicy[]'), []);
 });
 
 test('blocking a server shuts it out', async () => {

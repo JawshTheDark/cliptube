@@ -23,6 +23,7 @@ needs before it starts are environment variables.
 | `TRUST_PROXY` | unset (`1` in Docker) | `1` behind a reverse proxy, so the app sees real client addresses and HTTPS |
 | `SETUP_CODE` | random | The code needed to create the first (admin) account |
 | `UPDATE_CHECK_URL` | GitHub | Where to read the newest version from, or `off` to never check (see [Upgrading and Backups](Upgrading-and-Backups.md#checking-the-version)) |
+| `PEERTUBE_DIRECTORY_URL` | `https://instances.joinpeertube.org` | The directory of PeerTube servers that Admin → Network browses (see [Fediverse](Fediverse.md#following-out)) |
 | `FFMPEG_PATH`, `FFPROBE_PATH` | bundled | Use another FFmpeg, for example one built with your GPU's encoder. Where nothing is bundled for your machine (ffprobe on Linux ARM), the one on your PATH is used. |
 | `LOG_REQUESTS` | unset | `1` prints every request (same as `--log`) |
 | `FEDERATION_ALLOW_PRIVATE` | unset | `1` lets the network contact LAN and localhost addresses (same as `--allow-private-federation`). Only for testing several servers on one machine. |

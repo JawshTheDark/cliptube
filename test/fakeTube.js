@@ -37,6 +37,11 @@ export function fakeTube() {
       const uuid = url.pathname.split('/').pop();
       return json(200, F.video(uuid, F.names.get(uuid) || 'Fetched fake video'));
     }
+    // joinpeertube.org's directory of servers, for the admin's server browser.
+    if (url.pathname === '/api/v1/instances') {
+      F.lastDirectoryQuery = url.search;
+      return json(200, { total: F.directory.length, data: F.directory });
+    }
     if (url.pathname === '/.well-known/nodeinfo') {
       return json(200, { links: [{ rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0', href: `${F.origin}/nodeinfo/2.0.json` }] });
     }
@@ -106,6 +111,8 @@ export function fakeTube() {
       ...(attributedTo ? { attributedTo } : {}),
     }),
     names: new Map(), // uuid -> the title it was published with, for fetches of it later
+    directory: [], // servers the directory lists
+    lastDirectoryQuery: '',
     video: (uuid, name) => (F.names.set(uuid, name), {
       '@context': [AS],
       type: 'Video',

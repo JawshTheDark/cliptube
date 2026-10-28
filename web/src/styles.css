@@ -2218,6 +2218,66 @@ kbd {
   gap: 8px;
   margin-top: 8px;
 }
+/* Admin, Network: browsing joinpeertube.org's directory of PeerTube servers. */
+.pt-filters,
+.pt-topics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+.pt-topics .chip {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.pt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pt-server {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+.pt-avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+.pt-main {
+  flex: 1;
+  min-width: 0;
+}
+.pt-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.pt-name a {
+  font-size: 13px;
+}
+.pt-desc {
+  margin: 2px 0;
+  font-size: 13px;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pt-meta {
+  font-size: 12px;
+}
 .fed-item {
   display: flex;
   gap: 12px;

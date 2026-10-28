@@ -186,11 +186,148 @@ export function FediverseFollow() {
 }
 
 /** Admin: ActivityPub on or off, and following whole servers (the way PeerTube servers mirror each other). */
+// PeerTube's video categories, which servers in its directory list as their topics.
+const PEERTUBE_TOPICS = [
+  [7, 'Gaming'], [12, 'How to'], [15, 'Science & tech'], [9, 'Comedy'], [2, 'Films'], [6, 'Travel'], [1, 'Music'], [4, 'Art'],
+  [13, 'Education'], [16, 'Animals'], [18, 'Food'], [5, 'Sports'], [3, 'Vehicles'], [10, 'Entertainment'], [8, 'People'],
+  [17, 'Kids'], [11, 'News & politics'], [14, 'Activism'],
+];
+const TOPIC_NAME = Object.fromEntries(PEERTUBE_TOPICS);
+const DIRECTORY_LANGUAGES = [['', 'Any language'], ['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['it', 'Italian'], ['pt', 'Portuguese'], ['nl', 'Dutch'], ['ja', 'Japanese']];
+
+/** Finds PeerTube servers in joinpeertube.org's directory and follows them, a click each. */
+function PeerTubeDirectory({ enabled, onFollowed }) {
+  const toast = useToast();
+  const [filters, setFilters] = useState({ search: '', language: 'en', categories: [], sort: '-totalLocalVideos', nsfw: false });
+  const [search, setSearch] = useState('');
+  const [result, setResult] = useState(null);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(null);
+
+  useEffect(() => {
+    let dead = false;
+    setLoading(true);
+    const q = new URLSearchParams({ page: String(page), sort: filters.sort, language: filters.language, search: filters.search, categories: filters.categories.join(',') });
+    if (filters.nsfw) q.set('nsfw', 'show');
+    api(`/admin/fediverse/directory?${q}`)
+      .then((r) => !dead && setResult((prev) => (page > 1 && prev ? { ...r, servers: [...prev.servers, ...r.servers] } : r)))
+      .catch((e) => !dead && toast(e.message))
+      .finally(() => !dead && setLoading(false));
+    return () => {
+      dead = true;
+    };
+  }, [filters, page, toast]);
+
+  const set = (patch) => {
+    setPage(1);
+    setFilters((f) => ({ ...f, ...patch }));
+  };
+  const toggleTopic = (id) => set({ categories: filters.categories.includes(id) ? filters.categories.filter((c) => c !== id) : [...filters.categories, id] });
+  const follow = async (srv) => {
+    setBusy(srv.host);
+    try {
+      onFollowed(await api('/admin/fediverse/follow', { method: 'POST', body: { server: srv.host } }));
+      setResult((r) => ({ ...r, servers: r.servers.map((x) => (x.host === srv.host ? { ...x, following: 'pending' } : x)) }));
+      toast(`Asked to follow ${srv.name}`);
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="pt-directory top-gap">
+      <form
+        className="follow-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          set({ search: search.trim() });
+        }}
+      >
+        <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search servers by name or description" aria-label="Search servers" />
+        <button className="btn">Search</button>
+      </form>
+      <div className="pt-filters">
+        <select className="select select-inline" value={filters.language} onChange={(e) => set({ language: e.target.value })} aria-label="Language">
+          {DIRECTORY_LANGUAGES.map(([v, label]) => (
+            <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select className="select select-inline" value={filters.sort} onChange={(e) => set({ sort: e.target.value })} aria-label="Sort">
+          <option value="-totalLocalVideos">Most videos</option>
+          <option value="-totalInstanceFollowers">Most followed</option>
+          <option value="-totalUsers">Most people</option>
+          <option value="-createdAt">Newest</option>
+        </select>
+        <label className="check-row">
+          <input type="checkbox" checked={filters.nsfw} onChange={(e) => set({ nsfw: e.target.checked })} /> Include servers that show NSFW
+        </label>
+      </div>
+      <div className="pt-topics">
+        {PEERTUBE_TOPICS.map(([id, label]) => (
+          <button key={id} type="button" className={`chip ${filters.categories.includes(id) ? 'active' : ''}`} onClick={() => toggleTopic(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {result && (
+        <p className="hint">
+          {result.total.toLocaleString()} {result.total === 1 ? 'server' : 'servers'} in the directory match. Videos marked sensitive stay out either way.
+        </p>
+      )}
+      <div className="pt-list">
+        {result?.servers.map((srv) => (
+          <div key={srv.host} className="pt-server">
+            {srv.avatar_url ? <img className="pt-avatar" src={srv.avatar_url} alt="" loading="lazy" /> : <span className="pt-avatar pt-avatar-empty" />}
+            <div className="pt-main">
+              <div className="pt-name">
+                <b>{srv.name}</b>{' '}
+                <a href={`https://${srv.host}`} target="_blank" rel="noopener noreferrer" className="muted">
+                  {srv.host}
+                </a>
+              </div>
+              {srv.description && <div className="pt-desc">{srv.description}</div>}
+              <div className="pt-meta muted">
+                {srv.videos.toLocaleString()} videos
+                {srv.languages.length > 0 && ` · ${srv.languages.join(', ')}`}
+                {srv.categories.length > 0 && ` · ${srv.categories.map((c) => TOPIC_NAME[c]).filter(Boolean).slice(0, 4).join(', ')}`}
+                {srv.nsfw_policy === 'display' && ' · shows NSFW'}
+              </div>
+            </div>
+            {srv.blocked ? (
+              <span className="badge err">Blocked</span>
+            ) : srv.following ? (
+              <span className={`badge ${STATUS[srv.following]?.[0] || ''}`} title={STATUS[srv.following]?.[1]}>
+                {{ accepted: 'Following', pending: 'Waiting', rejected: 'Declined' }[srv.following] || srv.following}
+              </span>
+            ) : (
+              <button className="btn btn-sm" disabled={!enabled || busy === srv.host} onClick={() => follow(srv)}>
+                Follow
+              </button>
+            )}
+          </div>
+        ))}
+        {loading && <div className="spinner" />}
+      </div>
+      {result && !loading && result.servers.length < result.total && (
+        <button className="btn btn-ghost top-gap" onClick={() => setPage((p) => p + 1)}>
+          Show more
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function FediverseAdmin() {
   const toast = useToast();
   const [s, setS] = useState(null);
   const [server, setServer] = useState('');
   const [busy, setBusy] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
   const load = () => api('/admin/fediverse').then(setS).catch((e) => toast(e.message));
   useEffect(() => {
     load();
@@ -249,6 +386,10 @@ export function FediverseAdmin() {
           Follow
         </button>
       </form>
+      <button className="btn btn-ghost top-gap" onClick={() => setBrowsing((b) => !b)}>
+        <Icon name="search" /> {browsing ? 'Close the PeerTube directory' : 'Browse the PeerTube directory'}
+      </button>
+      {browsing && <PeerTubeDirectory enabled={s.enabled} onFollowed={setS} />}
       {s.servers.length > 0 && (
         <div className="fed-list top-gap">
           {s.servers.map((a) => (

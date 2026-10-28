@@ -137,6 +137,67 @@ fediverseAdminRouter.delete('/follow', async (req, res) => {
   res.json(adminState(req));
 });
 
+// ---- the PeerTube directory: finding servers to follow -----------------------------------------------------
+
+// joinpeertube.org's list of PeerTube servers (its own API), and the sorts it takes.
+const DIRECTORY = (process.env.PEERTUBE_DIRECTORY_URL || 'https://instances.joinpeertube.org').replace(/\/+$/, '');
+const DIRECTORY_SORTS = new Set(['-totalLocalVideos', '-totalInstanceFollowers', '-totalUsers', '-createdAt']);
+
+/**
+ * PeerTube servers from the directory, filtered by words, language and topics (PeerTube's categories), with
+ * whether this server follows each one already. Servers that show NSFW openly are left out unless asked for.
+ */
+fediverseAdminRouter.get('/directory', async (req, res) => {
+  const page = Math.max(1, Math.min(50, Number(req.query.page) || 1));
+  const q = new URLSearchParams({ start: String((page - 1) * 20), count: '20', healthy: 'true' });
+  q.set('sort', DIRECTORY_SORTS.has(String(req.query.sort)) ? String(req.query.sort) : '-totalLocalVideos');
+  const search = str(req.query.search, 100).trim();
+  if (search) q.set('search', search);
+  const language = String(req.query.language || '');
+  // The directory reads these as lists only when they say so ([]): a single plain value is ignored.
+  if (/^[a-z]{2,3}$/.test(language)) q.append('languagesOr[]', language);
+  for (const c of String(req.query.categories || '').split(',').map(Number)) {
+    if (Number.isInteger(c) && c >= 1 && c <= 18) q.append('categoriesOr[]', String(c));
+  }
+  const showNsfw = req.query.nsfw === 'show';
+  if (!showNsfw) for (const p of ['do_not_list', 'blur']) q.append('nsfwPolicy[]', p);
+  let r;
+  try {
+    r = await apFetch(`${DIRECTORY}/api/v1/instances?${q}`, { accept: 'application/json', timeout: 15000 });
+  } catch (e) {
+    throw new HttpError(502, `The PeerTube directory did not answer (${e.message})`);
+  }
+  const follows = new Map(
+    db
+      .prepare("SELECT a.domain, a.id, f.status FROM ap_follows f JOIN ap_actors a ON a.id = f.remote_actor WHERE f.local_actor = 'i' AND a.type = 'Application'")
+      .all()
+      .map((f) => [f.domain, f]),
+  );
+  const blocked = new Set(db.prepare('SELECT url FROM instances WHERE blocked = 1').all().map((i) => hostOf(i.url)));
+  const servers = (Array.isArray(r.data) ? r.data : [])
+    .filter((i) => i && typeof i.host === 'string' && /^[a-z0-9.-]+(:\d+)?$/i.test(i.host) && (showNsfw || !i.isNSFW))
+    .map((i) => {
+      const avatars = (Array.isArray(i.avatars) ? i.avatars : []).filter((a) => typeof a?.url === 'string').sort((a, b) => (a.width || 0) - (b.width || 0));
+      const f = follows.get(i.host.toLowerCase());
+      return {
+        host: i.host.toLowerCase(),
+        name: str(i.name, 80) || i.host,
+        description: str(i.shortDescription, 300),
+        languages: (Array.isArray(i.languages) ? i.languages : []).slice(0, 8),
+        categories: (Array.isArray(i.categories) ? i.categories : []).filter(Number.isInteger),
+        nsfw_policy: i.defaultNSFWPolicy || null,
+        nsfw: !!i.isNSFW,
+        videos: Number(i.totalLocalVideos) || 0,
+        followers: Number(i.totalInstanceFollowers) || 0,
+        avatar_url: (avatars.find((a) => (a.width || 0) >= 96) || avatars.at(-1))?.url || null,
+        following: f?.status || null,
+        actor: f?.id || null,
+        blocked: blocked.has(i.host.toLowerCase()),
+      };
+    });
+  res.json({ total: Number(r.total) || servers.length, page, servers });
+});
+
 // ---- the remote video pages: videos from the fediverse and from OurTube peers on protocol 4 ----------------
 // (mounted before the OurTube network routes, which still serve videos from peers on protocol v3)
 

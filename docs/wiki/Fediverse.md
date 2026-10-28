@@ -50,7 +50,13 @@ Network, in search and in your subscriptions, with notifications. You can like a
 comments go to their server. The whole comment thread shows, including comments made before anyone here
 followed: for PeerTube videos it is read from the video's server (up to 200 threads, refreshed every minute).
 
-Admins can also follow a **whole PeerTube server**, the way PeerTube servers mirror each other.
+Admins can also follow a **whole PeerTube server**, the way PeerTube servers mirror each other: type its address
+under Admin → Network → *Follow a whole server*, or pick it from **Browse the PeerTube directory** there. The
+directory is [joinpeertube.org](https://joinpeertube.org/instances)'s list of servers, searchable by words, language
+and topics (gaming, how to, science and tech, comedy ...), sorted by videos, followers, people or newest, with a
+Follow button on each. Servers that show NSFW openly are left out unless you ask for them, and videos marked
+sensitive stay out either way. A server accepts the follow by itself or after its admin approves it; until then it
+shows as waiting. Set `PEERTUBE_DIRECTORY_URL` to use another directory with the same API.
 
 Servers in an OurTube network can pass what they follow on to each other, if both sides opt in: see
 [Sharing what you follow](Network.md#sharing-what-you-follow).
