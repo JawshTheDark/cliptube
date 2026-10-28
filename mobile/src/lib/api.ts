@@ -261,6 +261,26 @@ export class Api {
    * its content:// or file:// URI in large chunks; React Native's own networking wraps upload bodies in a
    * stream that writes one byte at a time, which made a 10 MB video take over a minute on a fast link.
    */
+  /** A small file (an image, captions) as a multipart field named `field`, the way the website's forms send them. */
+  async sendFile<T = any>(path: string, field: string, file: UploadFile, fields: Record<string, string> = {}, method: 'POST' | 'PUT' | 'PATCH' = 'POST'): Promise<T> {
+    const r = await new File(file.uri).createUploadTask(`${this.base}/api${path}`, {
+      httpMethod: method,
+      uploadType: UploadType.MULTIPART,
+      fieldName: field,
+      mimeType: file.type,
+      parameters: fields,
+      headers: { Accept: 'application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
+    }).uploadAsync();
+    let data: any = null;
+    try {
+      data = JSON.parse(r.body);
+    } catch {
+      /* not JSON */
+    }
+    if (r.status >= 200 && r.status < 300) return data as T;
+    throw new ApiError(r.status, data?.error || `Upload failed (${r.status})`);
+  }
+
   upload<T = any>(path: string, fields: Record<string, string>, file: UploadFile, onProgress?: (sent: number, total: number) => void) {
     let cancelled = false;
     const task = new File(file.uri).createUploadTask(`${this.base}/api${path}`, {

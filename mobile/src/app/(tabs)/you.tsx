@@ -66,6 +66,8 @@ export default function You() {
             <Row icon="thumb-up-off-alt" label="Liked videos" onPress={() => router.push('/library/liked')} />
             <Row icon="subscriptions" label="Subscriptions" onPress={() => router.push('/library/subscriptions')} />
             <Row icon="link" label="Linked accounts" hint="Your accounts on other servers, shown as one person" onPress={() => router.push('/links')} />
+            {user.is_admin && <Row icon="admin-panel-settings" label="Admin" hint="Site settings, people, network, moderation" onPress={() => router.push('/admin')} />}
+            {!user.is_admin && user.is_moderator && <Row icon="shield" label="Moderation" hint="Reports, held comments, spam controls, games" onPress={() => router.push('/admin/moderation')} />}
           </View>
         )}
 

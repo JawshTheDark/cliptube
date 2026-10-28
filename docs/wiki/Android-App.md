@@ -18,6 +18,7 @@ the website, so nothing needs setting up on the server beyond running version 1.
 - [What you can do](#what-you-can-do)
 - [Which server a video is on](#which-server-a-video-is-on)
 - [Tablets, turning and density](#tablets-turning-and-density)
+- [Admin and moderation](#admin-and-moderation)
 - [Shorts](#shorts)
 - [Comments and times](#comments-and-times)
 - [Playlists and Watch later](#playlists-and-watch-later)
@@ -95,8 +96,9 @@ a linked account carry the uploader's mark. Linked accounts need 1.6 or newer on
 Videos from other servers in the network stream straight from the server that hosts them, like on the website.
 Likes, comments and subscriptions on them go through your server.
 
-Still website-only: the timeline editor, thumbnails, captions, clipping and exports, analytics, account settings,
-moderation and admin pages, and push notifications. **You → Account settings on the website** opens them.
+Still website-only: the timeline editor, thumbnails, captions, clipping and exports, analytics, account settings and
+push notifications. **You → Account settings on the website** opens them. The admin and moderation pages are in the
+app since 1.7.0 (see below).
 
 ## Which server a video is on
 
@@ -128,6 +130,23 @@ website's *Layout density*:
 | **Dense** | The smallest cards and text: two across a phone held upright, up to six across a tablet |
 
 It applies to Home, channel and game pages, Shorts and lists like History, and the app remembers it.
+
+## Admin and moderation
+
+Admins find the whole admin area under **You → Admin**, and moderators find theirs under **You → Moderation**, with
+the website's tabs along the top (moderators see Moderation and Games). Everything works the same as on the website
+(see [Configuration](Configuration.md), [Moderation and Legal](Moderation-and-Legal.md) and [Network](Network.md)):
+
+| Tab | What's there |
+| --- | --- |
+| **Overview** | The update notice, live stats, every site setting, people (roles, approving sign-ups, suspending or banning with a reason, storage quotas, strikes, deleting), invite links, and email with a test send |
+| **Moderation** | Reports with their actions and private notes, held comments, appeals, the audit log, and comment spam controls |
+| **Games** | Adding, renaming, merging and deleting games, uploading artwork, and SteamGridDB covers, logos and banners |
+| **Legal** | The legal page, repeat-infringer rules, recording takedown notices, and the takedown log |
+| **Network** | Joining or running a network, hub settings and members, direct peers, block lists, fediverse sharing, ActivityPub, following servers and the PeerTube directory, blocked instances and hidden videos |
+| **Debugging** | Versions and the update check, the server, FFmpeg, storage, the database, the job queue and recent errors, with the report to copy |
+
+Where the website asks with a browser dialog (a reason for a ban, a storage quota), the app shows its own.
 
 ## Shorts
 

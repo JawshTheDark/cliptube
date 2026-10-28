@@ -6,6 +6,7 @@ import * as SystemUI from 'expo-system-ui';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { PromptHost } from '@/components/Prompt';
 import { Welcome } from '@/components/Welcome';
 import { DensityProvider } from '@/lib/density';
 import { SessionProvider, useSession } from '@/lib/session';
@@ -59,6 +60,12 @@ function Root() {
       <Stack.Screen name="save" options={{ title: 'Save to', presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="party/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ title: 'App settings' }} />
+      <Stack.Screen name="admin/index" options={{ title: 'Admin' }} />
+      <Stack.Screen name="admin/network" options={{ title: 'Network' }} />
+      <Stack.Screen name="admin/moderation" options={{ title: 'Moderation' }} />
+      <Stack.Screen name="admin/games" options={{ title: 'Games' }} />
+      <Stack.Screen name="admin/legal" options={{ title: 'Legal' }} />
+      <Stack.Screen name="admin/debug" options={{ title: 'Debugging' }} />
       <Stack.Screen name="live/[username]" options={{ headerShown: false }} />
       <Stack.Screen name="shorts/[id]" options={{ headerShown: false, animation: 'fade' }} />
       <Stack.Screen name="shorts/n/[peer]/[remote]" options={{ headerShown: false, animation: 'fade' }} />
@@ -84,6 +91,7 @@ export default function RootLayout() {
             <DensityProvider>
               <StatusBar style="light" />
               <Root />
+              <PromptHost />
             </DensityProvider>
           </SessionProvider>
         </ThemeProvider>
